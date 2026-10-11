@@ -1,12 +1,12 @@
 # 麻辣烫 · Malatang
 
-> 开发中、未发布：当前源码已取消内置插件，首次进入应用中心，通过官方或自定义市场安装更新，也可从 npm/Git/本地归档手动安装。官方插件已迁入独立 malatang-plugins 仓库；市场线上服务尚未发布。详见 [市场契约](docs/plugin-marketplace.md)。公开 0.4.1 的行为以正式发布文档为准。
+> 组织迁移发行准备：应用 0.4.3 / build 7、SDK 0.3.2 正在验收，公开状态以官网安装页为准。新版官方市场与自动更新使用 `semicoder-dev` 地址，旧版请通过完整 DMG 更新；详见 [0.4.3 说明](release/notes/0.4.3.md)。
 
 基于 FIA 的本地插件应用平台。宿主提供模型、存储和统一界面组件，独立插件组合这些能力，拥有自己的应用页面。
 
 ## 0.4.1 版本
 
-应用 [0.4.1 / build 5](https://github.com/potato47/malatang/releases/tag/v0.4.1) 与 SDK 0.3.0 已公开发布：Base UI + Tailwind CSS 4、组合式公共组件、manifest SDK 0.3、自定义主题、凭证文件及 Bun 1.4.3。公开产物验证通过，官网内容同步部署单独验收；证据见 [应用发布记录](docs/github-release.md) 和 [SDK 发布记录](docs/npm-release.md)。可见变化与升级要求见 [0.4.1 说明](release/notes/0.4.1.md)。
+应用 [0.4.1 / build 5](https://github.com/semicoder-dev/malatang/releases/tag/v0.4.1) 与 SDK 0.3.0 已公开发布：Base UI + Tailwind CSS 4、组合式公共组件、manifest SDK 0.3、自定义主题、凭证文件及 Bun 1.4.3。公开产物验证通过，官网内容同步部署单独验收；证据见 [应用发布记录](docs/github-release.md) 和 [SDK 发布记录](docs/npm-release.md)。可见变化与升级要求见 [0.4.1 说明](release/notes/0.4.1.md)。
 
 ## 0.4.0 版本（历史）
 
@@ -18,7 +18,7 @@
 
 ## 下载与安装
 
-官网统一位于 [Semicoder · 麻辣烫](https://semicoder.dev/malatang)，[下载与安装](https://semicoder.dev/malatang/docs/installation) 页面提供正式 DMG 下载、发行状态与安装指引。具体版本和校验信息以该页及 [GitHub Releases](https://github.com/potato47/malatang/releases) 为准；`fia-runtime-*` 预发布仅供构建，不是麻辣烫安装包。
+官网统一位于 [Semicoder · 麻辣烫](https://semicoder.dev/malatang)，[下载与安装](https://semicoder.dev/malatang/docs/installation) 页面提供正式 DMG 下载、发行状态与安装指引。具体版本和校验信息以该页及 [GitHub Releases](https://github.com/semicoder-dev/malatang/releases) 为准；`fia-runtime-*` 预发布仅供构建，不是麻辣烫安装包。
 
 应用支持 macOS 14+ / Apple Silicon，安装后的应用自带运行时，无需另装 Bun 或 Swift。0.4.1 源码从同一提交构建 FIA，需要下述 Swift 工具链；历史 v0.4.0 的固定归档构建方式仅适用于该旧标签。
 

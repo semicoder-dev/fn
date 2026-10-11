@@ -2,7 +2,7 @@
 
 > 当前共仓开发阶段：在宿主仓库内禁用 FIA npm 发布，仅执行框架归档与独立消费验收。以下独立仓库发布流程保留供将来拆出后使用；现有 Trusted Publisher 未迁移。
 
-GitHub 仓库：`potato47/fia`。npm 包：`@semicoder/fia`，源码在 `packages/cli`。
+GitHub 仓库：`semicoder-dev/fia`。npm 包：`@semicoder/fia`，源码在 `packages/cli`。
 
 ## 0.18.0 GitHub 发布记录（2026-10-09）
 
@@ -32,7 +32,7 @@ Swift 测试显式使用 `--no-parallel`：原生测试共享 NSApplication、�
 
    | 字段                 | 值                     |
    | -------------------- | ---------------------- |
-   | Organization or user | `potato47`             |
+   | Organization or user | `semicoder-dev`        |
    | Repository           | `fia`                  |
    | Workflow filename    | `publish-npm.yml`      |
    | Environment name     | `npm`                  |
@@ -59,7 +59,7 @@ git tag -a v0.18.1 -m "Release 0.18.1"
 git push origin v0.18.1
 ```
 
-以上示例假定版本提交已在 `main`；使用特性分支时，先将版本提交合入主分支，再在该提交打标签。仓库尚未配置 remote 时，先配置 `origin` 为 `https://github.com/potato47/fia.git`。也可不指定版本执行 `bun run version:npm`，默认递增 minor 并归零 patch。
+以上示例假定版本提交已在 `main`；使用特性分支时，先将版本提交合入主分支，再在该提交打标签。仓库尚未配置 remote 时，先配置 `origin` 为 `https://github.com/semicoder-dev/fia.git`。也可不指定版本执行 `bun run version:npm`，默认递增 minor 并归零 patch。
 
 `version:npm` 只同步根包、CLI 包、TypeScript、Swift 和 `bun.lock` 的版本；不构建、不发布、不提交、不创建标签。不要只执行 `npm version`，否则这几个版本会不一致。
 

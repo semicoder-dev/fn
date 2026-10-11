@@ -59,7 +59,7 @@ test("release metadata validates all version sources and routes prereleases to n
     });
     const packagePath = resolve(directory, "packages/cli/package.json");
     const source = await readFile(packagePath, "utf8");
-    await writeFile(packagePath, source.replace("potato47/fia", "other/fia"));
+    await writeFile(packagePath, source.replace("semicoder-dev/fia", "other/fia"));
     await expect(checkNPMRelease(directory)).rejects.toThrow("repository.url");
     await writeFile(packagePath, source.replace(prerelease, "01.2.3"));
     await expect(checkNPMRelease(directory)).rejects.toThrow("invalid semantic version");

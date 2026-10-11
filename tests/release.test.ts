@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { config, pkg, readManifest, type Manifest } from "../scripts/release/config";
 import { verifyDirectory, verifyRelease } from "../scripts/release/verify";
 import { stageSite } from "../scripts/release/site";
+import { hasUpdateHistory } from "../scripts/release/history";
 
 const temporary = await mkdtemp(join(tmpdir(), "malatang-release-test-"));
 const original = { ...config }, version = pkg.version;
@@ -60,22 +61,25 @@ describe("signed release validation", () => {
     await writeFile(join(resources, "fia.runtime.json"), JSON.stringify({ runtimeId: "b".repeat(64), app: { version: "0.3.0", build: 3 }, updates: { url: config.updatesURL, publicKey: config.publicKey } }));
     await expect(verifyRelease(f.directory, app)).rejects.toThrow("different runtimes");
   });
-  test("migrates the installer page without rejecting signed history or moving update files", async () => {
-    const previous = await fixture(1, "-legacy-installer"), next = await fixture(2, "-official-installer"), site = join(temporary, "installer-migration");
-    const legacy = { ...manifest(1), downloadURL: "https://github.com/potato47/malatang/releases/latest" };
-    const previousText = envelope(legacy);
-    await writeFile(join(previous.directory, "latest.json"), previousText);
-    config.build = 1; pkg.version = "0.1.0"; await stageSite(previous.directory, site);
-    expect(await readFile(join(site, "updates/latest.json"), "utf8")).toBe(previousText);
-    config.build = 2; pkg.version = "0.2.0"; await stageSite(next.directory, site);
+  test("initializes the organization feed and rejects legacy signed origins", async () => {
+    const f = await fixture(7, "-organization"), site = join(temporary, "organization-site");
+    config.build = 7; pkg.version = "0.7.0";
+    await stageSite(f.directory, site);
     const current = readManifest(await readFile(join(site, "updates/latest.json"), "utf8"));
+    expect(current.baseURL).toBe("https://semicoder-dev.github.io/malatang/updates/releases/7/");
     expect(current.downloadURL).toBe("https://semicoder.dev/malatang/docs/installation");
-    expect(current.baseURL).toBe("https://nobug.space/malatang/updates/releases/2/");
-    await verifyDirectory(join(site, "updates/releases/1"), legacy);
-    await verifyDirectory(join(site, "updates/releases/2"), current);
-    expect(await readFile(join(previous.directory, "latest.json"), "utf8")).toBe(previousText);
+    expect(() => readManifest(envelope({ ...current, baseURL: "https://nobug.space/malatang/updates/releases/7/" }))).toThrow("origin");
+    expect(() => readManifest(envelope({ ...current, downloadURL: "https://github.com/potato47/malatang/releases/latest" }))).toThrow("installer URL");
     const landing = await readFile(join(site, "index.html"), "utf8");
-    expect(landing).toContain('http-equiv="refresh" content="0;url=https://semicoder.dev/malatang"');
     expect(landing).toContain('href="https://semicoder.dev/malatang/docs/installation"');
+  });
+  test("only an explicit missing organization branch starts an empty history", async () => {
+    expect(await hasUpdateHistory(async () => "[]")).toBe(false);
+    expect(await hasUpdateHistory(async () => JSON.stringify([{ ref: "refs/heads/updates-site" }]))).toBe(true);
+    expect(await hasUpdateHistory(async () => JSON.stringify([{ ref: "refs/heads/updates-site-backup" }]))).toBe(false);
+    await expect(hasUpdateHistory(async () => { throw new Error("GitHub unavailable"); })).rejects.toThrow("GitHub unavailable");
+    for (const body of ['{"message":"Not Found"}', '[{}]', 'invalid']) {
+      await expect(hasUpdateHistory(async () => body)).rejects.toThrow();
+    }
   });
 });

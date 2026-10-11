@@ -2,7 +2,7 @@
 
 > 未发布宿主变更：插件市场与原位更新见 [市场契约](../../docs/plugin-marketplace.md)。当前源码删除 `PluginInfo.builtin`，增加可空 `market` 来源；安装任务增加 `operation/targetVersion`。SDK 包版本暂不调整，公开 0.3.0 尚无这些类型变更。插件 manifest 与模型/KV/UI 契约不变。
 
-SDK 0.3.0 使用 **Base UI 1.9 + Tailwind CSS 4.3**，manifest `sdkVersion` 为 `0.3`，需要麻辣烫 0.4.1 或以上宿主。0.2 及更早版本插件需迁移并重建；应用与 SDK 独立发行，公开状态见 [npm 发布记录](https://github.com/potato47/malatang/blob/main/docs/npm-release.md)。CLI 使用随应用提供的固定 SDK 归档创建插件。
+SDK 0.3.0 使用 **Base UI 1.9 + Tailwind CSS 4.3**，manifest `sdkVersion` 为 `0.3`，需要麻辣烫 0.4.1 或以上宿主。0.2 及更早版本插件需迁移并重建；应用与 SDK 独立发行，公开状态见 [npm 发布记录](https://github.com/semicoder-dev/malatang/blob/main/docs/npm-release.md)。CLI 使用随应用提供的固定 SDK 归档创建插件。
 
 插件为可信本地代码，命名空间和 CSS 作用域不是安全沙箱。使用 Bun >=1.4.2；React 与 ReactDOM 19 必须精确同版本。宿主提供唯一的 React、Base UI 和公共组件实现。此轮不提供旧 API 或插件兼容层，数据存储键保持不变。
 

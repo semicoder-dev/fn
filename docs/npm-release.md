@@ -1,6 +1,6 @@
 # SDK npm 自动发布
 
-仓库 `potato47/malatang`；发布包 `@semicoder/malatang-sdk`，源码在 `packages/sdk`。SDK 以 TypeScript / TSX 源码供 Bun 插件工具链使用，包含 types、client、runtime、manifest、UI、主题/组件 CSS、构建/检查工具与 notes/model 模板，不依赖 FIA 源码或应用目录。
+仓库 `semicoder-dev/malatang`；发布包 `@semicoder/malatang-sdk`，源码在 `packages/sdk`。SDK 以 TypeScript / TSX 源码供 Bun 插件工具链使用，包含 types、client、runtime、manifest、UI、主题/组件 CSS、构建/检查工具与 notes/model 模板，不依赖 FIA 源码或应用目录。
 
 ## 包名与版本
 
@@ -30,6 +30,10 @@ SDK 0.3.0 对应 manifest `sdkVersion: "0.3"`，使用 Base UI / Tailwind CSS 4 
 
 0.2.1 当次使用本机 npm 认证，未执行远端 OIDC；该历史边界已由上述 0.3.0 真实 OIDC 验收替代。不要推送 `sdk-v0.2.1` 触发重复发布，未来独立标签必须使用新版本。旧 0.2.0 于 2026-10-05 首次本机发布，归档不改写。
 
+## 组织迁移配置
+
+旧 Trusted Publisher 身份字段不可修改；在最终归档就绪后删除旧连接，并创建组织连接，明确允许 `npm publish`。新连接必须在两天内首次成功发布。环境继续使用精确版本标签许可，不添加长期 npm token。
+
 ## 首次配置
 
 1. 将本次源码和 `.github/workflows/publish-npm.yml` 合入 GitHub 默认分支。工作流名为 **Publish Malatang SDK**，手动运行始终只验收并上传 `.tgz`，不会发布。
@@ -47,7 +51,7 @@ SDK 0.3.0 对应 manifest `sdkVersion: "0.3"`，使用 Base UI / Tailwind CSS 4 
 
    | 字段                 | 值                                                                    |
    | -------------------- | --------------------------------------------------------------------- |
-   | Organization or user | `potato47`                                                            |
+   | Organization or user | `semicoder-dev`                                                            |
    | Repository           | `malatang`                                                            |
    | Workflow filename    | `publish-npm.yml`                                                     |
    | Environment name     | `npm`                                                                 |

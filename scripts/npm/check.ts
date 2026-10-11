@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 export const root = fileURLToPath(new URL("../../", import.meta.url));
 export const packageName = "@semicoder/malatang-sdk";
-export const repository = "potato47/malatang";
+export const repository = "semicoder-dev/malatang";
 export const registry = "https://registry.npmjs.org";
 
 export function assert(condition: unknown, message: string): asserts condition {
