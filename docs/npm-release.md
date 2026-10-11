@@ -1,5 +1,9 @@
 # SDK npm 自动发布
 
+## 0.3.2 组织首次发行（2026-10-11）
+
+`sdk-v0.3.2` 固定 `34faa9890eed6475516dfa823d664d92181966f5`，[真实 OIDC 38117101769](https://github.com/semicoder-dev/malatang/actions/runs/38117101769) 成功。公开 npm latest 为 0.3.2，tarball 与 Actions artifact 11693961987 逐字节一致，SHA-256 `901b4ee1a5b8cbf8607645689129fd72ad05bde4dc3ee7972f3fe2d58f53fd7f`，provenance 指向组织仓库。新缓存 registry 安装、notes/model 创建/检查/构建/打包及 runtime/UI/前后端独立消费通过。manifest 保持 0.3，公共契约不变；FIA 独立 npm 继续暂停。
+
 仓库 `semicoder-dev/malatang`；发布包 `@semicoder/malatang-sdk`，源码在 `packages/sdk`。SDK 以 TypeScript / TSX 源码供 Bun 插件工具链使用，包含 types、client、runtime、manifest、UI、主题/组件 CSS、构建/检查工具与 notes/model 模板，不依赖 FIA 源码或应用目录。
 
 ## 包名与版本
