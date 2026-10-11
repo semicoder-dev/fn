@@ -1,9 +1,10 @@
 import { afterEach, expect, test } from "bun:test";
 import { mkdtemp, rm, mkdir, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { Store } from "../backend/store";
 import { Models, readSSE } from "../backend/models";
+import { fixturePackage, registerFixture, archiveFixture } from "./plugin-fixture";
 import { Plugins, containedFile, manifestSchema } from "../backend/plugins";
 const directories: string[] = [];
 const runners: Models[] = [];
@@ -195,11 +196,11 @@ test("manifest rejects incompatible SDK and resource traversal / symlinks", asyn
   await symlink(join(dir, "outside.js"), join(dir, "package", "escape.js"));
   await expect(containedFile(join(dir, "package"), "../outside.js")).rejects.toThrow();
   await expect(containedFile(join(dir, "package"), "escape.js")).rejects.toThrow();
-  const pkg = await Bun.file("plugins/translate/package.json").json();
+  const pkg = structuredClone(fixturePackage);
   expect(manifestSchema.safeParse({ ...pkg.malatang, sdkVersion: "9.0" }).success).toBe(false);
 });
 test("page retention is opt-in and is included in discovery for current and invalid packages", async () => {
-  const pkg = await Bun.file("plugins/translate/package.json").json();
+  const pkg = structuredClone(fixturePackage);
   const { keepAlive: _keepAlive, backend: _backend, ...legacy } = pkg.malatang;
   expect(manifestSchema.parse(legacy).keepAlive).toBe(false);
   expect(manifestSchema.parse({ ...legacy, keepAlive: false }).keepAlive).toBe(false);
@@ -219,21 +220,34 @@ test("page retention is opt-in and is included in discovery for current and inva
   await Bun.write(join(plugin, "dist/client.css"), "");
   await store.update((state) => {
     state.plugins.push({
+      id: "translate",
+      packageName: "legacy-plugin",
+      version: "0.1.0",
+      market: null,
+      root: plugin,
+      installation: plugin,
+      source: "test",
+    });
+    state.plugins.push({
       id: "missing-package",
+      packageName: "missing-package",
+      version: "0.1.0",
+      market: null,
       root: join(dir, "missing"),
       installation: "missing",
       source: "test",
     });
   });
-  const plugins = new Plugins(store, models, root, () => {});
+  const plugins = new Plugins(store, models, () => {});
   await plugins.open();
   expect(plugins.list().find((item) => item.id === "translate")?.keepAlive).toBe(false);
   expect(plugins.list().find((item) => item.id === "missing-package")?.keepAlive).toBe(false);
   await plugins.stop();
 });
-test("independent built-in backend invokes SDK and gates disable while active", async () => {
-  const { store, models, model } = await streamingSetup();
-  const plugins = new Plugins(store, models, resolve("."), () => {});
+test("independent installed backend invokes SDK and gates disable while active", async () => {
+  const { store, models, model, dir } = await streamingSetup();
+  await registerFixture(store, join(dir, "fixture"));
+  const plugins = new Plugins(store, models, () => {});
   await plugins.open();
   expect(plugins.list()[0]?.methods[0]?.name).toBe("translate");
   expect(plugins.list()[0]?.keepAlive).toBe(true);
@@ -253,7 +267,7 @@ test("plugin discovery rejects the host settings route as a plugin ID", async ()
   const { store, models, dir } = await setup();
   const root = join(dir, "reserved-settings");
   await mkdir(join(root, "dist"), { recursive: true });
-  const pkg = await Bun.file("plugins/translate/package.json").json();
+  const pkg = structuredClone(fixturePackage);
   const { backend: _backend, ...manifest } = pkg.malatang;
   await Bun.write(
     join(root, "package.json"),
@@ -265,9 +279,17 @@ test("plugin discovery rejects the host settings route as a plugin ID", async ()
   );
   await Bun.write(join(root, "dist/client.js"), "export default function Page() {}");
   await store.update((state) => {
-    state.plugins.push({ id: "settings", root, installation: "settings", source: "test" });
+    state.plugins.push({
+      id: "settings",
+      packageName: "reserved-settings",
+      version: "0.1.0",
+      market: null,
+      root,
+      installation: "settings",
+      source: "test",
+    });
   });
-  const plugins = new Plugins(store, models, resolve("."), () => {});
+  const plugins = new Plugins(store, models, () => {});
   await plugins.open();
   expect(plugins.list().find((item) => item.id === "settings")).toMatchObject({
     status: "error",
@@ -277,24 +299,25 @@ test("plugin discovery rejects the host settings route as a plugin ID", async ()
   await plugins.stop();
 });
 test("local archive installs, reloads, retains KV after uninstall and reports duplicate error", async () => {
-  const { store, models } = await setup();
-  const plugins = new Plugins(store, models, resolve("."), () => {});
+  const { store, models, dir } = await setup();
+  const { archive } = await archiveFixture(join(dir, "archive"), { id: "quick-notes" });
+  const plugins = new Plugins(store, models, () => {});
   await plugins.open();
-  const job = plugins.installExample();
+  const job = plugins.install(archive);
   await waitFor(() => plugins.listJobs()[0]?.status !== "installing", 15000);
   expect(plugins.listJobs()[0]).toMatchObject({ status: "completed" });
-  expect(plugins.list().find((item) => item.id === "quick-notes")?.builtin).toBe(false);
+  expect(plugins.list().find((item) => item.id === "quick-notes")?.market).toBe(null);
   expect(plugins.list().find((item) => item.id === "quick-notes")?.keepAlive).toBe(true);
   await store.set("quick-notes", "note", "persist");
-  plugins.installExample();
+  plugins.install(archive);
   await waitFor(() => plugins.listJobs()[0]?.status !== "installing", 15000);
   expect(plugins.listJobs()[0]?.status).toBe("failed");
-  const restored = new Plugins(store, models, resolve("."), () => {});
+  const restored = new Plugins(store, models, () => {});
   await restored.open();
   expect(restored.list().find((item) => item.id === "quick-notes")?.status).toBe("active");
   await plugins.uninstall("quick-notes");
   expect(store.get("quick-notes", "note")).toBe("persist");
-  expect(plugins.list().length).toBe(1);
+  expect(plugins.list().length).toBe(0);
   await plugins.stop();
   await restored.stop();
 });
@@ -350,16 +373,24 @@ test("SDK 0.1 plugins stay rejected on enable and retain stored data", async () 
   const { store, models, dir } = await setup();
   const root = join(dir, "old-plugin");
   await mkdir(root);
-  const pkg = await Bun.file("examples/quick-notes/package.json").json();
+  const pkg = structuredClone(fixturePackage);
   await Bun.write(
     join(root, "package.json"),
     JSON.stringify({ ...pkg, malatang: { ...pkg.malatang, id: "old-plugin", sdkVersion: "0.1" } }),
   );
   await store.set("old-plugin", "note", "preserved");
   await store.update((state) => {
-    state.plugins.push({ id: "old-plugin", root, installation: root, source: "test" });
+    state.plugins.push({
+      id: "old-plugin",
+      packageName: "test-plugin",
+      version: "0.1.0",
+      market: null,
+      root,
+      installation: root,
+      source: "test",
+    });
   });
-  const plugins = new Plugins(store, models, resolve("."), () => {});
+  const plugins = new Plugins(store, models, () => {});
   await plugins.open();
   expect(plugins.get("old-plugin").info.error).toContain("重新构建");
   await expect(plugins.setEnabled("old-plugin", true)).rejects.toThrow("重新构建");

@@ -25,13 +25,6 @@
         "vite": "^7.1.3",
       },
     },
-    "examples/quick-notes": {
-      "name": "@semicoder/malatang-example-quick-notes",
-      "version": "0.1.0",
-      "devDependencies": {
-        "@semicoder/malatang-sdk": "workspace:*",
-      },
-    },
     "framework/fia/packages/cli": {
       "name": "@semicoder/fia",
       "version": "0.18.0",
@@ -54,7 +47,7 @@
     },
     "packages/sdk": {
       "name": "@semicoder/malatang-sdk",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "dependencies": {
         "@base-ui/react": "^1.9.0",
         "@tailwindcss/postcss": "^4.3.3",
@@ -68,13 +61,6 @@
       "peerDependencies": {
         "react": ">=19 <20",
         "react-dom": ">=19 <20",
-      },
-    },
-    "plugins/translate": {
-      "name": "@semicoder/malatang-plugin-translate",
-      "version": "0.1.0",
-      "devDependencies": {
-        "@semicoder/malatang-sdk": "workspace:*",
       },
     },
   },
@@ -398,10 +384,6 @@
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.64.0", "", { "os": "win32", "cpu": "x64" }, "sha512-nl+CTWIgOGszQmUz/kanfgrfFZ4qiwxKIfT/ryl3N3Ewk5tqizmYtNXiqb7Bu/fDtNgu1kyxdFiAUJNur3iysg=="],
 
     "@semicoder/fia": ["@semicoder/fia@workspace:framework/fia/packages/cli"],
-
-    "@semicoder/malatang-example-quick-notes": ["@semicoder/malatang-example-quick-notes@workspace:examples/quick-notes"],
-
-    "@semicoder/malatang-plugin-translate": ["@semicoder/malatang-plugin-translate@workspace:plugins/translate"],
 
     "@semicoder/malatang-sdk": ["@semicoder/malatang-sdk@workspace:packages/sdk"],
 

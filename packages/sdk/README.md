@@ -1,5 +1,7 @@
 # @semicoder/malatang-sdk · 0.3.0
 
+> 未发布宿主变更：插件市场与原位更新见 [市场契约](../../docs/plugin-marketplace.md)。当前源码删除 `PluginInfo.builtin`，增加可空 `market` 来源；安装任务增加 `operation/targetVersion`。SDK 包版本暂不调整，公开 0.3.0 尚无这些类型变更。插件 manifest 与模型/KV/UI 契约不变。
+
 SDK 0.3.0 使用 **Base UI 1.9 + Tailwind CSS 4.3**，manifest `sdkVersion` 为 `0.3`，需要麻辣烫 0.4.1 或以上宿主。0.2 及更早版本插件需迁移并重建；应用与 SDK 独立发行，公开状态见 [npm 发布记录](https://github.com/potato47/malatang/blob/main/docs/npm-release.md)。CLI 使用随应用提供的固定 SDK 归档创建插件。
 
 插件为可信本地代码，命名空间和 CSS 作用域不是安全沙箱。使用 Bun >=1.4.2；React 与 ReactDOM 19 必须精确同版本。宿主提供唯一的 React、Base UI 和公共组件实现。此轮不提供旧 API 或插件兼容层，数据存储键保持不变。
@@ -188,7 +190,7 @@ await buildPlugin(".");
 
 构建器把 `src/client.tsx` 和可选的 `src/backend.ts` 编译为对应 `dist` 文件。业务 JS 依赖被打包；React 与 JSX runtime 从宿主共享，插件无需访问宿主源码。不要把服务器代码导入前端。此 MVP 构建器尚未处理原生依赖和额外资源复制。
 
-本地 `bun pm pack`、npm 发布包和 Git 仓库遵循同一个 manifest / dist 格式。Git 来源需要包含预构建 dist，宿主只获取依赖并禁用安装脚本，不替插件构建源码。页面或 CLI 安装后立即激活；前端渲染失败与后端激活失败分别显示。升级流程为卸载再安装，保留 KV 和历史；无自动升级 / 回滚。
+本地 `bun pm pack`、npm 发布包和 Git 仓库遵循同一个 manifest / dist 格式。Git 来源需要包含预构建 dist，宿主只获取依赖并禁用安装脚本，不替插件构建源码。页面或 CLI 安装后立即激活；前端渲染失败与后端激活失败分别显示。开发中宿主提供用户触发的更新：保留 KV、历史与启停状态，激活或保存失败恢复旧包；不自动升级。公开 0.4.1 仍需卸载重装。
 
 ### ChatGPT 订阅模型
 

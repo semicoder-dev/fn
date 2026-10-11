@@ -133,7 +133,7 @@ async function run() {
     color: "#000000",
     packageName: "fixture",
     source: "test",
-    builtin: false,
+    market: null,
     enabled: true,
     status: "active",
     error: null,

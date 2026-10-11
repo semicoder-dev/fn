@@ -24,9 +24,6 @@ export default defineConfig({
   },
   backend: {
     assets: [
-      "plugins/translate/package.json",
-      "plugins/translate/dist",
-      "resources/plugins",
       "resources/sdk",
     ],
   },

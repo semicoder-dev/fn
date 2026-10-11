@@ -17,27 +17,6 @@ async function fixture() {
   cleanups.push(() => rm(root, { recursive: true, force: true }));
   const dataDirectory = join(root, "data");
   const codeDirectory = join(root, "code");
-  const plugin = join(codeDirectory, "plugins/translate");
-  await Bun.write(
-    join(plugin, "package.json"),
-    JSON.stringify({
-      name: "fixture-translate",
-      version: "1.0.0",
-      malatang: {
-        schemaVersion: 1,
-        id: "translate",
-        name: "Translate",
-        description: "Fixture",
-        icon: "T",
-        color: "#123456",
-        sdkVersion: "0.3",
-        frontend: "dist/client.js",
-        styles: "dist/client.css",
-      },
-    }),
-  );
-  await Bun.write(join(plugin, "dist/client.js"), "export default function Fixture() {}");
-  await Bun.write(join(plugin, "dist/client.css"), "");
   let keychainCalls = 0;
   const opened: string[] = [];
   const events: unknown[] = [];

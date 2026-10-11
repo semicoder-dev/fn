@@ -17,7 +17,7 @@ import ActivityButton from "./ActivityButton";
 
 export default function App() {
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
-  const [page, setPage] = useState("translate");
+  const [page, setPage] = useState("plugins");
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
 
@@ -94,7 +94,7 @@ export default function App() {
           </div>
         )}
         <PageSlot visible={page === "plugins"} keepAlive label="应用中心">
-          <PluginManager plugins={plugins} open={setPage} />
+          <PluginManager plugins={plugins} open={setPage} visible={page === "plugins"} />
         </PageSlot>
         <PageSlot visible={page === "settings"} keepAlive label="设置">
           <Settings visible={page === "settings"} />

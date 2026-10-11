@@ -87,7 +87,7 @@ export interface PluginInfo {
   version: string;
   packageName: string;
   source: string;
-  builtin: boolean;
+  market: { marketId: string; marketURL: string } | null;
   enabled: boolean;
   status: "active" | "disabled" | "error";
   error: string | null;
@@ -98,6 +98,8 @@ export interface PluginInfo {
 }
 
 export interface InstallJob {
+  operation: "install" | "update";
+  targetVersion: string | null;
   id: string;
   source: string;
   status: "installing" | "completed" | "failed";

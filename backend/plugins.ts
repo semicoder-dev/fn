@@ -10,6 +10,15 @@ import type {
   PluginInfo,
   PluginManifest,
 } from "@semicoder/malatang-sdk/types";
+import { createHash } from "node:crypto";
+import {
+  compareVersions,
+  stableVersion,
+  type MarketBinding,
+  type MarketEntry,
+} from "../shared/marketplace";
+import { Marketplaces } from "./marketplaces";
+import { download } from "./download";
 import { Store } from "./store";
 import { Models } from "./models";
 
@@ -41,19 +50,24 @@ export async function containedFile(root: string, name: string) {
 export class Plugins {
   private registry = new Map<string, Loaded>();
   private jobs: InstallJob[] = [];
-  private installation?: { job: InstallJob; process?: Bun.Subprocess; done: Promise<void> };
+  private installation?: {
+    job: InstallJob;
+    process?: Bun.Subprocess;
+    done: Promise<void>;
+    controller: AbortController;
+  };
   private stopping = false;
   constructor(
     private store: Store,
     private models: Models,
-    private codeDirectory: string,
     private changed: () => void,
+    private markets?: Marketplaces,
+    private fetcher: typeof fetch = fetch,
   ) {}
   async open() {
-    await this.load(join(this.codeDirectory, "plugins/translate"), "builtin", true);
     for (const record of this.store.value.plugins) {
       try {
-        await this.load(record.root, record.source, false);
+        await this.load(record.root, record.source, record.market);
       } catch (error) {
         this.registry.set(record.id, {
           invalidManifest: true,
@@ -77,10 +91,10 @@ export class Plugins {
             description: "安装文件无法加载",
             icon: "!",
             color: "#bc6452",
-            version: "unknown",
-            packageName: record.id,
+            version: record.version,
+            packageName: record.packageName,
             source: record.source,
-            builtin: false,
+            market: record.market,
             enabled: false,
             status: "error",
             error: message(error),
@@ -126,7 +140,11 @@ export class Plugins {
       },
     };
   }
-  private async inspect(root: string, source: string, builtin: boolean): Promise<Loaded> {
+  private async inspect(
+    root: string,
+    source: string,
+    market: MarketBinding | null,
+  ): Promise<Loaded> {
     const pkg = await Bun.file(join(root, "package.json")).json();
     if (pkg.malatang?.sdkVersion !== "0.3")
       throw new Error(
@@ -142,6 +160,7 @@ export class Plugins {
     await containedFile(root, manifest.frontend);
     if (manifest.backend) await containedFile(root, manifest.backend);
     if (manifest.styles) await containedFile(root, manifest.styles);
+    stableVersion.parse(pkg.version);
     const enabled = !this.store.value.disabled.includes(manifest.id);
     const prefix = `/api/plugins/${manifest.id}/`;
     const revision = `?v=${Bun.hash(root + pkg.version).toString(36)}`;
@@ -159,7 +178,7 @@ export class Plugins {
         version: pkg.version,
         packageName: pkg.name,
         source,
-        builtin,
+        market,
         enabled,
         status: "disabled",
         error: null,
@@ -170,8 +189,8 @@ export class Plugins {
       },
     };
   }
-  private async load(root: string, source: string, builtin: boolean) {
-    const plugin = await this.inspect(root, source, builtin);
+  private async load(root: string, source: string, market: MarketBinding | null) {
+    const plugin = await this.inspect(root, source, market);
     if (this.registry.has(plugin.info.id)) throw new Error("插件 ID 已安装：" + plugin.info.id);
     this.registry.set(plugin.info.id, plugin);
     if (plugin.info.enabled) await this.activate(plugin);
@@ -216,7 +235,7 @@ export class Plugins {
   }
   async setEnabled(id: string, enabled: boolean) {
     const plugin = this.get(id);
-    if (plugin.changing || plugin.calls || this.models.busy(id))
+    if (this.stopping || plugin.changing || plugin.calls || this.models.busy(id))
       throw new Error("插件正在运行，请先停止任务");
     if (enabled && plugin.invalidManifest)
       throw new Error(plugin.info.error ?? "插件清单无效，请重新构建安装");
@@ -245,8 +264,7 @@ export class Plugins {
   }
   async uninstall(id: string) {
     const plugin = this.get(id);
-    if (plugin.info.builtin) throw new Error("内置插件可以停用，不能卸载");
-    if (plugin.changing || plugin.calls || this.models.busy(id))
+    if (this.stopping || plugin.changing || plugin.calls || this.models.busy(id))
       throw new Error("插件正在运行，请先停止任务");
     plugin.changing = true;
     try {
@@ -270,8 +288,7 @@ export class Plugins {
   listJobs() {
     return structuredClone(this.jobs);
   }
-  install(source: string): InstallJob {
-    if (this.stopping || this.installation) throw new Error("已有安装任务正在运行");
+  private validateSource(source: string) {
     if (source.startsWith("-") || /[\x00-\x1f]/.test(source)) throw new Error("无效安装来源");
     if (
       !(isAbsolute(source) && source.endsWith(".tgz")) &&
@@ -280,76 +297,199 @@ export class Plugins {
       )
     )
       throw new Error("请输入 npm 包名、Git HTTPS 地址或本地 .tgz 绝对路径");
+  }
+  install(source: string): InstallJob {
+    this.validateSource(source);
+    return this.startInstall(source, null);
+  }
+  installFromMarket(marketId: string, pluginId: string) {
+    if (this.registry.has(pluginId)) throw new Error("插件已安装，请使用更新");
+    if (!this.markets) throw new Error("市场未初始化");
+    return this.startInstall("市场：" + marketId, null, {
+      binding: this.markets.binding(marketId),
+      pluginId,
+    });
+  }
+  update(id: string, source?: string) {
+    const plugin = this.get(id);
+    if (this.stopping || plugin.changing || plugin.calls || this.models.busy(id))
+      throw new Error("插件正在运行，请先停止任务");
+    if (source) {
+      this.validateSource(source);
+      if (plugin.info.market) throw new Error("市场插件只能通过原市场更新；切换来源请先卸载");
+      return this.startInstall(source, id);
+    }
+    if (!plugin.info.market || !this.markets) throw new Error("请指定手动更新来源");
+    return this.startInstall("市场：" + plugin.info.market.marketId, id, {
+      binding: plugin.info.market,
+      pluginId: id,
+    });
+  }
+  private startInstall(
+    source: string,
+    updateId: string | null,
+    market?: { binding: MarketBinding; pluginId: string },
+  ): InstallJob {
+    if (this.stopping || this.installation) throw new Error("已有安装任务正在运行");
     const job: InstallJob = {
       id: crypto.randomUUID(),
       source,
+      operation: updateId ? "update" : "install",
+      targetVersion: null,
       status: "installing",
       message: "正在获取插件包…",
-      pluginId: null,
+      pluginId: updateId ?? market?.pluginId ?? null,
       createdAt: Date.now(),
     };
     this.jobs = [job, ...this.jobs].slice(0, 20);
-    const slot = { job, done: Promise.resolve(), process: undefined as Bun.Subprocess | undefined };
+    const slot = {
+      job,
+      done: Promise.resolve(),
+      process: undefined as Bun.Subprocess | undefined,
+      controller: new AbortController(),
+    };
     this.installation = slot;
-    slot.done = this.performInstall(slot);
+    slot.done = this.performInstall(slot, updateId, market);
     this.changed();
     return structuredClone(job);
   }
-  installExample() {
-    return this.install(join(this.codeDirectory, "resources/plugins/quick-notes.tgz"));
-  }
-  private async performInstall(slot: NonNullable<Plugins["installation"]>) {
+  private async performInstall(
+    slot: NonNullable<Plugins["installation"]>,
+    updateId: string | null,
+    market?: { binding: MarketBinding; pluginId: string },
+  ) {
     const installation = join(this.store.directory, "packages", slot.job.id);
-    let installed = false;
+    let committed = false;
+    let old: Loaded | undefined;
+    let candidate: Loaded | undefined;
+    let switching = false;
+    const signal = AbortSignal.any([slot.controller.signal, AbortSignal.timeout(120000)]);
     try {
-      if (isAbsolute(slot.job.source) && !(await Bun.file(slot.job.source).exists()))
-        throw new Error("本地归档不存在");
       await mkdir(installation, { recursive: true });
+      let source = slot.job.source;
+      let entry: MarketEntry | undefined;
+      if (market) {
+        entry = await this.markets!.resolve(market.binding, market.pluginId);
+        signal.throwIfAborted();
+        slot.job.targetVersion = entry.version;
+        slot.job.source = entry.url;
+        this.changed();
+        const bytes = await download(entry.url, 50 * 1024 * 1024, signal, this.fetcher);
+        if (createHash("sha256").update(bytes).digest("hex") !== entry.sha256)
+          throw new Error("插件归档 SHA-256 校验失败");
+        source = join(installation, "download.tgz");
+        await Bun.write(source, bytes);
+      }
+      if (isAbsolute(source) && !(await Bun.file(source).exists()))
+        throw new Error("本地归档不存在");
       await Bun.write(
         join(installation, "package.json"),
         JSON.stringify({ name: "malatang-plugin-installation", private: true }),
       );
-      slot.process = Bun.spawn([process.execPath, "add", "--ignore-scripts", slot.job.source], {
+      signal.throwIfAborted();
+      slot.process = Bun.spawn([process.execPath, "add", "--ignore-scripts", source], {
         cwd: installation,
         stdout: "ignore",
         stderr: "ignore",
       });
-      const timeout = setTimeout(() => slot.process?.kill(), 120000);
+      const kill = () => slot.process?.kill();
+      signal.addEventListener("abort", kill, { once: true });
       let exit: number;
       try {
         exit = await slot.process.exited;
       } finally {
-        clearTimeout(timeout);
+        signal.removeEventListener("abort", kill);
       }
-      if (exit !== 0 || this.stopping)
-        throw new Error(
-          this.stopping
-            ? "应用关闭，安装已取消"
-            : "包获取失败或超时。请检查包地址、网络及预构建产物。",
-        );
+      signal.throwIfAborted();
+      if (exit !== 0) throw new Error("包获取失败。请检查地址、网络及预构建产物。");
       const receipt = await Bun.file(join(installation, "package.json")).json();
       const names = Object.keys(receipt.dependencies ?? {});
       if (names.length !== 1) throw new Error("安装包未声明唯一入口");
       const root = join(installation, "node_modules", names[0]!);
-      const plugin = await this.inspect(root, slot.job.source, false);
-      if (this.registry.has(plugin.info.id)) throw new Error("插件已安装，请先卸载再安装新版本");
-      slot.job.message = "已校验插件，正在激活…";
-      this.changed();
-      await this.store.update((state) => {
-        state.plugins.push({ id: plugin.info.id, root, installation, source: slot.job.source });
-      });
-      installed = true;
-      this.registry.set(plugin.info.id, plugin);
-      await this.activate(plugin);
+      candidate = await this.inspect(root, slot.job.source, market?.binding ?? null);
+      const plugin = candidate;
       slot.job.pluginId = plugin.info.id;
-      if (plugin.info.status === "error")
-        throw new Error("安装已保存，但后端激活失败：" + plugin.info.error);
+      slot.job.targetVersion = plugin.info.version;
+      if (
+        entry &&
+        (plugin.info.id !== entry.id ||
+          plugin.info.packageName !== entry.packageName ||
+          plugin.info.version !== entry.version ||
+          plugin.manifest.sdkVersion !== entry.sdkVersion)
+      )
+        throw new Error("包身份或版本与市场索引不一致");
+      if (market) {
+        const binding = this.markets!.binding(market.binding.marketId);
+        if (binding.marketURL !== market.binding.marketURL) throw new Error("市场源已变更");
+      }
+      if (updateId) {
+        old = this.get(updateId);
+        if (old.info.id !== plugin.info.id || old.info.packageName !== plugin.info.packageName)
+          throw new Error("更新包身份不匹配");
+        if (JSON.stringify(old.info.market) !== JSON.stringify(plugin.info.market))
+          throw new Error("更新来源不匹配");
+        if (compareVersions(plugin.info.version, old.info.version) <= 0)
+          throw new Error("更新版本必须高于已安装版本");
+        if (old.changing || old.calls || this.models.busy(updateId))
+          throw new Error("插件正在运行，请先停止任务");
+        plugin.info.enabled = old.info.enabled;
+      } else if (this.registry.has(plugin.info.id)) throw new Error("插件已安装，请使用更新");
+      signal.throwIfAborted();
+      slot.job.message = "已校验插件，正在切换…";
+      switching = true;
+      plugin.changing = true;
+      if (old) {
+        old.changing = true;
+        await old.backend?.dispose?.();
+      }
+      this.registry.set(plugin.info.id, plugin);
+      if (plugin.info.enabled) {
+        await this.activate(plugin);
+        if (plugin.info.status === "error") throw new Error("后端激活失败：" + plugin.info.error);
+      }
+      signal.throwIfAborted();
+      const previous = this.store.value.plugins.find((item) => item.id === plugin.info.id);
+      await this.store.update((state) => {
+        state.plugins = state.plugins.filter((item) => item.id !== plugin.info.id);
+        state.plugins.push({
+          id: plugin.info.id,
+          packageName: plugin.info.packageName,
+          version: plugin.info.version,
+          root,
+          installation,
+          source: slot.job.source,
+          market: plugin.info.market,
+        });
+      });
+      committed = true;
+      plugin.changing = false;
       slot.job.status = "completed";
-      slot.job.message = "安装完成，可以从侧栏打开";
+      slot.job.message = updateId ? "更新完成" : "安装完成，可以从侧栏打开";
+      if (
+        previous &&
+        relative(join(this.store.directory, "packages"), previous.installation).match(
+          /^[a-f0-9-]+$/,
+        )
+      )
+        await rm(previous.installation, { recursive: true, force: true }).catch(() => {});
+      await rm(join(installation, "download.tgz"), { force: true }).catch(() => {});
     } catch (error) {
       slot.job.status = "failed";
-      slot.job.message = message(error);
-      if (!installed) await rm(installation, { recursive: true, force: true }).catch(() => {});
+      slot.job.message = this.stopping ? "应用关闭，安装已取消" : message(error);
+      if (switching && candidate && !committed) {
+        await Promise.resolve()
+          .then(() => candidate?.backend?.dispose?.())
+          .catch(() => {});
+        if (old) {
+          this.registry.set(old.info.id, old);
+          old.backend = undefined;
+          if (old.info.enabled) await this.activate(old);
+          old.changing = false;
+          if (old.info.status === "error")
+            slot.job.message += "；旧版本恢复失败：" + old.info.error;
+        } else this.registry.delete(candidate.info.id);
+      }
+      if (!committed) await rm(installation, { recursive: true, force: true }).catch(() => {});
     } finally {
       this.installation = undefined;
       this.changed();
@@ -392,6 +532,7 @@ export class Plugins {
   }
   async stop() {
     this.stopping = true;
+    this.installation?.controller.abort();
     this.installation?.process?.kill();
     await this.installation?.done;
     await Promise.allSettled(

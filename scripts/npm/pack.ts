@@ -78,13 +78,45 @@ try {
     }),
   );
   await run([process.execPath, "install", "--ignore-scripts", "--registry", registry], consumer);
-  for (const [source, target] of [
-    ["plugins/translate", "translate"],
-    ["examples/quick-notes", "quick-notes"],
-  ]) {
-    await mkdir(join(consumer, target!), { recursive: true });
-    await cp(join(root, source!, "package.json"), join(consumer, target!, "package.json"));
-    await cp(join(root, source!, "src"), join(consumer, target!, "src"), { recursive: true });
+  for (const template of ["notes", "model"]) {
+    const target = join(consumer, template);
+    await cp(join(unpacked, "templates", template, "src"), join(target, "src"), {
+      recursive: true,
+    });
+    for await (const path of new Bun.Glob("**/*").scan({ cwd: target, onlyFiles: true })) {
+      const file = join(target, path);
+      await Bun.write(
+        file,
+        (await Bun.file(file).text())
+          .replaceAll("__PLUGIN_ID__", template)
+          .replaceAll("__PLUGIN_NAME_JSON__", JSON.stringify(template)),
+      );
+    }
+    if (template === "model")
+      await Bun.write(
+        join(target, "src/backend.ts"),
+        'import { definePlugin, defineMethod, z } from "@semicoder/malatang-sdk/runtime"; export default definePlugin({ methods: { echo: defineMethod("Echo", z.string(), value => value) } });',
+      );
+    await Bun.write(
+      join(target, "package.json"),
+      JSON.stringify({
+        name: `fixture-${template}`,
+        version: "0.1.0",
+        type: "module",
+        malatang: {
+          schemaVersion: 1,
+          id: template,
+          name: template,
+          description: "SDK archive consumer",
+          icon: "T",
+          color: "#123456",
+          sdkVersion: "0.3",
+          frontend: "dist/client.js",
+          styles: "dist/client.css",
+          ...(template === "model" ? { backend: "dist/backend.js" } : {}),
+        },
+      }),
+    );
   }
   await cp(new URL("./smoke.fixture.ts", import.meta.url), join(consumer, "smoke.ts"));
   await run([process.execPath, "run", "smoke.ts"], consumer);

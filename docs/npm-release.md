@@ -7,14 +7,16 @@
 | 包                                        | 用途       | 分发方式                                      |
 | ----------------------------------------- | ---------- | --------------------------------------------- |
 | `@semicoder/malatang-sdk`                 | 插件 SDK   | `sdk-v<x.y.z>` 标签触发 npm 发布              |
-| `@semicoder/malatang-plugin-translate`    | 内置翻译   | 保持 `private: true`，随应用分发              |
-| `@semicoder/malatang-example-quick-notes` | 随手记示例 | 构建为本地 `.tgz`，随应用分发；本流程不发布它 |
+| `@semicoder/malatang-plugin-translate`    | 官方翻译   | 独立 `malatang-plugins` 仓库的 GitHub Release |
+| `@semicoder/malatang-example-quick-notes` | 官方随手记 | 独立 GitHub Release；本流程不发布插件 |
 
 SDK 0.2.0 是随麻辣烫 0.2.0 提供的破坏性更新：manifest `sdkVersion` 为 `"0.2"`，要求 CSS Modules 和宿主共享 UI。SDK 0.1 插件须迁移并重新构建，不能直接安装或启用；原 ID、宿主标识及 KV 命名空间不变，用户数据保留。历史包名迁移与此次兼容版本升级是两次不同变更。
 
 SDK 版本独立于应用版本，当前公开 SDK 为 0.3.0，应用为 0.4.1；应用发行与 SDK npm 分别验收。应用 `v*` 标签继续发布 DMG / 更新源；SDK `sdk-v*` 标签只发布 SDK，不执行 Apple 签名、公证或部署 Pages。当前只支持稳定 `x.y.z`，不支持预发布和 build metadata。
 
 ## 当前发布状态
+
+本次已获授权准备 SDK 0.3.1 / 应用 0.4.2：市场来源及安装任务类型调整，删除 `builtin`，manifest 仍为 0.3。下方为上次已公开产物证据，新版真实 OIDC 与公开消费完成后追加记录。
 
 2026-10-11，SDK 0.3.0 已由 [GitHub OIDC 发布 38068339338](https://github.com/potato47/malatang/actions/runs/38068339338) 首次实际发布，`sdk-v0.3.0` 固定源码 `1a66de5cca8c59267add5dfab9223679ac2eeb00`。registry latest 为 0.3.0，公开 tarball 与 Actions 唯一验收归档逐字节一致，SHA-256 `1434489308c6fcd22942a4ff1fd497edf413d87a1e86881773361b642a4b3375`；[npm provenance](https://registry.npmjs.org/-/npm/v1/attestations/@semicoder%2fmalatang-sdk@0.3.0) 已生成。新缓存独立目录从 registry 安装，两种模板 create / check / build / pack 及运行时 / UI / 独立插件构建通过。未使用长期 npm token 或本机 publish。
 
