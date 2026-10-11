@@ -1,6 +1,6 @@
 # 首次配置 Apple 签名与公证
 
-`potato47/malatang` 的 Apple 凭据已配置，2026-10-04 [v0.1.0 / build 1](https://github.com/potato47/malatang/releases/tag/v0.1.0) 的[正式工作流](https://github.com/potato47/malatang/actions/runs/37214205671/attempts/2)已通过签名、公证和镜像运行验收。本文保留首次配置步骤，供环境重建或凭据轮换时参考；日常发版复用已有配置，不重新生成更新密钥。不要把证书密码、Apple 专用密码或更新私钥粘贴到聊天、Issue 或仓库文件里。
+`semicoder-dev/malatang` 的 Apple 凭据已配置，2026-10-04 [v0.1.0 / build 1](https://github.com/semicoder-dev/malatang/releases/tag/v0.1.0) 的[正式工作流](https://github.com/semicoder-dev/malatang/actions/runs/37214205671/attempts/2)已通过签名、公证和镜像运行验收。本文保留首次配置步骤，供环境重建或凭据轮换时参考；日常发版复用已有配置，不重新生成更新密钥。不要把证书密码、Apple 专用密码或更新私钥粘贴到聊天、Issue 或仓库文件里。
 
 ## 1. 确认 Apple Developer 资格
 
@@ -52,7 +52,7 @@
 
 ## 6. 在 GitHub 的 release 环境填写凭据
 
-打开 [仓库 Environments](https://github.com/potato47/malatang/settings/environments)，进入名为 **release** 的环境。没有时点击 **New environment** 创建。
+打开 [仓库 Environments](https://github.com/semicoder-dev/malatang/settings/environments)，进入名为 **release** 的环境。没有时点击 **New environment** 创建。
 
 Environment secrets 中点 **Add environment secret**，逐项添加：
 
@@ -87,7 +87,7 @@ Secrets 保存后不会显示原值，这是正常现象。配置完告诉协作
 
 ## 7. 开启 Pages 并验收
 
-1. 打开 [Pages 设置](https://github.com/potato47/malatang/settings/pages)，在 Build and deployment 的 Source 选择 **GitHub Actions**。这里仅托管应用更新数据，固定清单地址为 `https://nobug.space/malatang/updates/latest.json`，无需另设 Custom domain；`potato47.github.io/malatang` 会跨域跳转，不能用作客户端固定更新地址。[官网](https://semicoder.dev/malatang) 与 [安装入口](https://semicoder.dev/malatang/docs/installation) 由 Semicoder 承载，Pages 首页在应用发布后跳转官网，`updates/` 路径保持。
+1. 打开 [Pages 设置](https://github.com/semicoder-dev/malatang/settings/pages)，在 Build and deployment 的 Source 选择 **GitHub Actions**。这里仅托管应用更新数据，固定清单地址为 `https://nobug.space/malatang/updates/latest.json`，无需另设 Custom domain；`potato47.github.io/malatang` 会跨域跳转，不能用作客户端固定更新地址。[官网](https://semicoder.dev/malatang) 与 [安装入口](https://semicoder.dev/malatang/docs/installation) 由 Semicoder 承载，Pages 首页在应用发布后跳转官网，`updates/` 路径保持。
    首发时 `github-pages` 的部署规则仅允许 `main`；本次只增加精确 `v0.1.0` 标签，保留其他保护。后续发版前检查 `release` 与 `github-pages` 的 allowlist，仅按当次授权放行必要标签，不改为允许全部分支或标签。
 2. 发布 workflow 必须已合入 GitHub 默认分支，才会出现手动入口。打开 **Actions → Release Malatang → Run workflow**，选择待验收分支。
 3. 这次手动运行会完成构建、签名、公证、应用启动退出检查和更新签名，但**不会公开新版本或部署更新源**。

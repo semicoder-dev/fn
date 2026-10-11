@@ -12,7 +12,7 @@
 
 ## 静态索引 v1
 
-索引 URL 为无凭证、无片段的 HTTPS 地址；重定向仍须 HTTPS。默认地址为 `https://raw.githubusercontent.com/potato47/malatang-plugins/main/marketplace.json`，仓库与线上索引尚未发布。
+索引 URL 为无凭证、无片段的 HTTPS 地址；重定向仍须 HTTPS。默认地址为 `https://raw.githubusercontent.com/semicoder-dev/malatang-plugins/main/marketplace.json`，仓库与线上索引尚未发布。
 
 ```json
 {
@@ -57,4 +57,4 @@
 
 ## 官方仓库
 
-官方插件独立维护于 `potato47/malatang-plugins`，翻译 `translate` 与随手记 `quick-notes` 保持原 ID。宿主构建、测试和 SDK 归档验证不依赖该仓库。正式索引只列已经发布并验收的归档；首次公开发行已获授权，归档和市场上线结果在发布手册及官方仓库记录；候选归档不等于已上架。
+官方插件独立维护于 `semicoder-dev/malatang-plugins`，翻译 `translate` 与随手记 `quick-notes` 保持原 ID。宿主构建、测试和 SDK 归档验证不依赖该仓库。正式索引只列已经发布并验收的归档；首次公开发行已获授权，归档和市场上线结果在发布手册及官方仓库记录；候选归档不等于已上架。

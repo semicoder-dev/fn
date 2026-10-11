@@ -16,8 +16,8 @@ export async function checkNPMRelease(directory = repositoryRoot, ref?: string) 
   const cli = JSON.parse(await read("packages/cli/package.json"));
   if (cli.name !== CLI_PACKAGE_NAME || cli.private === true)
     throw new Error("Expected the public @semicoder/fia package");
-  if (cli.repository?.url !== "git+https://github.com/potato47/fia.git")
-    throw new Error("npm repository.url must match potato47/fia for trusted publishing");
+  if (cli.repository?.url !== "git+https://github.com/semicoder-dev/fia.git")
+    throw new Error("npm repository.url must match semicoder-dev/fia for trusted publishing");
   const version: string = cli.version;
   compareSemanticVersions(version, version);
   const versions = {

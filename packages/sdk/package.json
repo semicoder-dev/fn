@@ -1,14 +1,14 @@
 {
   "name": "@semicoder/malatang-sdk",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Model, storage, UI and plugin build SDK for Malatang",
   "homepage": "https://semicoder.dev/malatang",
   "bugs": {
-    "url": "https://github.com/potato47/malatang/issues"
+    "url": "https://github.com/semicoder-dev/malatang/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/potato47/malatang.git",
+    "url": "git+https://github.com/semicoder-dev/malatang.git",
     "directory": "packages/sdk"
   },
   "files": [

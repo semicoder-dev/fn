@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { assert, config, pkg, validateConfig, readManifest, websiteURL, root } from "./config";
 import { checksum, verifyRelease } from "./verify";
 import { stageSite } from "./site";
+import { updateBranch, hasUpdateHistory } from "./history";
 
 validateConfig();
 assert(process.env.GITHUB_REPOSITORY === config.repository && process.env.GITHUB_REF === `refs/tags/v${pkg.version}` && process.env.GITHUB_EVENT_NAME === "push", "Publish only from a matching version tag in the application repository");
@@ -25,13 +26,12 @@ try {
   await run(["tar", "-xzf", join(bundle, "updates.tar.gz"), "-C", updateDirectory]);
   const manifest = await verifyRelease(updateDirectory);
   // Recover the complete previous Pages snapshot. A failed API call must never mean an empty history.
-  const refResult = await gh("api", `repos/${config.repository}/git/matching-refs/heads/gh-pages`);
-  const refs = JSON.parse(refResult) as { ref: string }[];
+  const hasHistory = await hasUpdateHistory(() => gh("api", `repos/${config.repository}/git/matching-refs/heads/${updateBranch}`));
   await mkdir(site, { recursive: true });
-  await run(["git", "init", "-b", "gh-pages"], site);
+  await run(["git", "init", "-b", updateBranch], site);
   await run(["git", "remote", "add", "origin", `https://github.com/${config.repository}.git`], site);
-  if (refs.some(ref => ref.ref === "refs/heads/gh-pages")) {
-    await run(["git", "fetch", "--depth=1", "origin", "gh-pages"], site, gitEnv);
+  if (hasHistory) {
+    await run(["git", "fetch", "--depth=1", "origin", updateBranch], site, gitEnv);
     await run(["git", "reset", "--hard", "FETCH_HEAD"], site);
   }
   await stageSite(updateDirectory, site); // Monotonic feed / immutable build checks run BEFORE any release mutation.
@@ -65,7 +65,7 @@ try {
   const changes = await run(["git", "status", "--porcelain"], site);
   if (changes) {
     await run(["git", "-c", "user.name=github-actions[bot]", "-c", "user.email=41898282+github-actions[bot]@users.noreply.github.com", "commit", "-m", `Publish Malatang ${pkg.version} (${config.build})`], site);
-    await run(["git", "push", "origin", "HEAD:gh-pages"], site, gitEnv);
+    await run(["git", "push", "origin", `HEAD:${updateBranch}`], site, gitEnv);
   }
   await rm(join(site, ".git"), { recursive: true, force: true });
   console.log(`Release ${tag} published; preserved update history is ready for Pages deployment.`);
