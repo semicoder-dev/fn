@@ -1,10 +1,10 @@
 # 麻辣烫 · Malatang
 
-> 组织迁移发行准备：应用 0.4.3 / build 7、SDK 0.3.2 正在验收，公开状态以官网安装页为准。新版官方市场与自动更新使用 `semicoder-dev` 地址，旧版请通过完整 DMG 更新；详见 [0.4.3 说明](release/notes/0.4.3.md)。
+> 组织首次发行：应用 0.4.3 / build 7、SDK 0.3.2 已公开并独立验收，两个官方插件 0.1.1 已上架。新版官方市场与自动更新使用 `semicoder-dev` 地址，旧版请通过完整 DMG 更新；详见 [0.4.3 说明](release/notes/0.4.3.md)。
 
 基于 FIA 的本地插件应用平台。宿主提供模型、存储和统一界面组件，独立插件组合这些能力，拥有自己的应用页面。
 
-## 0.4.1 版本
+## 0.4.1 版本（历史）
 
 应用 [0.4.1 / build 5](https://github.com/semicoder-dev/malatang/releases/tag/v0.4.1) 与 SDK 0.3.0 已公开发布：Base UI + Tailwind CSS 4、组合式公共组件、manifest SDK 0.3、自定义主题、凭证文件及 Bun 1.4.3。公开产物验证通过，官网内容同步部署单独验收；证据见 [应用发布记录](docs/github-release.md) 和 [SDK 发布记录](docs/npm-release.md)。可见变化与升级要求见 [0.4.1 说明](release/notes/0.4.1.md)。
 
