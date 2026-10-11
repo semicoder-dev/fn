@@ -13,7 +13,6 @@ import PluginPage, { pluginPageKey } from "./PluginPage";
 import PageSlot from "./PageSlot";
 import PluginManager from "./PluginManager";
 import Settings from "./Settings";
-import ThemeControl from "./ThemeControl";
 import ActivityButton from "./ActivityButton";
 
 export default function App() {
@@ -70,7 +69,6 @@ export default function App() {
           ))}
         </div>
         <div className="activity-tools">
-          <ThemeControl />
           <ActivityButton
             label="应用中心"
             aria-current={page === "plugins" ? "page" : undefined}
