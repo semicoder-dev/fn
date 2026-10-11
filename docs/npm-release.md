@@ -12,11 +12,13 @@
 
 SDK 0.2.0 是随麻辣烫 0.2.0 提供的破坏性更新：manifest `sdkVersion` 为 `"0.2"`，要求 CSS Modules 和宿主共享 UI。SDK 0.1 插件须迁移并重新构建，不能直接安装或启用；原 ID、宿主标识及 KV 命名空间不变，用户数据保留。历史包名迁移与此次兼容版本升级是两次不同变更。
 
-SDK 版本独立于应用版本，当前公开 SDK 为 0.3.0，应用为 0.4.1；应用发行与 SDK npm 分别验收。应用 `v*` 标签继续发布 DMG / 更新源；SDK `sdk-v*` 标签只发布 SDK，不执行 Apple 签名、公证或部署 Pages。当前只支持稳定 `x.y.z`，不支持预发布和 build metadata。
+SDK 版本独立于应用版本，当前公开 SDK 为 0.3.1，应用为 0.4.2；应用发行与 SDK npm 分别验收。应用 `v*` 标签继续发布 DMG / 更新源；SDK `sdk-v*` 标签只发布 SDK，不执行 Apple 签名、公证或部署 Pages。当前只支持稳定 `x.y.z`，不支持预发布和 build metadata。
 
 ## 当前发布状态
 
-本次已获授权准备 SDK 0.3.1 / 应用 0.4.2：市场来源及安装任务类型调整，删除 `builtin`，manifest 仍为 0.3。下方为上次已公开产物证据，新版真实 OIDC 与公开消费完成后追加记录。
+2026-10-11，SDK 0.3.1 已由 [OIDC 38111585340](https://github.com/potato47/malatang/actions/runs/38111585340) 发布，标签 `sdk-v0.3.1` 固定 `b107dee8ae5c6237593f84be8904a9916566a9ec`。npm 处理完成后 latest 为 0.3.1；公开归档与 Actions 逐字节一致，SHA-256 `a9972f930035fa6d6c2792211f88ad42dda8ef1b7e7ac92ed48dcf4e31f99f5a`，provenance 已生成。新缓存独立 registry 安装、notes/model 创建/检查/构建/打包及 runtime/UI/后端构建消费通过。
+
+本次删除 `PluginInfo.builtin`、增加市场来源和安装任务类型，manifest 仍为 0.3，插件 UI/模型/KV 契约不变。官方插件在独立仓库继续固定消费公开 SDK 0.3.0，无相邻源码依赖。手动候选验收为 38111326158，未以本机 npm publish 替代 OIDC。
 
 2026-10-11，SDK 0.3.0 已由 [GitHub OIDC 发布 38068339338](https://github.com/potato47/malatang/actions/runs/38068339338) 首次实际发布，`sdk-v0.3.0` 固定源码 `1a66de5cca8c59267add5dfab9223679ac2eeb00`。registry latest 为 0.3.0，公开 tarball 与 Actions 唯一验收归档逐字节一致，SHA-256 `1434489308c6fcd22942a4ff1fd497edf413d87a1e86881773361b642a4b3375`；[npm provenance](https://registry.npmjs.org/-/npm/v1/attestations/@semicoder%2fmalatang-sdk@0.3.0) 已生成。新缓存独立目录从 registry 安装，两种模板 create / check / build / pack 及运行时 / UI / 独立插件构建通过。未使用长期 npm token 或本机 publish。
 
