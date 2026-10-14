@@ -1,8 +1,8 @@
 import type { HostBridge, JSONValue, ModelInfo, ModelRequest, ModelRun } from "./types";
 
 export function createPluginClient(pluginId: string) {
-  const bridge = (globalThis as typeof globalThis & { __MALATANG_BRIDGE__?: HostBridge }).__MALATANG_BRIDGE__;
-  if (!bridge) throw new Error("This plugin must be opened in Malatang.");
+  const bridge = (globalThis as typeof globalThis & { __FN_BRIDGE__?: HostBridge }).__FN_BRIDGE__;
+  if (!bridge) throw new Error("This plugin must be opened in fn.");
   const call = <T>(method: string, input: unknown) => bridge.call(method, input) as Promise<T>;
   return {
     models: {

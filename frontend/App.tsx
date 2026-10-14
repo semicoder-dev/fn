@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import type { PluginInfo } from "@semicoder/malatang-sdk/types";
+import type { PluginInfo } from "@semicoder/fn-sdk/types";
 import {
   Button,
   EmptyState,
@@ -7,7 +7,7 @@ import {
   Page,
   Package,
   Settings as SettingsIcon,
-} from "@semicoder/malatang-sdk/ui";
+} from "@semicoder/fn-sdk/ui";
 import { app } from "./bridge";
 import PluginPage, { pluginPageKey } from "./PluginPage";
 import PageSlot from "./PageSlot";

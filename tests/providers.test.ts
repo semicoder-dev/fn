@@ -10,7 +10,7 @@ import { Store, type ModelConfig } from "../backend/store";
 const resources: { dir: string; models: Models }[] = [];
 afterEach(async () => { for (const { dir, models } of resources.splice(0)) { await models.stop(); await rm(dir, { recursive: true, force: true }); } });
 async function setup(fetcher?: typeof fetch) {
-  const dir = await mkdtemp(join(tmpdir(), "malatang-providers-"));
+  const dir = await mkdtemp(join(tmpdir(), "fn-providers-"));
   const store = new Store(dir); await store.open();
   const models = new Models(store, () => {}, () => {}, fetcher);
   resources.push({ dir, models }); return { dir, store, models };

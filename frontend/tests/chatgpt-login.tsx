@@ -1,4 +1,4 @@
-import { UIProvider } from "@semicoder/malatang-sdk/ui";
+import { UIProvider } from "@semicoder/fn-sdk/ui";
 import "../tailwind.css";
 // Run on the existing FIA development server; all account operations below are local fixtures.
 import React, { act } from "react";

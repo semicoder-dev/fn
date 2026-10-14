@@ -1,7 +1,7 @@
 {
-  "repository": "semicoder-dev/malatang",
+  "repository": "semicoder-dev/fn",
   "build": 7,
-  "updatesURL": "https://semicoder-dev.github.io/malatang/updates/latest.json",
+  "updatesURL": "https://semicoder-dev.github.io/fn/updates/latest.json",
   "publicKey": "wNM+4SLpDEXq3guGbwp6H4LgFdPkW9XDO4pywwFkBQw=",
-  "downloadURL": "https://semicoder.dev/malatang/docs/installation"
+  "downloadURL": "https://semicoder.dev/fn/docs/installation"
 }

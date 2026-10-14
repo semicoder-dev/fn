@@ -1,4 +1,4 @@
-import type { PluginInfo } from "@semicoder/malatang-sdk/types";
+import type { PluginInfo } from "@semicoder/fn-sdk/types";
 import {
   catalogQuery,
   compareVersions,

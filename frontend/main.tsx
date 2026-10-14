@@ -1,5 +1,5 @@
 import "./tailwind.css";
-import { UIProvider } from "@semicoder/malatang-sdk/ui";
+import { UIProvider } from "@semicoder/fn-sdk/ui";
 import React, { useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { native } from "@semicoder/fia/client";

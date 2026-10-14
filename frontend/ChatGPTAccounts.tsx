@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Button, Field, Input } from "@semicoder/malatang-sdk/ui";
+import { Button, Field, Input } from "@semicoder/fn-sdk/ui";
 import { chatGPTLabel, type ChatGPTStatus } from "../shared/chatgpt";
 import { app } from "./bridge";
 

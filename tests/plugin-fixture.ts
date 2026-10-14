@@ -6,7 +6,7 @@ export const fixturePackage = {
   version: "0.1.0",
   type: "module",
   files: ["dist"],
-  malatang: {
+  fn: {
     schemaVersion: 1,
     id: "translate",
     name: "Fixture",
@@ -25,7 +25,7 @@ export async function fixture(
   options: { id?: string; version?: string; backend?: string; packageName?: string } = {},
 ) {
   const pkg = structuredClone(fixturePackage);
-  pkg.malatang.id = options.id ?? "translate";
+  pkg.fn.id = options.id ?? "translate";
   pkg.version = options.version ?? "0.1.0";
   pkg.name = options.packageName ?? "test-plugin";
   await mkdir(join(root, "dist"), { recursive: true });
@@ -50,7 +50,7 @@ export async function registerFixture(
   const pkg = await fixture(root, options);
   await store.update((state) => {
     state.plugins.push({
-      id: pkg.malatang.id,
+      id: pkg.fn.id,
       packageName: pkg.name,
       version: pkg.version,
       root,

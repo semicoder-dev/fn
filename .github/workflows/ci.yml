@@ -1,4 +1,4 @@
-name: Build Malatang
+name: Build fn
 on:
   push:
     branches: [main]
@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: malatang-ci-${{ github.ref }}
+  group: fn-ci-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build:
@@ -15,15 +15,15 @@ jobs:
     timeout-minutes: 90
     defaults:
       run:
-        working-directory: malatang
+        working-directory: fn
     env:
       GH_TOKEN: ${{ github.token }}
-      MALATANG_DISABLE_UPDATES: "1"
+      FN_DISABLE_UPDATES: "1"
       NO_PROXY: localhost,127.0.0.1,::1
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          path: malatang
+          path: fn
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
@@ -49,17 +49,17 @@ jobs:
       - name: Upload framework provenance separately from distributable files
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: malatang-framework-report
-          path: malatang/artifacts/fia/build-report.json
+          name: fn-framework-report
+          path: fn/artifacts/fia/build-report.json
           if-no-files-found: error
           retention-days: 14
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: Malatang-test-mac-arm64
+          name: fn-test-mac-arm64
           path: |
-            malatang/dist/*.dmg
-            malatang/dist/*.dmg.sha256
-            malatang/dist/*.dmg.report.json
+            fn/dist/*.dmg
+            fn/dist/*.dmg.sha256
+            fn/dist/*.dmg.report.json
           if-no-files-found: error
           retention-days: 14
           compression-level: 0

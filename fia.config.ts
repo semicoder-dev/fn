@@ -1,19 +1,19 @@
 import { defineConfig } from "@semicoder/fia/config";
 import release from "./release/config.json";
 import pkg from "./package.json";
-const identity = process.env.MALATANG_SIGNING_IDENTITY;
+const identity = process.env.FN_SIGNING_IDENTITY;
 export default defineConfig({
   app: {
-    name: "Malatang",
-    identifier: "com.semicoder.malatang",
+    name: "fn",
+    identifier: "com.semicoder.fn",
     version: pkg.version,
     build: release.build,
     icon: "assets/icon.icns",
   },
   agent: {
-    command: "malatang",
+    command: "fn",
     description:
-      "Manage Malatang plugins and models, invoke plugin methods, and follow model runs.",
+      "Manage fn plugins and models, invoke plugin methods, and follow model runs.",
     instructions: "agent/instructions.md",
     commands: {
       plugin: {
@@ -27,8 +27,8 @@ export default defineConfig({
       "resources/sdk",
     ],
   },
-  statusItem: { symbol: "square.stack.3d.up", tooltip: "麻辣烫" },
-  ...(process.env.MALATANG_DISABLE_UPDATES === "1"
+  statusItem: { symbol: "square.stack.3d.up", tooltip: "fn" },
+  ...(process.env.FN_DISABLE_UPDATES === "1"
     ? {}
     : {
         updates: {
@@ -38,6 +38,6 @@ export default defineConfig({
         },
       }),
   ...(identity
-    ? { signing: { releaseIdentity: identity, notarizationProfile: "malatang-notary" } }
+    ? { signing: { releaseIdentity: identity, notarizationProfile: "fn-notary" } }
     : {}),
 });

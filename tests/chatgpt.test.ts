@@ -57,7 +57,7 @@ async function fixture(storage?: ChatGPTStorage) {
 }
 
 test("file credentials survive login, account edits, serialized refresh and sign-out across restarts", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "malatang-chatgpt-file-"));
+  const dir = await mkdtemp(join(tmpdir(), "fn-chatgpt-file-"));
   cleanups.push(() => rm(dir, { recursive: true, force: true }));
   const storage = new ChatGPTStorage(dir);
   const f = await fixture(storage);
@@ -95,7 +95,7 @@ test("file credentials survive login, account edits, serialized refresh and sign
 test("dynamic registration uses persisted host ID, PKCE, issued client and verified identity; API never returns tokens", async () => {
   const f = await fixture(); await f.auth.signIn(); const query = f.opened.searchParams;
   expect(f.opened.origin + f.opened.pathname).toBe(authorize);
-  expect(query.get("client_id")).toBe("dynamic_agent_client"); expect(query.get("agent_name_hint")).toBe("Malatang");
+  expect(query.get("client_id")).toBe("dynamic_agent_client"); expect(query.get("agent_name_hint")).toBe("fn");
   expect(query.get("redirect_uri")).toBe(redirect); expect(query.get("scope")).toBe(scope); expect(query.get("resource")).toBe(resource);
   expect(query.get("ext_agent_host_id")).toBe(f.saved.hostId); expect(query.get("state")!.length).toBeGreaterThan(40);
   expect((await f.callback()).status).toBe(200);
@@ -250,7 +250,7 @@ test("subscription inference uses only approved public Responses fields and requ
 });
 
 test("host model config contains no token, stays tied to its account and invokes ChatGPT from plugin interface", async () => {
-  const f = await fixture(); const id = await f.login(); const dir = await mkdtemp(join(tmpdir(), "malatang-chatgpt-")); cleanups.push(() => rm(dir, { recursive: true, force: true }));
+  const f = await fixture(); const id = await f.login(); const dir = await mkdtemp(join(tmpdir(), "fn-chatgpt-")); cleanups.push(() => rm(dir, { recursive: true, force: true }));
   const store = new Store(dir); await store.open(); const models = new Models(store, () => {}, () => {}, fetch, f.auth); cleanups.push(() => models.stop());
   const model = await models.addChatGPTModel(id, "gpt-account-second"); expect(model).toMatchObject({ kind: "chatgpt", configured: true, hasApiKey: false, chatgptProfileId: id }); expect(JSON.stringify(store.value)).not.toContain("secret");
   expect((await models.addChatGPTModel(id, model.model)).id).toBe(model.id);
@@ -296,7 +296,7 @@ test("cancelling a running subscription stream aborts the upstream request and r
 
 test("rename persists a display label without changing credentials or account-bound model identity", async () => {
   const f = await fixture(); const id = await f.login();
-  const dir = await mkdtemp(join(tmpdir(), "malatang-rename-")); cleanups.push(() => rm(dir, { recursive: true, force: true }));
+  const dir = await mkdtemp(join(tmpdir(), "fn-rename-")); cleanups.push(() => rm(dir, { recursive: true, force: true }));
   const store = new Store(dir); await store.open();
   const models = new Models(store, () => {}, () => {}, fetch, f.auth);
   f.setModelCount(id => store.value.models.filter(m => m.chatgptProfileId === id).length);

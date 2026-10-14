@@ -3,4 +3,4 @@ dist/
 *.tgz
 !vendor/
 !vendor/*.tgz
-.malatang-*
+.fn-*

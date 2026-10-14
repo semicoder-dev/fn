@@ -84,7 +84,7 @@ export const defaultMarkets = () => [
   {
     id: "official",
     name: "官方插件市场",
-    url: "https://raw.githubusercontent.com/semicoder-dev/malatang-plugins/main/marketplace.json",
+    url: "https://raw.githubusercontent.com/semicoder-dev/fn-plugins/main/marketplace.json",
     enabled: true,
     index: null,
     updatedAt: null,

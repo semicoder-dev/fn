@@ -4,17 +4,17 @@ import pkg from "../../package.json";
 
 export { config, pkg };
 export const root = new URL("../../", import.meta.url).pathname;
-export const websiteURL = "https://semicoder.dev/malatang";
+export const websiteURL = "https://semicoder.dev/fn";
 const installationURL = `${websiteURL}/docs/installation`;
 export function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 export function validateConfig() {
-  assert(config.repository === "semicoder-dev/malatang", "Unexpected release repository");
+  assert(config.repository === "semicoder-dev/fn", "Unexpected release repository");
   assert(/^\d+\.\d+\.\d+$/.test(pkg.version), "Only stable x.y.z versions can enter the stable update feed");
   assert(Number.isSafeInteger(config.build) && config.build > 0, "Release build must be a positive integer");
   assert(/^[A-Za-z0-9+/]{43}=$/.test(config.publicKey), "Configure a permanent Ed25519 update public key");
-  assert(config.updatesURL === "https://semicoder-dev.github.io/malatang/updates/latest.json", "Unexpected Pages update URL");
+  assert(config.updatesURL === "https://semicoder-dev.github.io/fn/updates/latest.json", "Unexpected Pages update URL");
   assert(config.downloadURL === installationURL, "Use the official installation page");
 }
 export type Manifest = { schema: number; identifier: string; version: string; build: number; runtimeId: string; baseURL: string; downloadURL?: string; files: { path: string; size: number; sha256: string }[] };
@@ -25,7 +25,7 @@ export function readManifest(text: string, publicKey = config.publicKey): Manife
   const payload = Buffer.from(envelope.payload, "base64");
   assert(verify(null, payload, key, Buffer.from(envelope.signature, "base64")), "Invalid update signature");
   const value = JSON.parse(payload.toString()) as Manifest;
-  assert(value.schema === 1 && value.identifier === "com.semicoder.malatang", "Wrong update application");
+  assert(value.schema === 1 && value.identifier === "com.semicoder.fn", "Wrong update application");
   assert(Number.isSafeInteger(value.build) && value.build > 0 && /^\d+\.\d+\.\d+$/.test(value.version), "Invalid update version");
   assert(/^[a-f0-9]{64}$/.test(value.runtimeId), "Invalid runtime ID");
   assert(value.baseURL === new URL(`releases/${value.build}/`, config.updatesURL).href, "Unexpected update file origin");

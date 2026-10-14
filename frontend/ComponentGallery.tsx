@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import * as UI from "@semicoder/malatang-sdk/ui";
+import * as UI from "@semicoder/fn-sdk/ui";
 function ToastDemo() {
   const toast = UI.useToast();
   return (

@@ -6,7 +6,7 @@ import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-} from "@semicoder/malatang-sdk/ui";
+} from "@semicoder/fn-sdk/ui";
 import { app } from "../bridge";
 import { ThemeProvider, useTheme } from "../ThemeProvider";
 import AppearanceSettings from "../AppearanceSettings";

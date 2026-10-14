@@ -19,9 +19,9 @@ import {
   DialogDescription,
   DialogFooter,
   DialogClose,
-} from "@semicoder/malatang-sdk/ui";
-import "@semicoder/malatang-sdk/theme.css";
-import "@semicoder/malatang-sdk/ui.css";
+} from "@semicoder/fn-sdk/ui";
+import "@semicoder/fn-sdk/theme.css";
+import "@semicoder/fn-sdk/ui.css";
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const container = document.getElementById("fixture")!;
 const root = createRoot(container),

@@ -4,12 +4,12 @@
 
 - 先阅读 `README.md`、`docs/framework/README.md` 和目标目录规范，并检查 Git 状态。FIA 维护通用 GUI、原生能力、通信、生命周期、构建/更新和应用工具链；应用业务与插件平台归应用仓库。
 - 框架契约源文件位于 `docs/framework/`；`cli:build` 自动复制到 `packages/cli/docs/framework/`，不要手工修改生成副本。CLI 命令变化同时核对根 README、`packages/cli/README.md` 和框架契约。
-- `packages/cli/src/template.ts` 的应用模板与 AGENTS 面向所有 FIA 应用，不能加入麻辣烫业务或个人网站的专用规则。本文件面向框架维护者。
+- `packages/cli/src/template.ts` 的应用模板与 AGENTS 面向所有 FIA 应用，不能加入 fn 业务或个人网站的专用规则。本文件面向框架维护者。
 
 ## 开发与联调
 
 - TypeScript 修改重建 `cli:build`；Swift/原生运行时修改先 `runtime:build` 再 `cli:build`，随后执行 `bun run check`，根据影响补充 smoke 或实机验证。版本与发布流程见 `docs/npm-release.md`。
-- 当前完整历史已迁入麻辣烫的 `framework/fia/`，这是活跃源码；原独立仓库保留历史。框架仍维护通用能力，不能导入麻辣烫业务。产品稳定后按 `docs/co-development.md` 拆出。
+- 当前完整历史已迁入 fn 的 `framework/fia/`，这是活跃源码；原独立仓库保留历史。框架仍维护通用能力，不能导入 fn 业务。产品稳定后按 `docs/co-development.md` 拆出。
 - 在宿主仓库根安装依赖，运行 `framework:prepare/check/pack/verify`；共仓只有宿主根锁文件。独立导出后在框架根安装并生成独立锁文件。工具通过模块解析定位依赖，不固定 node_modules 层级。
 - 共仓 dev 自动重建 TypeScript 或 Swift/C 修改并重启实例；构建输出、缓存及框架目录由分开的监听器管理。构建报告记录实际源码和哈希，同版本字符串不保证内容相同。
 - FIA npm 共仓发布禁用；归档与独立消费验收继续保留。正式发布与网站部署仍需当次授权。

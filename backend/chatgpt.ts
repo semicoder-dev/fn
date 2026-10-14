@@ -3,7 +3,7 @@ import { createRemoteJWKSet, customFetch, jwtVerify } from "jose";
 import { z } from "@semicoder/fia/api";
 import type { ChatGPTModel, ChatGPTStatus } from "../shared/chatgpt";
 import { chatGPTLabel } from "../shared/chatgpt";
-import type { ModelRequest } from "@semicoder/malatang-sdk/types";
+import type { ModelRequest } from "@semicoder/fn-sdk/types";
 import { readSSE } from "./sse";
 
 const ISSUER = "https://auth.openai.com";
@@ -33,7 +33,7 @@ const random = () => randomBytes(32).toString("base64url");
 const equal = (a: string, b: string) => Buffer.byteLength(a) === Buffer.byteLength(b) && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 const terminalRefresh = new Set(["invalid_grant", "invalid_refresh_token", "token_expired", "refresh_token_expired", "refresh_token_invalidated", "refresh_token_reused"]);
 const messages: Record<string, string> = {
-  unsupported_country_region_territory: "OpenAI 不支持当前请求所来自的国家或地区。请检查本机系统代理与网络出口；修改代理设置后重启麻辣烫再试。ChatGPT 订阅不会解除地区限制。",
+  unsupported_country_region_territory: "OpenAI 不支持当前请求所来自的国家或地区。请检查本机系统代理与网络出口；修改代理设置后重启fn再试。ChatGPT 订阅不会解除地区限制。",
   subscription_sharing_user_not_eligible: "当前 ChatGPT 账号或工作区暂不支持订阅调用，请检查订阅和工作区策略。",
   subscription_sharing_usage_limit_exceeded: "ChatGPT 用量已达到限制。请前往 ChatGPT 的用量设置检查额度或应用限额后再试。",
   subscription_sharing_usage_unavailable: "ChatGPT 暂时无法核对用量，请稍后重试。",
@@ -57,7 +57,7 @@ function failure(data: unknown, status?: number, requestId?: string) {
   const error = value?.error ?? value;
   return new OpenAIError(typeof error === "string" ? error : typeof error?.code === "string" ? error.code : "", status, typeof error === "object" && typeof error?.param === "string" ? error.param : undefined, requestId);
 }
-const page = (ok: boolean) => new Response(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>麻辣烫 · ChatGPT 登录</title><body><h1>${ok ? "登录完成" : "登录未完成"}</h1><p>请返回麻辣烫查看连接状态。现在可以关闭此页面。</p></body></html>`, { status: ok ? 200 : 400, headers: { "content-type": "text/html; charset=utf-8" } });
+const page = (ok: boolean) => new Response(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>fn · ChatGPT 登录</title><body><h1>${ok ? "登录完成" : "登录未完成"}</h1><p>请返回fn查看连接状态。现在可以关闭此页面。</p></body></html>`, { status: ok ? 200 : 400, headers: { "content-type": "text/html; charset=utf-8" } });
 
 /** Tokens never cross the host API. One serialized vault owns registration and rotating tokens. */
 export class ChatGPT {
@@ -160,7 +160,7 @@ export class ChatGPT {
       this.pending = attempt;
       const url = new URL(AUTHORIZE);
       url.search = new URLSearchParams({ client_id: existing?.clientId ?? "dynamic_agent_client", ext_agent_host_id: this.vault.hostId, response_type: "code", redirect_uri: attempt.redirectURI, scope: SCOPE, resource: RESOURCE, state: attempt.state, nonce: attempt.nonce, code_challenge_method: "S256", code_challenge: createHash("sha256").update(attempt.verifier).digest("base64url") }).toString();
-      if (!existing) url.searchParams.set("agent_name_hint", "Malatang");
+      if (!existing) url.searchParams.set("agent_name_hint", "fn");
       if (existing?.tokens?.id) url.searchParams.set("id_token_hint", existing.tokens.id);
       if (existing?.email) url.searchParams.set("login_hint", existing.email);
       if (consent) url.searchParams.set("prompt", "consent");
@@ -358,7 +358,7 @@ export class ChatGPT {
       }
       await this.persist({ ...this.vault, profiles: this.vault.profiles.map(item => item.id === id ? { ...item, tokens: null } : item) });
       this.catalogs.delete(id); this.blocked.delete(id);
-      this.message = revoked ? "已退出 ChatGPT，保留账号注册供下次登录。" : "已在本机退出，但未能确认远程撤销。请到 ChatGPT 设置 → 用量中断开麻辣烫。";
+      this.message = revoked ? "已退出 ChatGPT，保留账号注册供下次登录。" : "已在本机退出，但未能确认远程撤销。请到 ChatGPT 设置 → 用量中断开fn。";
       this.services.changed(); return this.status();
     }); } finally { this.signingOut.delete(id); this.services.changed(); }
   }

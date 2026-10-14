@@ -16,7 +16,7 @@ export default async function plugin(context: {
   )
     return runPluginCreate(context.args, {
       cwd: context.cwd,
-      sdkArchive: join(context.assetsDirectory, "resources/sdk/malatang-sdk.tgz"),
+      sdkArchive: join(context.assetsDirectory, "resources/sdk/fn-sdk.tgz"),
       templatesDirectory: join(context.assetsDirectory, "resources/sdk/templates"),
     });
   const json = context.args.includes("--json");
@@ -26,7 +26,7 @@ export default async function plugin(context: {
     return 1;
   };
   if (!["check", "build", "pack"].includes(command))
-    return fail("未知 plugin 命令；运行 malatang plugin --help");
+    return fail("未知 plugin 命令；运行 fn plugin --help");
   const bun = Bun.which("bun");
   if (!bun) return fail("缺少开发者 Bun；请从 https://bun.sh 安装 Bun >= 1.4.2 后重试。");
   const version = Bun.spawnSync([bun, "--version"], { stdout: "pipe", stderr: "pipe" });
@@ -43,11 +43,11 @@ export default async function plugin(context: {
     return fail("开发者 Bun 版本过旧；请升级到 Bun >= 1.4.2。");
   const args = context.args.slice(1).filter((arg) => arg !== "--json");
   if (args.length > 1 || args[0]?.startsWith("-"))
-    return fail("参数无效；运行 malatang plugin --help");
+    return fail("参数无效；运行 fn plugin --help");
   const root = resolve(context.cwd, args[0] ?? ".");
   let entry: string;
   try {
-    entry = createRequire(join(root, "package.json")).resolve("@semicoder/malatang-sdk/plugin");
+    entry = createRequire(join(root, "package.json")).resolve("@semicoder/fn-sdk/plugin");
   } catch {
     return fail(`缺少项目依赖；请进入 ${root} 后运行 bun install --ignore-scripts。`);
   }

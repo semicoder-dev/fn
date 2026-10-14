@@ -5,14 +5,16 @@ import { validatePackage } from "./npm/check";
 const root = resolve(import.meta.dir, ".."),
   output = join(root, "resources/sdk");
 const sourcePackage = await Bun.file(join(root, "packages/sdk/package.json")).json();
+// This directory is generated; never ship stale SDK archives after a rename.
+await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
-const archive = join(output, "malatang-sdk.tgz");
+const archive = join(output, "fn-sdk.tgz");
 const packed = Bun.spawn(
   [process.execPath, "pm", "pack", "--filename", archive, "--ignore-scripts"],
   { cwd: join(root, "packages/sdk"), stdout: "ignore", stderr: "inherit" },
 );
 if ((await packed.exited) !== 0) throw new Error("SDK snapshot pack failed");
-const temporary = await mkdtemp(join(tmpdir(), "malatang-snapshot-"));
+const temporary = await mkdtemp(join(tmpdir(), "fn-snapshot-"));
 try {
   const child = Bun.spawn(["tar", "-xzf", archive, "-C", temporary], {
     stdout: "ignore",

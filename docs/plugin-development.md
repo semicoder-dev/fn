@@ -1,6 +1,6 @@
 # SDK 0.3 开发契约与插件 CLI
 
-麻辣烫 0.4.1 / build 5 与 SDK 0.3.0 采用 Base UI + Tailwind CSS 4，manifest.sdkVersion 为 0.3，无旧 API 兼容层。新接口、组合示例和完整组件清单见 [SDK README](../packages/sdk/README.md)；应用与 SDK 的公开发行状态分别见 [应用](github-release.md) 和 [SDK](npm-release.md) 发布记录。
+fn 与 `@semicoder/fn-sdk` 当前为本地开发、尚未发布；manifest 使用 `fn` 字段和 `sdkVersion: "0.3"`，不接受旧清单。完整接口见 [SDK README](../packages/sdk/README.md)。
 
 开发者使用 Bun >=1.4.2。先运行 `bun run dev`，再运行 `bun run agent plugin create /tmp/my-plugin --template notes`（或 model）。进入生成目录执行 `bun install --ignore-scripts`、`bun run check`、`bun run build`、`bun run pack`。项目携带 SDK 归档，支持仓库外开发。
 
@@ -14,8 +14,8 @@
 
 开发设置的基础组件页覆盖主题、三档尺寸、表单、菜单、对话框、通知和隐藏页面生命周期；正式构建隐藏入口。`bun run npm:pack` 验证真实归档的独立消费。
 
-FIA 仅提供运行时和受管命令，沿用[共仓开发](fia-integration.md)。这次 UI 重构不要求修改框架契约，不自动发布应用、SDK、FIA 或网站。
+FIA 仅提供运行时和受管命令，沿用[共仓开发](fia-integration.md)。本次名称重构不改变框架契约，不自动发布应用、SDK、FIA 或网站。
 
 ## 插件市场（未发布）
 
-官方插件已迁到独立 malatang-plugins 仓库；宿主仅保留 SDK 模板与开发 CLI，不打包插件。第三方可托管 HTTPS 索引和预构建归档，协议、哈希、来源绑定与更新行为见[市场契约](plugin-marketplace.md)。宿主与 SDK 版本暂未调整。
+官方插件已迁到独立 fn-plugins 仓库；宿主仅保留 SDK 模板与开发 CLI，不打包插件。第三方可托管 HTTPS 索引和预构建归档，协议、哈希、来源绑定与更新行为见[市场契约](plugin-marketplace.md)。宿主与 SDK 版本暂未调整。

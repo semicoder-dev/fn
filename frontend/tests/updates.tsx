@@ -1,4 +1,4 @@
-import { UIProvider } from "@semicoder/malatang-sdk/ui";
+import { UIProvider } from "@semicoder/fn-sdk/ui";
 import "../tailwind.css";
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -20,8 +20,8 @@ Object.assign(native, {
 });
 Object.assign(native.application, {
   info: async () => ({
-    name: "Malatang",
-    identifier: "com.semicoder.malatang",
+    name: "fn",
+    identifier: "com.semicoder.fn",
     version: "0.1.0",
     build: 1,
   }),
@@ -96,7 +96,7 @@ async function run() {
   await render({
     phase: "requiresInstall",
     version: "0.2.0",
-    downloadURL: "https://semicoder.dev/malatang/docs/installation",
+    downloadURL: "https://semicoder.dev/fn/docs/installation",
   });
   await click("下载安装包");
   assert(calls[0] === state.downloadURL, "Native changes open installer link");

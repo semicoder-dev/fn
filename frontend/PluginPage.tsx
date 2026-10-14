@@ -1,6 +1,6 @@
 import React, { Component, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { PluginInfo } from "@semicoder/malatang-sdk/types";
-import { EmptyState, Loading, Page } from "@semicoder/malatang-sdk/ui";
+import type { PluginInfo } from "@semicoder/fn-sdk/types";
+import { EmptyState, Loading, Page } from "@semicoder/fn-sdk/ui";
 class Boundary extends Component<{ children: React.ReactNode }, { error: string }> {
   state = { error: "" };
   static getDerivedStateFromError(error: Error) {

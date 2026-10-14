@@ -1,14 +1,14 @@
 {
-  "name": "@semicoder/malatang-sdk",
+  "name": "@semicoder/fn-sdk",
   "version": "0.3.2",
-  "description": "Model, storage, UI and plugin build SDK for Malatang",
-  "homepage": "https://semicoder.dev/malatang",
+  "description": "Model, storage, UI and plugin build SDK for fn",
+  "homepage": "https://semicoder.dev/fn",
   "bugs": {
-    "url": "https://github.com/semicoder-dev/malatang/issues"
+    "url": "https://github.com/semicoder-dev/fn/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/semicoder-dev/malatang.git",
+    "url": "git+https://github.com/semicoder-dev/fn.git",
     "directory": "packages/sdk"
   },
   "files": [

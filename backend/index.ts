@@ -139,14 +139,13 @@ export default defineBackend({
       markets,
     );
     await plugins.open();
-    // Keep production builds compatible with the previous fixed FIA archive.
-    const mode = "mode" in app ? app.mode : undefined;
+    const mode = app.mode;
     const title =
       mode === "development"
-        ? "麻辣烫 · 开发版"
+        ? "fn · 开发版"
         : mode === "preview"
-          ? "麻辣烫 · 预览版"
-          : "麻辣烫";
+          ? "fn · 预览版"
+          : "fn";
     await native.windows.update({ id: "main", title, width: 1200, height: 800 });
     // FIA preserves its rightmost browser button when application items are empty.
     await native.windows.setTitlebar({ id: "main", items: [] });

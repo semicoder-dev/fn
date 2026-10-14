@@ -1,4 +1,4 @@
-import { UIProvider } from "@semicoder/malatang-sdk/ui";
+import { UIProvider } from "@semicoder/fn-sdk/ui";
 import React, { Component, createRef } from "react";
 
 type Props = {

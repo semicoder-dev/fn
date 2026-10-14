@@ -42,8 +42,8 @@ export function ModelSelect({
     return [...groups];
   }, [models, query]);
   const manage = () => {
-    const bridge = (globalThis as typeof globalThis & { __MALATANG_BRIDGE__?: HostBridge })
-      .__MALATANG_BRIDGE__;
+    const bridge = (globalThis as typeof globalThis & { __FN_BRIDGE__?: HostBridge })
+      .__FN_BRIDGE__;
     void bridge?.call("chatgpt.manageUsage", {}).catch(() => setError("无法打开 ChatGPT 用量设置"));
   };
   return (

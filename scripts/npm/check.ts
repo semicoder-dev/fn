@@ -2,8 +2,8 @@ import { appendFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 export const root = fileURLToPath(new URL("../../", import.meta.url));
-export const packageName = "@semicoder/malatang-sdk";
-export const repository = "semicoder-dev/malatang";
+export const packageName = "@semicoder/fn-sdk";
+export const repository = "semicoder-dev/fn";
 export const registry = "https://registry.npmjs.org";
 
 export function assert(condition: unknown, message: string): asserts condition {
@@ -27,7 +27,7 @@ export function validatePackage(pkg: Record<string, any>) {
       assert(typeof version === "string" && !/^(workspace:|file:|link:|\.\.?\/|\/)/.test(version), "Published SDK cannot depend on local workspace paths");
     }
   }
-  return { version: pkg.version as string, tag: `sdk-v${pkg.version}`, filename: `semicoder-malatang-sdk-${pkg.version}.tgz` };
+  return { version: pkg.version as string, tag: `sdk-v${pkg.version}`, filename: `semicoder-fn-sdk-${pkg.version}.tgz` };
 }
 
 export function validateTrigger(version: string, env: Record<string, string | undefined>) {

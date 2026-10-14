@@ -1,6 +1,6 @@
 # 首次配置 Apple 签名与公证
 
-`semicoder-dev/malatang` 的 Apple 凭据已配置，2026-10-04 [v0.1.0 / build 1](https://github.com/semicoder-dev/malatang/releases/tag/v0.1.0) 的[正式工作流](https://github.com/semicoder-dev/malatang/actions/runs/37214205671/attempts/2)已通过签名、公证和镜像运行验收。本文保留首次配置步骤，供环境重建或凭据轮换时参考；日常发版复用已有配置，不重新生成更新密钥。不要把证书密码、Apple 专用密码或更新私钥粘贴到聊天、Issue 或仓库文件里。
+fn 的本地发布配置已使用新名称，远端仓库、凭据和签名公证尚未按新身份验收。后续获准发布时按本页核对；本次不配置远端或重新生成更新密钥。历史签名结果只适用于原产物，见文末。
 
 ## 1. 确认 Apple Developer 资格
 
@@ -20,7 +20,7 @@
 ## 3. 创建 Developer ID Application 证书
 
 1. 打开 [Certificates](https://developer.apple.com/account/resources/certificates/list)，点击 **＋**。
-2. 在 Software 区域选择 **Developer ID Application**。麻辣烫分发的是包含 `.app` 的 **`.dmg` 磁盘映像**，应用和 DMG 都使用这类证书签名；不需要 Developer ID Installer（后者用于 `.pkg`）。[Apple 打包说明](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution)
+2. 在 Software 区域选择 **Developer ID Application**。fn 分发的是包含 `.app` 的 **`.dmg` 磁盘映像**，应用和 DMG 都使用这类证书签名；不需要 Developer ID Installer（后者用于 `.pkg`）。[Apple 打包说明](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution)
 3. 若页面要求选择中间证书，按 Apple 当前页面为现代 Xcode 推荐的选项继续。
 4. 上传刚才的 `.certSigningRequest`，继续并下载 `.cer`。
 5. 双击 `.cer` 安装到钥匙串。进入“登录”钥匙串 → **我的证书**，找到 `Developer ID Application: 姓名或团队 (TEAMID)`。
@@ -29,7 +29,7 @@
 ## 4. 导出含私钥的 .p12
 
 1. 在“我的证书”选中完整的 Developer ID Application 条目。
-2. 右键 → **导出**，格式选择 **个人信息交换 (.p12)**，保存为例如 `DeveloperID-Malatang.p12`。
+2. 右键 → **导出**，格式选择 **个人信息交换 (.p12)**，保存为例如 `DeveloperID-fn.p12`。
 3. 设置一个非空的导出密码，存入自己的密码管理器。系统可能再次要求本机登录密码批准导出。
 4. 在终端运行：
 
@@ -45,14 +45,14 @@
 
 1. 打开 [Apple Account](https://account.apple.com/)，使用所属开发团队的 Apple Account 登录。账户需要双重认证。
 2. 打开 **登录和安全 → App 专用密码 / App-Specific Passwords**。
-3. 生成一个新密码，名称可用 `Malatang GitHub Notarization`。
+3. 生成一个新密码，名称可用 `fn GitHub Notarization`。
 4. 保存生成的专用密码，稍后填到 `APPLE_APP_SPECIFIC_PASSWORD`。这里使用专用密码，不是 Apple Account 的主密码。
 
 修改 Apple Account 主密码会使已有专用密码失效，届时重新生成并更新 Secret。[Apple 专用密码说明](https://support.apple.com/102654)
 
 ## 6. 在 GitHub 的 release 环境填写凭据
 
-打开 [仓库 Environments](https://github.com/semicoder-dev/malatang/settings/environments)，进入名为 **release** 的环境。没有时点击 **New environment** 创建。
+打开 [仓库 Environments](https://github.com/semicoder-dev/fn/settings/environments)，进入名为 **release** 的环境。没有时点击 **New environment** 创建。
 
 Environment secrets 中点 **Add environment secret**，逐项添加：
 
@@ -68,10 +68,10 @@ Environment secrets 中点 **Add environment secret**，逐项添加：
 复制 `.p12` 的 Base64 到剪贴板（替换路径），然后直接粘贴到对应 Secret，不要粘贴到源码：
 
 ```sh
-base64 < '/完整路径/DeveloperID-Malatang.p12' | pbcopy
+base64 < '/完整路径/DeveloperID-fn.p12' | pbcopy
 ```
 
-更新私钥已生成在本地麻辣烫项目的 `.fia/release-secrets/update-private.pem`。以下命令在麻辣烫仓库根目录执行，不依赖 workspace 名称。只有在 GitHub 尚未配置该 Secret 时才上传这份；不要重新生成另一份：
+更新私钥已生成在本地 fn 项目的 `.fia/release-secrets/update-private.pem`。以下命令在 fn 仓库根目录执行，不依赖 workspace 名称。只有在 GitHub 尚未配置该 Secret 时才上传这份；不要重新生成另一份：
 
 ```sh
 pbcopy < '.fia/release-secrets/update-private.pem'
@@ -87,12 +87,12 @@ Secrets 保存后不会显示原值，这是正常现象。配置完告诉协作
 
 ## 7. 开启 Pages 并验收
 
-1. 打开 [Pages 设置](https://github.com/semicoder-dev/malatang/settings/pages)，在 Build and deployment 的 Source 选择 **GitHub Actions**。这里仅托管应用更新数据，固定清单地址为 `https://semicoder-dev.github.io/malatang/updates/latest.json`，不设置 Custom domain。新站使用 `updates-site` 生成分支，旧 `gh-pages` 保留历史；旧版用户通过完整 DMG 安装新版。[官网](https://semicoder.dev/malatang) 与 [安装入口](https://semicoder.dev/malatang/docs/installation) 由 Semicoder 承载，Pages 首页在应用发布后跳转官网，`updates/` 路径保持。
+1. 打开 [Pages 设置](https://github.com/semicoder-dev/fn/settings/pages)，在 Build and deployment 的 Source 选择 **GitHub Actions**。这里仅托管应用更新数据，固定清单地址为 `https://semicoder-dev.github.io/fn/updates/latest.json`，不设置 Custom domain。新站使用 `fn-updates-site` 生成分支，旧 `updates-site` / `gh-pages` 保留历史；fn 使用新身份，独立安装，不迁移旧数据。[官网](https://semicoder.dev/fn) 与 [安装入口](https://semicoder.dev/fn/docs/installation) 由 Semicoder 承载，Pages 首页在应用发布后跳转官网，`updates/` 路径保持。
    首发时 `github-pages` 的部署规则仅允许 `main`；本次只增加精确 `v0.1.0` 标签，保留其他保护。后续发版前检查 `release` 与 `github-pages` 的 allowlist，仅按当次授权放行必要标签，不改为允许全部分支或标签。
-2. 发布 workflow 必须已合入 GitHub 默认分支，才会出现手动入口。打开 **Actions → Release Malatang → Run workflow**，选择待验收分支。
+2. 发布 workflow 必须已合入 GitHub 默认分支，才会出现手动入口。打开 **Actions → Release fn → Run workflow**，选择待验收分支。
 3. 这次手动运行会完成构建、签名、公证、应用启动退出检查和更新签名，但**不会公开新版本或部署更新源**。
-4. 全部通过后，在运行详情底部下载 `malatang-release` artifact（GitHub 会将 artifact 包成 ZIP），解压后取得 `Malatang-版本-构建号-mac-arm64.dmg`。正式公开后，最终用户通过官网安装页的链接下载 Releases 上的该 DMG。
-5. 双击 DMG，将 `Malatang.app` 拖到窗口中的 **Applications / 应用程序**，完成后推出磁盘映像，从“应用程序”启动麻辣烫，检查“设置 → 应用更新”。首发已完成；公网清单 HTTP 200、Ed25519 签名及 13 个在线文件的大小 / SHA-256 已独立验收，匿名 DMG 的哈希、镜像完整性、公证与签名检查通过，安装包和更新逐文件一致。跨版本客户端升级尚未实测，按第 7 步另行验收。
+4. 全部通过后，在运行详情底部下载 `fn-release` artifact（GitHub 会将 artifact 包成 ZIP），解压后取得 `fn-版本-构建号-mac-arm64.dmg`。正式公开后，最终用户通过官网安装页的链接下载 Releases 上的该 DMG。
+5. 双击 DMG，将 `fn.app` 拖到窗口中的 **Applications / 应用程序**，完成后推出磁盘映像，从“应用程序”启动 fn，检查“设置 → 应用更新”。新身份的这些检查须在正式发布时重新验收。跨版本客户端升级尚未实测，按第 7 步另行验收。
 6. 后续发行按 [发布说明](github-release.md) 升版本并递增 build，例如 `0.1.1` / build 2；审阅后推送对应新标签。`v0.1.0` 已公开，不重复创建或移动。等待 Release 和 Pages 发布成功，验证 DMG 附件与匿名下载后同步 Semicoder 安装页；应用发布不自动部署官网。
 7. 完整更新验收需保留上一版，再发布较高 build：旧版检查 → 下载 → 确认 → 页面重新加载 → 版本号提升。无需真实模型请求。失败回退另用隔离测试包验证，不要故意向公开稳定源发布坏包。
 
@@ -103,4 +103,9 @@ Secrets 保存后不会显示原值，这是正常现象。配置完告诉协作
 - `Prepare signing credentials` 失败：逐项核对 Secret 名称、`.p12` 密码、Team ID、专用密码，以及公私钥是否配对。凭据不要输出到 CI 日志。
 - 公证失败：下载并查看该次 `notarytool` 的公证日志；不能跳过公证继续发布。
 - Pages 403：确认 Source 是 GitHub Actions，`github-pages` 环境允许本次精确版本标签，workflow 具备 pages / id-token 权限；保留保护规则，不用允许全部标签绕过。
-- 尚未配置 Apple 凭据：可以先运行普通 `Build Malatang` 验证测试包；它不会冒充正式签名包，也不会进入更新源。
+- 尚未配置 Apple 凭据：可以先运行普通 `Build fn` 验证测试包；它不会冒充正式签名包，也不会进入更新源。
+
+
+## 历史配置证据
+
+`semicoder-dev/malatang` 的 Apple 凭据已配置，2026-10-04 [v0.1.0 / build 1](https://github.com/semicoder-dev/malatang/releases/tag/v0.1.0) 的[正式工作流](https://github.com/semicoder-dev/malatang/actions/runs/37214205671/attempts/2)已通过签名、公证和镜像运行验收。本文保留首次配置步骤，供环境重建或凭据轮换时参考；日常发版复用已有配置，不重新生成更新密钥。不要把证书密码、Apple 专用密码或更新私钥粘贴到聊天、Issue 或仓库文件里。

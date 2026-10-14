@@ -18,7 +18,7 @@ await run(
   ["npm", "pack", "--workspace", packageName, "--pack-destination", output, "--ignore-scripts"],
   root,
 );
-const temporary = await mkdtemp(join(tmpdir(), "malatang-sdk-"));
+const temporary = await mkdtemp(join(tmpdir(), "fn-sdk-"));
 try {
   await run(["tar", "-xzf", archive, "-C", temporary], root);
   const unpacked = join(temporary, "package");
@@ -95,7 +95,7 @@ try {
     if (template === "model")
       await Bun.write(
         join(target, "src/backend.ts"),
-        'import { definePlugin, defineMethod, z } from "@semicoder/malatang-sdk/runtime"; export default definePlugin({ methods: { echo: defineMethod("Echo", z.string(), value => value) } });',
+        'import { definePlugin, defineMethod, z } from "@semicoder/fn-sdk/runtime"; export default definePlugin({ methods: { echo: defineMethod("Echo", z.string(), value => value) } });',
       );
     await Bun.write(
       join(target, "package.json"),
@@ -103,7 +103,7 @@ try {
         name: `fixture-${template}`,
         version: "0.1.0",
         type: "module",
-        malatang: {
+        fn: {
           schemaVersion: 1,
           id: template,
           name: template,

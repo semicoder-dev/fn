@@ -13,7 +13,7 @@ afterEach(async () => {
   for (const path of directories.splice(0)) await rm(path, { recursive: true, force: true });
 });
 async function setup(fetcher?: typeof fetch) {
-  const dir = await mkdtemp(join(tmpdir(), "malatang-test-"));
+  const dir = await mkdtemp(join(tmpdir(), "fn-test-"));
   directories.push(dir);
   const store = new Store(dir);
   await store.open();
@@ -197,11 +197,11 @@ test("manifest rejects incompatible SDK and resource traversal / symlinks", asyn
   await expect(containedFile(join(dir, "package"), "../outside.js")).rejects.toThrow();
   await expect(containedFile(join(dir, "package"), "escape.js")).rejects.toThrow();
   const pkg = structuredClone(fixturePackage);
-  expect(manifestSchema.safeParse({ ...pkg.malatang, sdkVersion: "9.0" }).success).toBe(false);
+  expect(manifestSchema.safeParse({ ...pkg.fn, sdkVersion: "9.0" }).success).toBe(false);
 });
 test("page retention is opt-in and is included in discovery for current and invalid packages", async () => {
   const pkg = structuredClone(fixturePackage);
-  const { keepAlive: _keepAlive, backend: _backend, ...legacy } = pkg.malatang;
+  const { keepAlive: _keepAlive, backend: _backend, ...legacy } = pkg.fn;
   expect(manifestSchema.parse(legacy).keepAlive).toBe(false);
   expect(manifestSchema.parse({ ...legacy, keepAlive: false }).keepAlive).toBe(false);
   expect(manifestSchema.parse({ ...legacy, keepAlive: true }).keepAlive).toBe(true);
@@ -214,7 +214,7 @@ test("page retention is opt-in and is included in discovery for current and inva
   await mkdir(join(plugin, "dist"), { recursive: true });
   await Bun.write(
     join(plugin, "package.json"),
-    JSON.stringify({ name: "legacy-plugin", version: "0.1.0", malatang: legacy }),
+    JSON.stringify({ name: "legacy-plugin", version: "0.1.0", fn: legacy }),
   );
   await Bun.write(join(plugin, "dist/client.js"), "export default function Page() {}");
   await Bun.write(join(plugin, "dist/client.css"), "");
@@ -268,13 +268,13 @@ test("plugin discovery rejects the host settings route as a plugin ID", async ()
   const root = join(dir, "reserved-settings");
   await mkdir(join(root, "dist"), { recursive: true });
   const pkg = structuredClone(fixturePackage);
-  const { backend: _backend, ...manifest } = pkg.malatang;
+  const { backend: _backend, ...manifest } = pkg.fn;
   await Bun.write(
     join(root, "package.json"),
     JSON.stringify({
       name: "reserved-settings",
       version: "0.1.0",
-      malatang: { ...manifest, id: "settings" },
+      fn: { ...manifest, id: "settings" },
     }),
   );
   await Bun.write(join(root, "dist/client.js"), "export default function Page() {}");
@@ -369,14 +369,16 @@ test("theme changes serialize native application and persistence; native failure
   expect(store.value.theme).toBe("light");
 });
 
-test("SDK 0.1 plugins stay rejected on enable and retain stored data", async () => {
+for (const legacyManifest of [false, true]) test(`${legacyManifest ? "Old product manifest" : "SDK 0.1 plugin"} stays rejected without changing stored data`, async () => {
   const { store, models, dir } = await setup();
   const root = join(dir, "old-plugin");
   await mkdir(root);
   const pkg = structuredClone(fixturePackage);
   await Bun.write(
     join(root, "package.json"),
-    JSON.stringify({ ...pkg, malatang: { ...pkg.malatang, id: "old-plugin", sdkVersion: "0.1" } }),
+    JSON.stringify(legacyManifest
+      ? { name: pkg.name, version: pkg.version, malatang: { ...pkg.fn, id: "old-plugin" } }
+      : { ...pkg, fn: { ...pkg.fn, id: "old-plugin", sdkVersion: "0.1" } }),
   );
   await store.set("old-plugin", "note", "preserved");
   await store.update((state) => {

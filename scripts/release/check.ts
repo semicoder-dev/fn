@@ -9,7 +9,7 @@ if (process.env.GITHUB_ACTIONS) {
   else assert(process.env.GITHUB_EVENT_NAME === "workflow_dispatch", "Unexpected release trigger");
 }
 if (process.argv.includes("--signed")) {
-  assert(process.env.MALATANG_SIGNING_IDENTITY?.startsWith("Developer ID Application:"), "Set APPLE_SIGNING_IDENTITY repository variable");
+  assert(process.env.FN_SIGNING_IDENTITY?.startsWith("Developer ID Application:"), "Set APPLE_SIGNING_IDENTITY repository variable");
   assert(process.env.FIA_UPDATE_PRIVATE_KEY_FILE, "Update signing key is missing");
 }
 if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `version=${pkg.version}\nbuild=${config.build}\ntag=v${pkg.version}\n`);

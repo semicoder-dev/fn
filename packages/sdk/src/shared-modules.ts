@@ -128,5 +128,5 @@ export const sharedModules = [
   "react/jsx-dev-runtime",
   "react-dom",
   "react-dom/client",
-  "@semicoder/malatang-sdk/ui",
+  "@semicoder/fn-sdk/ui",
 ] as const;

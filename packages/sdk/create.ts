@@ -2,7 +2,7 @@ import { cp, mkdir, mkdtemp, readdir, rename, rm, stat } from "node:fs/promises"
 import { basename, dirname, join, resolve } from "node:path";
 import { manifestSchema } from "./src/manifest";
 import sdkPackage from "./package.json";
-export const help = `malatang plugin <create|check|build|pack> [directory] [--json]
+export const help = `fn plugin <create|check|build|pack> [directory] [--json]
   create <directory> [--template notes|model] [--id ID] [--name NAME]
     创建独立项目，默认 notes；不安装依赖或插件，不初始化 Git。
   check [directory]  检查 manifest、TypeScript、Tailwind 入口、CSS Modules 与资源引用。
@@ -55,16 +55,16 @@ export async function createPlugin(
   if (!(await Bun.file(options.sdkArchive).exists()))
     throw new Error("应用缺少经过验证的 SDK 快照，请重新构建应用");
   await mkdir(dirname(root), { recursive: true });
-  const temporary = await mkdtemp(join(dirname(root), ".malatang-create-"));
+  const temporary = await mkdtemp(join(dirname(root), ".fn-create-"));
   try {
     const templates = options.templatesDirectory ?? join(import.meta.dir, "templates");
     await cp(join(templates, template), temporary, { recursive: true });
     await Bun.write(
       join(temporary, ".gitignore"),
-      "node_modules/\ndist/\n*.tgz\n!vendor/\n!vendor/*.tgz\n.malatang-*\n",
+      "node_modules/\ndist/\n*.tgz\n!vendor/\n!vendor/*.tgz\n.fn-*\n",
     );
     await mkdir(join(temporary, "vendor"));
-    await cp(options.sdkArchive, join(temporary, "vendor/malatang-sdk.tgz"));
+    await cp(options.sdkArchive, join(temporary, "vendor/fn-sdk.tgz"));
     for await (const name of new Bun.Glob("**/*").scan({ cwd: temporary, onlyFiles: true })) {
       if (name.endsWith(".tgz")) continue;
       const file = join(temporary, name);
@@ -80,7 +80,7 @@ export async function createPlugin(
       join(temporary, "package.json"),
       JSON.stringify(
         {
-          name: `malatang-plugin-${id}`,
+          name: `fn-plugin-${id}`,
           version: "0.1.0",
           type: "module",
           private: true,
@@ -90,7 +90,7 @@ export async function createPlugin(
             pack: "bun tools.ts pack",
           },
           devDependencies: {
-            "@semicoder/malatang-sdk": "file:./vendor/malatang-sdk.tgz",
+            "@semicoder/fn-sdk": "file:./vendor/fn-sdk.tgz",
             "@types/bun": "1.4.0",
             "@types/react": "19.2.17",
             "@types/react-dom": "19.2.3",
@@ -98,7 +98,7 @@ export async function createPlugin(
             react: "19.2.7",
             "react-dom": "19.2.7",
           },
-          malatang: manifest,
+          fn: manifest,
         },
         null,
         2,
@@ -130,7 +130,7 @@ export async function runPluginCreate(
     }
     const command = args[0];
     if (!["create", "check", "build", "pack"].includes(command!))
-      throw new Error("未知 plugin 命令；运行 malatang plugin --help");
+      throw new Error("未知 plugin 命令；运行 fn plugin --help");
     const positional: string[] = [];
     const flags: Record<string, string> = {};
     for (let index = 1; index < args.length; index++) {
@@ -154,7 +154,7 @@ export async function runPluginCreate(
     let result: unknown;
     if (command === "create") {
       if (!options.sdkArchive)
-        throw new Error("请通过 malatang plugin create 创建项目以获得 SDK 快照");
+        throw new Error("请通过 fn plugin create 创建项目以获得 SDK 快照");
       result = await createPlugin(root, {
         template: flags["--template"],
         id: flags["--id"],

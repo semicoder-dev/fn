@@ -1,8 +1,8 @@
 {
-  "name": "malatang",
+  "name": "fn",
   "version": "0.4.3",
   "private": true,
-  "homepage": "https://semicoder.dev/malatang",
+  "homepage": "https://semicoder.dev/fn",
   "workspaces": [
     "packages/*",
     "framework/fia/packages/*"
@@ -33,7 +33,7 @@
   "dependencies": {
     "@earendil-works/pi-ai": "1.0.2",
     "@semicoder/fia": "workspace:*",
-    "@semicoder/malatang-sdk": "workspace:*",
+    "@semicoder/fn-sdk": "workspace:*",
     "jose": "^6",
     "react": "19.2.7",
     "react-dom": "19.2.7"

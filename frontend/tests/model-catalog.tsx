@@ -1,9 +1,9 @@
-import { UIProvider } from "@semicoder/malatang-sdk/ui";
+import { UIProvider } from "@semicoder/fn-sdk/ui";
 import "../tailwind.css";
 // Run on FIA's development server; configuration and credentials are fixtures.
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
-import type { ModelInfo, PresetModel, ProviderPreset } from "@semicoder/malatang-sdk/types";
+import type { ModelInfo, PresetModel, ProviderPreset } from "@semicoder/fn-sdk/types";
 import ModelSettings from "../ModelSettings";
 import { app } from "../bridge";
 import "../style.css";

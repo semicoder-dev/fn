@@ -15,8 +15,8 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@semicoder/malatang-sdk/ui";
-import type { ModelInfo, ProviderPreset, PresetModel } from "@semicoder/malatang-sdk/types";
+} from "@semicoder/fn-sdk/ui";
+import type { ModelInfo, ProviderPreset, PresetModel } from "@semicoder/fn-sdk/types";
 import ChatGPTConnection from "./ChatGPTConnection";
 import { app } from "./bridge";
 

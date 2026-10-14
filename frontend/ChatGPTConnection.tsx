@@ -10,7 +10,7 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@semicoder/malatang-sdk/ui";
+} from "@semicoder/fn-sdk/ui";
 import { chatGPTLoginProfile, type ChatGPTStatus, type ChatGPTModel } from "../shared/chatgpt";
 import { app } from "./bridge";
 import ChatGPTAccounts from "./ChatGPTAccounts";
@@ -154,7 +154,7 @@ export default function ChatGPTConnection() {
           <strong>You’re using your ChatGPT plan</strong>
           <p>
             此连接下的模型请求使用你已授权的 ChatGPT 订阅额度。可在 ChatGPT
-            中管理麻辣烫的使用权限和限额。
+            中管理fn的使用权限和限额。
           </p>
           <Button
             variant="ghost"

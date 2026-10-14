@@ -1,9 +1,9 @@
 // Copied to a temporary consumer of the npm archive by pack.ts.
 import { strict as assert } from "node:assert";
-import { buildPlugin } from "@semicoder/malatang-sdk/build";
-import { defineMethod, definePlugin, z } from "@semicoder/malatang-sdk/runtime";
-import { createPluginClient } from "@semicoder/malatang-sdk/client";
-import { Button, Panel } from "@semicoder/malatang-sdk/ui";
+import { buildPlugin } from "@semicoder/fn-sdk/build";
+import { defineMethod, definePlugin, z } from "@semicoder/fn-sdk/runtime";
+import { createPluginClient } from "@semicoder/fn-sdk/client";
+import { Button, Panel } from "@semicoder/fn-sdk/ui";
 
 assert.equal(typeof createPluginClient, "function");
 assert.equal(typeof Button, "function");
@@ -16,7 +16,7 @@ assert.throws(() => method.execute({ text: 1 }, {} as never));
 for (const directory of ["notes", "model"]) {
   await buildPlugin(directory);
   const client = await Bun.file(`${directory}/dist/client.js`).text();
-  assert(client.includes("__MALATANG_MODULES__"), "Plugin must use the host React runtime");
+  assert(client.includes("__FN_MODULES__"), "Plugin must use the host React runtime");
   const imports = new Bun.Transpiler({ loader: "js" }).scanImports(client);
   assert.equal(imports.length, 0, "Plugin dependencies must be bundled or supplied by the host");
 }
@@ -25,7 +25,7 @@ const backend = (await import(`${process.cwd()}/model/dist/backend.js`)).default
 assert.equal(await backend.methods.echo.execute("built backend"), "built backend");
 assert(
   (
-    await Bun.file(new URL(import.meta.resolve("@semicoder/malatang-sdk/theme.css"))).text()
+    await Bun.file(new URL(import.meta.resolve("@semicoder/fn-sdk/theme.css"))).text()
   ).includes("--m-bg"),
 );
 console.log("Standalone SDK imports, schema validation and frontend/backend builds passed");

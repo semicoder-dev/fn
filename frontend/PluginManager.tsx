@@ -29,8 +29,8 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@semicoder/malatang-sdk/ui";
-import type { InstallJob, PluginInfo } from "@semicoder/malatang-sdk/types";
+} from "@semicoder/fn-sdk/ui";
+import type { InstallJob, PluginInfo } from "@semicoder/fn-sdk/types";
 import type { CatalogPage, MarketInfo } from "../shared/marketplace";
 import { app } from "./bridge";
 import { native } from "@semicoder/fia/client";

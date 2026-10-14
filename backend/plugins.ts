@@ -9,7 +9,7 @@ import type {
   PluginContext,
   PluginInfo,
   PluginManifest,
-} from "@semicoder/malatang-sdk/types";
+} from "@semicoder/fn-sdk/types";
 import { createHash } from "node:crypto";
 import {
   compareVersions,
@@ -22,8 +22,8 @@ import { download } from "./download";
 import { Store } from "./store";
 import { Models } from "./models";
 
-export { manifestSchema } from "@semicoder/malatang-sdk/manifest";
-import { manifestSchema } from "@semicoder/malatang-sdk/manifest";
+export { manifestSchema } from "@semicoder/fn-sdk/manifest";
+import { manifestSchema } from "@semicoder/fn-sdk/manifest";
 type Loaded = {
   invalidManifest?: boolean;
   info: PluginInfo;
@@ -146,13 +146,13 @@ export class Plugins {
     market: MarketBinding | null,
   ): Promise<Loaded> {
     const pkg = await Bun.file(join(root, "package.json")).json();
-    if (pkg.malatang?.sdkVersion !== "0.3")
+    if (pkg.fn?.sdkVersion !== "0.3")
       throw new Error(
         "插件 SDK 版本不兼容：请使用 SDK 0.3 重新构建并安装插件；原有 KV 数据仍会保留。",
       );
-    if (["models", "plugins", "settings"].includes(pkg.malatang?.id))
+    if (["models", "plugins", "settings"].includes(pkg.fn?.id))
       throw new Error("此插件 ID 为宿主保留名称");
-    const manifest = manifestSchema.parse(pkg.malatang);
+    const manifest = manifestSchema.parse(pkg.fn);
     if (["models", "plugins", "settings"].includes(manifest.id))
       throw new Error("此插件 ID 为宿主保留名称");
     if (typeof pkg.name !== "string" || typeof pkg.version !== "string")
@@ -384,7 +384,7 @@ export class Plugins {
         throw new Error("本地归档不存在");
       await Bun.write(
         join(installation, "package.json"),
-        JSON.stringify({ name: "malatang-plugin-installation", private: true }),
+        JSON.stringify({ name: "fn-plugin-installation", private: true }),
       );
       signal.throwIfAborted();
       slot.process = Bun.spawn([process.execPath, "add", "--ignore-scripts", source], {

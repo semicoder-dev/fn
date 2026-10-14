@@ -13,12 +13,12 @@ afterEach(async () => {
   for (const path of directories.splice(0)) await rm(path, { recursive: true, force: true });
 });
 async function temporary() {
-  const path = await mkdtemp(join(tmpdir(), "malatang plugin test "));
+  const path = await mkdtemp(join(tmpdir(), "fn plugin test "));
   directories.push(path);
   return path;
 }
 const options = {
-  sdkArchive: resolve("resources/sdk/malatang-sdk.tgz"),
+  sdkArchive: resolve("resources/sdk/fn-sdk.tgz"),
   templatesDirectory: resolve("packages/sdk/templates"),
 };
 async function fixture(template = "notes") {
@@ -57,9 +57,9 @@ test("create validates names and templates, preserves existing content and ships
   const receipt = await createPlugin(root, options);
   expect(receipt.id).toBe("notes-with-spaces");
   const pkg = await Bun.file(join(root, "package.json")).json();
-  expect(pkg.devDependencies["@semicoder/malatang-sdk"]).toBe("file:./vendor/malatang-sdk.tgz");
-  expect(pkg.malatang.sdkVersion).toBe("0.3");
-  expect(await Bun.file(join(root, "vendor/malatang-sdk.tgz")).exists()).toBe(true);
+  expect(pkg.devDependencies["@semicoder/fn-sdk"]).toBe("file:./vendor/fn-sdk.tgz");
+  expect(pkg.fn.sdkVersion).toBe("0.3");
+  expect(await Bun.file(join(root, "vendor/fn-sdk.tgz")).exists()).toBe(true);
   expect(await Bun.file(join(root, "node_modules")).exists()).toBe(false);
   await expect(createPlugin(root, options)).rejects.toThrow("非空");
   for (const id of ["bad id", "X", "../bad", "settings"])
@@ -77,8 +77,8 @@ for (const template of ["notes", "model"])
     await checkPlugin(root);
     await buildCheckedPlugin(root);
     const js = await Bun.file(join(root, "dist/client.js")).text();
-    expect(js).toContain("__MALATANG_MODULES__");
-    expect(js).toContain("@semicoder/malatang-sdk/ui");
+    expect(js).toContain("__FN_MODULES__");
+    expect(js).toContain("@semicoder/fn-sdk/ui");
     expect(js).not.toContain("react-dom-client.development");
     expect(js).not.toContain("m-panel-header");
     const assets = await Array.fromAsync(new Bun.Glob("dist/assets/*").scan({ cwd: root }));
@@ -135,7 +135,7 @@ test("CLI help and JSON keep machine output separate from diagnostics", async ()
     expect(await child.exited).toBe(0);
   }
   const child = Bun.spawn(
-    [process.execPath, "packages/sdk/plugin.ts", "check", "/missing malatang project", "--json"],
+    [process.execPath, "packages/sdk/plugin.ts", "check", "/missing fn project", "--json"],
     { stdout: "pipe", stderr: "pipe" },
   );
   expect(JSON.parse(await new Response(child.stdout).text()).ok).toBe(false);
@@ -171,7 +171,7 @@ test("plugin CLI rejects private Base UI imports and uncontrolled Tailwind entri
   const root = await fixture();
   await Bun.write(join(root, "src/styles.css"), '@import "tailwindcss";');
   expect((await checkStyles(root)).join(" ")).toContain("Tailwind 入口");
-  await Bun.write(join(root, "src/styles.css"), '@import "@semicoder/malatang-sdk/tailwind.css";');
+  await Bun.write(join(root, "src/styles.css"), '@import "@semicoder/fn-sdk/tailwind.css";');
   await Bun.write(
     join(root, "src/client.tsx"),
     'import { Dialog } from "@base-ui/react/dialog"; export default Dialog.Root;',

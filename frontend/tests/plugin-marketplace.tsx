@@ -1,11 +1,11 @@
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
-import { UIProvider } from "@semicoder/malatang-sdk/ui";
+import { UIProvider } from "@semicoder/fn-sdk/ui";
 import "../tailwind.css";
 import "../style.css";
 import { app } from "../bridge";
 import PluginManager from "../PluginManager";
-import type { PluginInfo } from "@semicoder/malatang-sdk/types";
+import type { PluginInfo } from "@semicoder/fn-sdk/types";
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 app.close();
 const calls: { method: string; input: any }[] = [];

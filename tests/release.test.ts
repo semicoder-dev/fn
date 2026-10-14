@@ -8,13 +8,13 @@ import { verifyDirectory, verifyRelease } from "../scripts/release/verify";
 import { stageSite } from "../scripts/release/site";
 import { hasUpdateHistory } from "../scripts/release/history";
 
-const temporary = await mkdtemp(join(tmpdir(), "malatang-release-test-"));
+const temporary = await mkdtemp(join(tmpdir(), "fn-release-test-"));
 const original = { ...config }, version = pkg.version;
 const { privateKey, publicKey } = generateKeyPairSync("ed25519");
 config.publicKey = publicKey.export({ type: "spki", format: "der" }).subarray(-32).toString("base64");
 afterAll(async () => { Object.assign(config, original); pkg.version = version; await rm(temporary, { recursive: true, force: true }); });
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
-function manifest(build = 1): Manifest { return { schema: 1, identifier: "com.semicoder.malatang", version: `0.${build}.0`, build, runtimeId: "a".repeat(64), baseURL: new URL(`releases/${build}/`, config.updatesURL).href, downloadURL: config.downloadURL, files: [{ path: "backend/index.js", size: 7, sha256: hash("backend") }, { path: "web/index.html", size: 3, sha256: hash("web") }] }; }
+function manifest(build = 1): Manifest { return { schema: 1, identifier: "com.semicoder.fn", version: `0.${build}.0`, build, runtimeId: "a".repeat(64), baseURL: new URL(`releases/${build}/`, config.updatesURL).href, downloadURL: config.downloadURL, files: [{ path: "backend/index.js", size: 7, sha256: hash("backend") }, { path: "web/index.html", size: 3, sha256: hash("web") }] }; }
 function envelope(value: Manifest) { const payload = Buffer.from(JSON.stringify(value)); return JSON.stringify({ payload: payload.toString("base64"), signature: sign(null, payload, privateKey).toString("base64") }); }
 async function fixture(build: number, suffix = "") {
   const directory = join(temporary, `update-${build}${suffix}`), files = join(directory, "releases", String(build));
@@ -28,8 +28,9 @@ describe("signed release validation", () => {
   test("rejects forged signatures, foreign origins and traversal even when signed", () => {
     const signed = envelope(manifest()); const changed = JSON.parse(signed); changed.payload = Buffer.from(JSON.stringify({ ...manifest(), build: 2 })).toString("base64");
     expect(() => readManifest(JSON.stringify(changed))).toThrow("signature");
+    expect(() => readManifest(envelope({ ...manifest(), identifier: "com.semicoder.malatang" }))).toThrow("Wrong update application");
     expect(() => readManifest(envelope({ ...manifest(), baseURL: "https://evil.example/" }))).toThrow("origin");
-    for (const downloadURL of ["https://evil.example/download", "https://semicoder.dev/malatang", `${config.downloadURL}?redirect=https://evil.example`, undefined]) {
+    for (const downloadURL of ["https://evil.example/download", "https://semicoder.dev/fn", `${config.downloadURL}?redirect=https://evil.example`, undefined]) {
       expect(() => readManifest(envelope({ ...manifest(), downloadURL }))).toThrow("installer URL");
     }
     expect(() => readManifest(envelope({ ...manifest(), files: [{ path: "../escape", size: 0, sha256: hash("") }] }))).toThrow("Unsafe");
@@ -56,7 +57,7 @@ describe("signed release validation", () => {
   });
   test("installer and update must use the same runtime and code", async () => {
     config.build = 3; pkg.version = "0.3.0";
-    const f = await fixture(3), app = join(temporary, "Malatang.app"), resources = join(app, "Contents/Resources");
+    const f = await fixture(3), app = join(temporary, "fn.app"), resources = join(app, "Contents/Resources");
     await mkdir(resources, { recursive: true });
     await writeFile(join(resources, "fia.runtime.json"), JSON.stringify({ runtimeId: "b".repeat(64), app: { version: "0.3.0", build: 3 }, updates: { url: config.updatesURL, publicKey: config.publicKey } }));
     await expect(verifyRelease(f.directory, app)).rejects.toThrow("different runtimes");
@@ -66,17 +67,18 @@ describe("signed release validation", () => {
     config.build = 7; pkg.version = "0.7.0";
     await stageSite(f.directory, site);
     const current = readManifest(await readFile(join(site, "updates/latest.json"), "utf8"));
-    expect(current.baseURL).toBe("https://semicoder-dev.github.io/malatang/updates/releases/7/");
-    expect(current.downloadURL).toBe("https://semicoder.dev/malatang/docs/installation");
-    expect(() => readManifest(envelope({ ...current, baseURL: "https://nobug.space/malatang/updates/releases/7/" }))).toThrow("origin");
-    expect(() => readManifest(envelope({ ...current, downloadURL: "https://github.com/potato47/malatang/releases/latest" }))).toThrow("installer URL");
+    expect(current.baseURL).toBe("https://semicoder-dev.github.io/fn/updates/releases/7/");
+    expect(current.downloadURL).toBe("https://semicoder.dev/fn/docs/installation");
+    expect(() => readManifest(envelope({ ...current, baseURL: "https://nobug.space/fn/updates/releases/7/" }))).toThrow("origin");
+    expect(() => readManifest(envelope({ ...current, downloadURL: "https://github.com/potato47/fn/releases/latest" }))).toThrow("installer URL");
     const landing = await readFile(join(site, "index.html"), "utf8");
-    expect(landing).toContain('href="https://semicoder.dev/malatang/docs/installation"');
+    expect(landing).toContain('href="https://semicoder.dev/fn/docs/installation"');
   });
-  test("only an explicit missing organization branch starts an empty history", async () => {
+  test("only an explicit missing fn branch starts an empty history", async () => {
     expect(await hasUpdateHistory(async () => "[]")).toBe(false);
-    expect(await hasUpdateHistory(async () => JSON.stringify([{ ref: "refs/heads/updates-site" }]))).toBe(true);
-    expect(await hasUpdateHistory(async () => JSON.stringify([{ ref: "refs/heads/updates-site-backup" }]))).toBe(false);
+    expect(await hasUpdateHistory(async () => JSON.stringify([{ ref: "refs/heads/updates-site" }]))).toBe(false);
+    expect(await hasUpdateHistory(async () => JSON.stringify([{ ref: "refs/heads/fn-updates-site" }]))).toBe(true);
+    expect(await hasUpdateHistory(async () => JSON.stringify([{ ref: "refs/heads/fn-updates-site-backup" }]))).toBe(false);
     await expect(hasUpdateHistory(async () => { throw new Error("GitHub unavailable"); })).rejects.toThrow("GitHub unavailable");
     for (const body of ['{"message":"Not Found"}', '[{}]', 'invalid']) {
       await expect(hasUpdateHistory(async () => body)).rejects.toThrow();

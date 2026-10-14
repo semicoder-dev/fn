@@ -1,4 +1,4 @@
-name: Publish Malatang SDK
+name: Publish fn SDK
 
 on:
   push:
@@ -10,17 +10,17 @@ permissions:
   contents: read
 
 concurrency:
-  group: malatang-sdk-release
+  group: fn-sdk-release
   cancel-in-progress: false
 
 jobs:
   build:
-    if: github.repository == 'semicoder-dev/malatang'
+    if: github.repository == 'semicoder-dev/fn'
     runs-on: macos-26
     timeout-minutes: 60
     defaults:
       run:
-        working-directory: malatang
+        working-directory: fn
     outputs:
       filename: ${{ steps.release.outputs.filename }}
     env:
@@ -29,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          path: malatang
+          path: fn
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
@@ -53,21 +53,21 @@ jobs:
       - name: Upload framework provenance separately from distributable files
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: malatang-framework-report
-          path: malatang/artifacts/fia/build-report.json
+          name: fn-framework-report
+          path: fn/artifacts/fia/build-report.json
           if-no-files-found: error
           retention-days: 14
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: malatang-sdk-npm
-          path: malatang/artifacts/npm/${{ steps.release.outputs.filename }}
+          name: fn-sdk-npm
+          path: fn/artifacts/npm/${{ steps.release.outputs.filename }}
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
 
   publish:
     needs: build
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/sdk-v') && github.repository == 'semicoder-dev/malatang'
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/sdk-v') && github.repository == 'semicoder-dev/fn'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: npm
@@ -83,7 +83,7 @@ jobs:
       - run: npm install --global npm@11.19.0
       - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
-          name: malatang-sdk-npm
+          name: fn-sdk-npm
           path: npm-package
       - name: Publish verified SDK archive with OIDC
         env:

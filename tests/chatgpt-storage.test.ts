@@ -11,7 +11,7 @@ afterEach(async () => {
     await fs.rm(directory, { recursive: true, force: true });
 });
 async function directory() {
-  const root = await fs.mkdtemp(join(tmpdir(), "malatang-credentials-"));
+  const root = await fs.mkdtemp(join(tmpdir(), "fn-credentials-"));
   directories.push(root);
   return join(root, "data");
 }

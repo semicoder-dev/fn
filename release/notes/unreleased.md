@@ -1,5 +1,15 @@
 # 待发布改动
 
-2026-10-11 已将组织迁移发布为应用 **0.4.3 / build 7**、SDK **0.3.2**；官方翻译/随手记 **0.1.1** 已独立发布并上架。发行范围见 [0.4.3](0.4.3.md)，公开产物和验收证据见[应用发布手册](../../docs/github-release.md)与[SDK 发布手册](../../docs/npm-release.md)。官网部署由 workspace 迁移记录单独跟踪。
+## fn 全面更名（2026-10-14，本地未发布）
 
-当前无已完成待发布条目。下一次普通候选仅为 0.4.4，未来发布须重新获得用户授权；FIA 独立 npm 继续暂停。日常开发不改版本或 build。
+- 来源：应用基线 cc183e1，特性分支 codex/rename-fn；本条随完整更名实现提交，来源可通过本文件 Git 历史定位。应用保持 0.4.3 / build 7，SDK 0.3.2 / manifest 0.3，FIA 0.18.0。
+- 名称与身份：显示名 fn、com.semicoder.fn、fn / fn-dev / fn-preview；包名 @semicoder/fn-sdk、清单 fn、fnStyleExceptions、__FN_BRIDGE__ / __FN_MODULES__；应用/SDK/插件/CI/发布配置全部同步。
+- 无旧名兼容、旧 manifest 回退、旧 URL 重定向或数据迁移；更新历史独立使用 `fn-updates-site`，保留旧更新分支；新身份使用独立数据目录，不读取或删除旧应用数据。旧公开标签与产物保持不变。
+- 官方插件本地仓库改为 fn-plugins，固定 vendor SDK 归档独立构建；本地市场索引为空，仅生成未发布候选。新 GitHub 仓库名称、npm SDK、DMG、更新源、市场和官网均未发布。
+- 官网：content/projects/fn，/fn、project-fn / docs-fn-*；当前提供本地源码与插件归档步骤，历史证据保留旧名。网站未推送或部署。
+- 验证：应用完整 check、99 项测试、build、实际 SDK npm:pack 独立消费；框架 77 CLI / 48 Swift；官方插件干净目录安装及 check/test/pack/index:check；Dev 真实安装、两插件页面、KV 保存/刷新、模型缺失校验；Preview 数据隔离、三种 bundle 身份、正式包隔离 smoke 通过。官网 check、51 单元 / 12 Workers、build、38 页面及搜索检查通过。
+- 边界：未使用真实模型或重新授权真实 OAuth；正式 fn 签名公证、远端 GitHub/npm/Pages 与网站发布未验证。后续发布须明确授权，先完成仓库更名、新 SDK 公开验收、插件新版本与索引，以及新身份独立更新站，再发布完整 DMG 与官网；不复用已公开标签。
+
+## 历史公开版本
+
+2026-10-11 原名麻辣烫应用 **0.4.3 / build 7**、旧 SDK **0.3.2** 和旧名官方插件 **0.1.1** 已发布。它们不代表 fn 已发布，原始证据见 [0.4.3](0.4.3.md)、[应用发布手册](../../docs/github-release.md)与[SDK 发布手册](../../docs/npm-release.md)。日常开发不升版本，下一次版本在明确发行时确定。

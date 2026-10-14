@@ -1,5 +1,5 @@
 @import url("../packages/sdk/src/theme.css");
-@import "@semicoder/malatang-sdk/ui.css";
+@import "@semicoder/fn-sdk/ui.css";
 .app-shell {
   display: flex;
   height: 100vh;

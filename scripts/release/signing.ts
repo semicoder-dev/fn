@@ -4,7 +4,7 @@ import { createPrivateKey, createPublicKey, randomBytes } from "node:crypto";
 import { assert, config } from "./config";
 
 assert(process.env.GITHUB_ACTIONS === "true" && process.env.RUNNER_TEMP, "Signing setup is only for disposable GitHub runners");
-const directory = join(process.env.RUNNER_TEMP, "malatang-signing"), keychain = join(directory, "release.keychain-db");
+const directory = join(process.env.RUNNER_TEMP, "fn-signing"), keychain = join(directory, "release.keychain-db");
 async function run(command: string[], label: string) {
   const child = Bun.spawn(command, { stdout: "pipe", stderr: "pipe" });
   const [output] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text()]);
@@ -21,7 +21,7 @@ if (process.argv[2] === "cleanup") {
   await run(["security", "delete-keychain", keychain], "Delete temporary keychain").catch(() => {});
   await rm(directory, { recursive: true, force: true });
 } else {
-  const required = ["APPLE_CERTIFICATE_P12", "APPLE_CERTIFICATE_PASSWORD", "APPLE_ID", "APPLE_TEAM_ID", "APPLE_APP_SPECIFIC_PASSWORD", "FIA_UPDATE_PRIVATE_KEY", "MALATANG_SIGNING_IDENTITY"];
+  const required = ["APPLE_CERTIFICATE_P12", "APPLE_CERTIFICATE_PASSWORD", "APPLE_ID", "APPLE_TEAM_ID", "APPLE_APP_SPECIFIC_PASSWORD", "FIA_UPDATE_PRIVATE_KEY", "FN_SIGNING_IDENTITY"];
   for (const name of required) assert(process.env[name], "Missing GitHub signing configuration: " + name);
   const privateKey = createPrivateKey(process.env.FIA_UPDATE_PRIVATE_KEY!);
   assert(privateKey.asymmetricKeyType === "ed25519" && createPublicKey(privateKey).export({ type: "spki", format: "der" }).subarray(-32).toString("base64") === config.publicKey, "Update private key does not match the committed public key");
@@ -42,7 +42,7 @@ if (process.argv[2] === "cleanup") {
   await run(["security", "set-key-partition-list", "-S", "apple-tool:,apple:,codesign:", "-s", "-k", password, keychain], "Allow codesign access");
   await run(["security", "list-keychains", "-d", "user", "-s", keychain, ...keychains], "Select signing keychain");
   await run(["security", "default-keychain", "-d", "user", "-s", keychain], "Select notarization keychain");
-  await run(["xcrun", "notarytool", "store-credentials", "malatang-notary", "--apple-id", process.env.APPLE_ID!, "--team-id", process.env.APPLE_TEAM_ID!, "--password", process.env.APPLE_APP_SPECIFIC_PASSWORD!, "--keychain", keychain], "Validate notarization credentials");
+  await run(["xcrun", "notarytool", "store-credentials", "fn-notary", "--apple-id", process.env.APPLE_ID!, "--team-id", process.env.APPLE_TEAM_ID!, "--password", process.env.APPLE_APP_SPECIFIC_PASSWORD!, "--keychain", keychain], "Validate notarization credentials");
   assert(process.env.GITHUB_ENV, "Missing GitHub environment file");
   await appendFile(process.env.GITHUB_ENV, `FIA_UPDATE_PRIVATE_KEY_FILE=${updateKey}\n`);
   await rm(certificate);

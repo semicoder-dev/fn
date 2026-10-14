@@ -1,5 +1,5 @@
 import ComponentGallery from "./ComponentGallery";
-import { SlidersHorizontal, Sun, RefreshCw, Blocks, Button } from "@semicoder/malatang-sdk/ui";
+import { SlidersHorizontal, Sun, RefreshCw, Blocks, Button } from "@semicoder/fn-sdk/ui";
 import React, { useState } from "react";
 import AppearanceSettings from "./AppearanceSettings";
 import ModelSettings from "./ModelSettings";

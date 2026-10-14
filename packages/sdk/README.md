@@ -1,12 +1,8 @@
-# @semicoder/malatang-sdk · 0.3.0
+# fn SDK
 
-> 未发布宿主变更：插件市场与原位更新见 [市场契约](../../docs/plugin-marketplace.md)。当前源码删除 `PluginInfo.builtin`，增加可空 `market` 来源；安装任务增加 `operation/targetVersion`。SDK 包版本暂不调整，公开 0.3.0 尚无这些类型变更。插件 manifest 与模型/KV/UI 契约不变。
+本地开发、尚未发布。包名为 `@semicoder/fn-sdk`，源码版本保持 0.3.2，manifest `sdkVersion` 保持 `0.3`。仅适用于 fn 宿主，不支持旧包名、清单字段或运行时全局标识。使用 Base UI 1.9 + Tailwind CSS 4.3；CLI 随应用携带固定 SDK 归档，创建的项目可独立开发。
 
-SDK 0.3.0 使用 **Base UI 1.9 + Tailwind CSS 4.3**，manifest `sdkVersion` 为 `0.3`，需要麻辣烫 0.4.1 或以上宿主。0.2 及更早版本插件需迁移并重建；应用与 SDK 独立发行，公开状态见 [npm 发布记录](https://github.com/semicoder-dev/malatang/blob/main/docs/npm-release.md)。CLI 使用随应用提供的固定 SDK 归档创建插件。
-
-插件为可信本地代码，命名空间和 CSS 作用域不是安全沙箱。使用 Bun >=1.4.2；React 与 ReactDOM 19 必须精确同版本。宿主提供唯一的 React、Base UI 和公共组件实现。此轮不提供旧 API 或插件兼容层，数据存储键保持不变。
-
-[麻辣烫官网](https://semicoder.dev/malatang) · [插件开发指南](https://semicoder.dev/malatang/docs/plugin-development) · [下载与安装](https://semicoder.dev/malatang/docs/installation)
+应用、SDK 和官网分别发布；当前可使用本地 SDK 归档，不能将版本号视为 npm 已发布证据。
 
 ## 一个插件包
 
@@ -16,7 +12,7 @@ SDK 0.3.0 使用 **Base UI 1.9 + Tailwind CSS 4.3**，manifest `sdkVersion` 为 
   "version": "0.1.0",
   "type": "module",
   "files": ["dist"],
-  "malatang": {
+  "fn": {
     "schemaVersion": 1,
     "id": "my-plugin",
     "name": "我的应用",
@@ -41,8 +37,8 @@ SDK 0.3.0 使用 **Base UI 1.9 + Tailwind CSS 4.3**，manifest `sdkVersion` 为 
 `src/client.tsx` 默认导出 React 组件：
 
 ```tsx
-import { createPluginClient } from "@semicoder/malatang-sdk/client";
-import { PageHeader, Button, Panel } from "@semicoder/malatang-sdk/ui";
+import { createPluginClient } from "@semicoder/fn-sdk/client";
+import { PageHeader, Button, Panel } from "@semicoder/fn-sdk/ui";
 const host = createPluginClient("my-plugin");
 export default function Page() {
   return <Panel><PageHeader title="我的应用" />
@@ -72,7 +68,7 @@ KV 每值最多 64 KiB。不存在的键返回 null。读写只接受 JSON，值
 ## 可选后端
 
 ```ts
-import { definePlugin, defineMethod, z } from "@semicoder/malatang-sdk/runtime";
+import { definePlugin, defineMethod, z } from "@semicoder/fn-sdk/runtime";
 export default definePlugin({
   methods: {
     generate: defineMethod("生成文本", z.object({ text: z.string(), modelId: z.string() }), (input, ctx) =>
@@ -85,7 +81,7 @@ export default definePlugin({
 
 ## UI 约定
 
-统一从 `@semicoder/malatang-sdk/ui` 导入；宿主拥有主题、48px 侧栏和共享实现。插件不直接依赖 Base UI、Lucide 或宿主私有类。需要的图标也从 UI 入口导入。
+统一从 `@semicoder/fn-sdk/ui` 导入；宿主拥有主题、48px 侧栏和共享实现。插件不直接依赖 Base UI、Lucide 或宿主私有类。需要的图标也从 UI 入口导入。
 
 | 分类 | 组件 |
 | --- | --- |
@@ -101,7 +97,7 @@ Button 默认 `type="button"`；variant 为 primary/secondary/ghost/danger，siz
 import { Button, Dialog, DialogTrigger, DialogContent, DialogTitle,
   DialogDescription, DialogFooter, DialogClose, Field, Input,
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
-  useToast } from "@semicoder/malatang-sdk/ui";
+  useToast } from "@semicoder/fn-sdk/ui";
 
 export function Example() {
   const toast = useToast();
@@ -133,7 +129,7 @@ export function Example() {
 模板的 `src/styles.css` 仅包含以下入口，由 CLI 处理；不要直接导入 Tailwind 全局 reset：
 
 ```css
-@import "@semicoder/malatang-sdk/tailwind.css";
+@import "@semicoder/fn-sdk/tailwind.css";
 ```
 
 ```tsx
@@ -144,7 +140,7 @@ import "./styles.css";
 
 CLI 只扫描本插件 src，在构建阶段编译 `p:` 工具类。宿主使用普通类，SDK 内部使用 `ui:`。语义颜色包括 background/surface/hover/popup/foreground/muted/border/primary/on-primary/error/success/warning/focus。基础值由 `--m-*` token 提供，light/dark/system 共用几何与字体。
 
-复杂局部样式仍用 `.module.css` 与语义 token；禁止全局选择器、主题重定义、引用 `.m-*`/`ui:` 私有类或导入公共 CSS。品牌/数据颜色可用 `malatangStyleExceptions` 按 CSS 文件注明理由。插件工具类不要使用任意颜色覆盖公共视觉。
+复杂局部样式仍用 `.module.css` 与语义 token；禁止全局选择器、主题重定义、引用 `.m-*`/`ui:` 私有类或导入公共 CSS。品牌/数据颜色可用 `fnStyleExceptions` 按 CSS 文件注明理由。插件工具类不要使用任意颜色覆盖公共视觉。
 
 编译结果按插件 ID 作用域化；Tailwind 内部变量、`@property` 与动画名也隔离。不要在 JS 中引用编译器内部变量或动画名。页面和 Portal 具有相同作用域；样式仅在页面可见时启用，卸载时移除。宿主只加载一次 Preflight 和公共 UI CSS，运行时不编译 Tailwind。
 
@@ -152,15 +148,15 @@ CSS 相对 url 由 Bun 处理；JS 图片使用 `new URL(asset, import.meta.url)
 
 ## 插件开发 CLI
 
-应用自带已校验的 SDK 快照。创建项目复制到 `vendor/malatang-sdk.tgz`，以相对 `file:` 依赖消费，项目可移到 workspace 外；不依赖公开 npm SDK。
+应用自带已校验的 SDK 快照。创建项目复制到 `vendor/fn-sdk.tgz`，以相对 `file:` 依赖消费，项目可移到 workspace 外；不依赖公开 npm SDK。
 
 ```sh
-malatang plugin create ./my-notes --template notes --name 我的笔记
+fn plugin create ./my-notes --template notes --name 我的笔记
 cd my-notes
 bun install --ignore-scripts
-malatang plugin check
-malatang plugin build
-malatang plugin pack
+fn plugin check
+fn plugin build
+fn plugin pack
 ```
 
 开发宿主使用 `bun run agent plugin …`。create 必须指定目标目录，模板为 notes（默认）或 model；ID 默认由目录生成，名称默认目录名，也可用 --id/--name 覆盖。拒绝无效 ID、保留名称、空名称与非空目录。不会自动安装依赖、初始化 Git 或安装插件。
@@ -173,7 +169,7 @@ notes 展示 Field、Textarea、保存状态、图片资源和 KV；model 展示
 
 ## 独立构建与打包
 
-在麻辣烫仓库下创建插件目录，开发依赖引用 `"@semicoder/malatang-sdk": "workspace:*"`。外部项目可先安装本地 SDK 路径或经 `bun run npm:pack` 验收的 `.tgz`；实际发布后再使用对应 npm 版本。
+在fn仓库下创建插件目录，开发依赖引用 `"@semicoder/fn-sdk": "workspace:*"`。外部项目可先安装本地 SDK 路径或经 `bun run npm:pack` 验收的 `.tgz`；实际发布后再使用对应 npm 版本。
 
 ```sh
 bun packages/sdk/build.ts /absolute/path/my-plugin
@@ -184,13 +180,13 @@ bun pm pack
 外部项目可通过 SDK 的 build 入口编写 `build.ts`，再执行 `bun run build.ts`：
 
 ```ts
-import { buildPlugin } from "@semicoder/malatang-sdk/build";
+import { buildPlugin } from "@semicoder/fn-sdk/build";
 await buildPlugin(".");
 ```
 
 构建器把 `src/client.tsx` 和可选的 `src/backend.ts` 编译为对应 `dist` 文件。业务 JS 依赖被打包；React 与 JSX runtime 从宿主共享，插件无需访问宿主源码。不要把服务器代码导入前端。此 MVP 构建器尚未处理原生依赖和额外资源复制。
 
-本地 `bun pm pack`、npm 发布包和 Git 仓库遵循同一个 manifest / dist 格式。Git 来源需要包含预构建 dist，宿主只获取依赖并禁用安装脚本，不替插件构建源码。页面或 CLI 安装后立即激活；前端渲染失败与后端激活失败分别显示。开发中宿主提供用户触发的更新：保留 KV、历史与启停状态，激活或保存失败恢复旧包；不自动升级。公开 0.4.1 仍需卸载重装。
+本地 `bun pm pack`、npm 发布包和 Git 仓库遵循同一个 manifest / dist 格式。Git 来源需要包含预构建 dist，宿主只获取依赖并禁用安装脚本，不替插件构建源码。页面或 CLI 安装后立即激活；前端渲染失败与后端激活失败分别显示。开发中宿主提供用户触发的更新：保留 KV、历史与启停状态，激活或保存失败恢复旧包；不自动升级。
 
 ### ChatGPT 订阅模型
 
@@ -198,6 +194,6 @@ await buildPlugin(".");
 
 当前订阅模型仍使用 MVP 文本请求接口；宿主以官方 public Responses HTTP/SSE 发送 `instructions` 和输入，仅显式完成事件才算成功，断流保留部分文本但标为失败。其他 Pi provider 沿用现有 API Key 适配。
 
-### 自定义主题继承（麻辣烫 0.4.1）
+### 自定义主题继承
 
 宿主可在运行时覆盖 `--m-*` 配色，分别保存浅色和深色主题；`theme.css` 提供默认值，`tailwind.css` 的语义工具类引用这些变量。SDK 组件、插件页面及同作用域 Portal 自动继承，不需重新构建。插件不得重定义主题 token；固定品牌色和数据颜色仍使用明确的样式例外。主题设置和预览由宿主管理，原生标题栏只跟随明暗模式。

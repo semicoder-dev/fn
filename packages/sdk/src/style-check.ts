@@ -14,7 +14,7 @@ export async function checkStyles(root: string, exceptions: Record<string, strin
       const entry = await Bun.file(await safeFile(root, name)).text();
       if (
         entry.replace(/\/\*[\s\S]*?\*\//g, "").trim() !==
-        '@import "@semicoder/malatang-sdk/tailwind.css";'
+        '@import "@semicoder/fn-sdk/tailwind.css";'
       )
         fail("Tailwind 入口只能导入 SDK 主题映射；工具类由 CLI 编译");
       continue;
@@ -55,7 +55,7 @@ export async function checkStyles(root: string, exceptions: Record<string, strin
         if (decl.prop.startsWith("--m-")) fail(`禁止重定义公共 token ${decl.prop}`);
         if (!exceptions[name] && /#[\da-f]{3,8}\b|\b(?:rgb|hsl|oklch|color)\(/i.test(decl.value))
           fail(
-            `颜色应引用语义 token；品牌/数据颜色需在 malatangStyleExceptions 中注明理由：${decl.prop}`,
+            `颜色应引用语义 token；品牌/数据颜色需在 fnStyleExceptions 中注明理由：${decl.prop}`,
           );
         for (const match of decl.value.matchAll(/url\(\s*["']?([^\s"')]+)["']?\s*\)/g))
           references.push(match[1]!);

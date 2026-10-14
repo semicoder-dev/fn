@@ -16,7 +16,7 @@ afterEach(async () => {
   for (const dir of directories.splice(0)) await rm(dir, { recursive: true, force: true });
 });
 async function setup() {
-  const dir = await mkdtemp(join(tmpdir(), "malatang-theme-"));
+  const dir = await mkdtemp(join(tmpdir(), "fn-theme-"));
   directories.push(dir);
   const store = new Store(dir);
   await store.open();

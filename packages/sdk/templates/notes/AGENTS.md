@@ -1,4 +1,4 @@
-# 麻辣烫 SDK 0.3 插件开发（未发布）
+# fn SDK 0.3 插件开发（未发布）
 
 先阅读 README。公共能力从 SDK 的 client、types、runtime、ui 入口导入；不直接导入 Base UI、Radix、Lucide 或宿主私有样式，不复制 React 和公共组件。
 

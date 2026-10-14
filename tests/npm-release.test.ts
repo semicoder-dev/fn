@@ -5,8 +5,8 @@ import { assertVersionIncrease } from "../scripts/npm/version";
 
 describe("SDK npm release", () => {
   test("release tags follow SDK version rather than application version", () => {
-    expect(validatePackage(pkg)).toEqual({ version: pkg.version, tag: `sdk-v${pkg.version}`, filename: `semicoder-malatang-sdk-${pkg.version}.tgz` });
-    const env = { GITHUB_ACTIONS: "true", GITHUB_REPOSITORY: "semicoder-dev/malatang", GITHUB_EVENT_NAME: "push", GITHUB_REF: `refs/tags/sdk-v${pkg.version}` };
+    expect(validatePackage(pkg)).toEqual({ version: pkg.version, tag: `sdk-v${pkg.version}`, filename: `semicoder-fn-sdk-${pkg.version}.tgz` });
+    const env = { GITHUB_ACTIONS: "true", GITHUB_REPOSITORY: "semicoder-dev/fn", GITHUB_EVENT_NAME: "push", GITHUB_REF: `refs/tags/sdk-v${pkg.version}` };
     expect(() => validateTrigger(pkg.version, env)).not.toThrow();
     for (const ref of [`refs/tags/v${pkg.version}`, "refs/tags/sdk-v9.9.9", "refs/heads/main"]) {
       expect(() => validateTrigger(pkg.version, { ...env, GITHUB_REF: ref })).toThrow("Tag and SDK version differ");

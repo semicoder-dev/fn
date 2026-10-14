@@ -32,7 +32,7 @@ export async function stageSite(updateDirectory: string, site: string) {
   assert(total < 900_000_000, "Update site approaches the GitHub Pages size limit; migrate hosting before publishing");
   await cp(join(updateDirectory, "latest.json"), latest + ".tmp"); await rename(latest + ".tmp", latest);
   await writeFile(join(site, ".nojekyll"), "");
-  await writeFile(join(site, "index.html"), `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=${websiteURL}"><link rel="canonical" href="${websiteURL}"><title>麻辣烫官网 · Semicoder</title><h1>麻辣烫 · Malatang</h1><p>官网与使用文档已迁至 <a href="${websiteURL}">Semicoder</a>。</p><p><a href="${config.downloadURL}">下载与安装</a></p></html>\n`);
+  await writeFile(join(site, "index.html"), `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=${websiteURL}"><link rel="canonical" href="${websiteURL}"><title>fn 官网 · Semicoder</title><h1>fn</h1><p>官网与使用文档已迁至 <a href="${websiteURL}">Semicoder</a>。</p><p><a href="${config.downloadURL}">下载与安装</a></p></html>\n`);
   console.log(`Staged immutable build ${next.build}; manifest SHA256 ${await checksum(latest)}`);
 }
 if (import.meta.main) {

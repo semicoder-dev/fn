@@ -13,13 +13,13 @@ const names: Record<string, readonly string[]> = Object.fromEntries([
   ["react/jsx-dev-runtime", Object.keys(JSXDev)],
   ["react-dom", Object.keys(ReactDOM)],
   ["react-dom/client", Object.keys(ReactDOMClient)],
-  ["@semicoder/malatang-sdk/ui", uiExports],
+  ["@semicoder/fn-sdk/ui", uiExports],
 ]);
 /** Emit a single host-shared UI bundle and page-scoped CSS. Never leave a partial dist. */
 export async function buildPlugin(directory: string) {
   const root = resolve(directory),
     dist = resolve(root, "dist"),
-    temporary = resolve(root, `.malatang-build-${crypto.randomUUID()}`);
+    temporary = resolve(root, `.fn-build-${crypto.randomUUID()}`);
   await rm(dist, { recursive: true, force: true });
   await mkdir(temporary);
   try {
@@ -46,7 +46,7 @@ export async function buildPlugin(directory: string) {
             ? []
             : [
                 {
-                  name: "malatang-host-modules",
+                  name: "fn-host-modules",
                   setup(build) {
                     build.onLoad({ filter: /[\/]src[\/]styles\.css$/ }, () => ({
                       loader: "css",
@@ -55,18 +55,18 @@ export async function buildPlugin(directory: string) {
                     build.onResolve(
                       {
                         filter:
-                          /^(?:react(?:\/.*)?|react-dom(?:\/.*)?|@semicoder\/malatang-sdk\/ui)$/,
+                          /^(?:react(?:\/.*)?|react-dom(?:\/.*)?|@semicoder\/fn-sdk\/ui)$/,
                       },
                       (args) => {
                         if (!(sharedModules as readonly string[]).includes(args.path))
                           throw new Error(`Unsupported host runtime import: ${args.path}`);
-                        return { path: args.path, namespace: "malatang-host" };
+                        return { path: args.path, namespace: "fn-host" };
                       },
                     );
-                    build.onLoad({ filter: /.*/, namespace: "malatang-host" }, (args) => ({
+                    build.onLoad({ filter: /.*/, namespace: "fn-host" }, (args) => ({
                       loader: "js",
                       contents:
-                        `const runtime = globalThis.__MALATANG_MODULES__?.[${JSON.stringify(args.path)}]; if (!runtime) throw new Error("需要麻辣烫 SDK 0.3 宿主，请重新构建插件"); export default runtime;\n` +
+                        `const runtime = globalThis.__FN_MODULES__?.[${JSON.stringify(args.path)}]; if (!runtime) throw new Error("需要fn SDK 0.3 宿主，请重新构建插件"); export default runtime;\n` +
                         names[args.path]!.filter(
                           (name) => name !== "default" && /^[a-zA-Z_$][\w$]*$/.test(name),
                         )
@@ -83,7 +83,7 @@ export async function buildPlugin(directory: string) {
     // The manifest always has a CSS entry, including plugins with no business rules.
     if (!(await Bun.file(resolve(temporary, "client.css")).exists()))
       await Bun.write(resolve(temporary, "client.css"), "/* No page styles. */\n");
-    const manifest = (await Bun.file(resolve(root, "package.json")).json()).malatang;
+    const manifest = (await Bun.file(resolve(root, "package.json")).json()).fn;
     const cssPath = resolve(temporary, "client.css");
     await Bun.write(
       cssPath,

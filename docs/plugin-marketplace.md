@@ -1,6 +1,6 @@
 # 插件市场（开发中，未发布）
 
-宿主不再携带或自动安装插件，首次进入应用中心。公开 0.4.1 仍采用内置翻译与随手记示例；本页描述后续开发契约，无旧 API 兼容或数据迁移层。
+宿主不携带或自动安装插件，首次进入应用中心。fn 当前为本地开发、尚未发布，无旧 API 兼容或数据迁移层。官方仓库的本地索引为空，首次发布前通过本地归档安装插件。
 
 ## 使用
 
@@ -12,7 +12,7 @@
 
 ## 静态索引 v1
 
-索引 URL 为无凭证、无片段的 HTTPS 地址；重定向仍须 HTTPS。默认地址为 `https://raw.githubusercontent.com/semicoder-dev/malatang-plugins/main/marketplace.json`，仓库与线上索引尚未发布。
+索引 URL 为无凭证、无片段的 HTTPS 地址；重定向仍须 HTTPS。默认地址为 `https://raw.githubusercontent.com/semicoder-dev/fn-plugins/main/marketplace.json`，仓库与线上索引尚未发布。
 
 ```json
 {
@@ -39,7 +39,7 @@
 
 ## API / CLI
 
-通过现有 `malatang call <method> --json '<input>'`（开发版使用 `bun run agent call`）：
+通过现有 `fn call <method> --json '<input>'`（开发版使用 `bun run agent call`）：
 
 - `marketplaces.list({})`：源、更新时间、错误、刷新状态和缓存条目数。
 - `marketplaces.add({name,url})`、`update({id,name?,enabled?})`、`remove({id})`：配置源，URL 不可原位更换。
@@ -57,4 +57,4 @@
 
 ## 官方仓库
 
-官方插件独立维护于 `semicoder-dev/malatang-plugins`，翻译 `translate` 与随手记 `quick-notes` 保持原 ID。宿主构建、测试和 SDK 归档验证不依赖该仓库。正式索引只列已经发布并验收的归档；首次公开发行已获授权，归档和市场上线结果在发布手册及官方仓库记录；候选归档不等于已上架。
+官方插件独立维护于 `semicoder-dev/fn-plugins`，翻译 `translate` 与随手记 `quick-notes` 保持原 ID。宿主构建、测试和 SDK 归档验证不依赖该仓库。正式索引只列已经发布并验收的归档；首次公开发行已获授权，归档和市场上线结果在发布手册及官方仓库记录；候选归档不等于已上架。

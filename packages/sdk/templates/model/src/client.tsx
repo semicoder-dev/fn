@@ -1,8 +1,8 @@
 import "./styles.css";
 import icon from "./assets/notebook.svg";
 import React, { useEffect, useRef, useState } from "react";
-import { createPluginClient } from "@semicoder/malatang-sdk/client";
-import type { ModelInfo, ModelRun } from "@semicoder/malatang-sdk/types";
+import { createPluginClient } from "@semicoder/fn-sdk/client";
+import type { ModelInfo, ModelRun } from "@semicoder/fn-sdk/types";
 import {
   Alert,
   Badge,
@@ -18,7 +18,7 @@ import {
   PanelContent,
   PanelFooter,
   Textarea,
-} from "@semicoder/malatang-sdk/ui";
+} from "@semicoder/fn-sdk/ui";
 import styles from "./page.module.css";
 const client = createPluginClient("__PLUGIN_ID__");
 export default function ModelPage() {

@@ -11,7 +11,7 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@semicoder/malatang-sdk/ui";
+} from "@semicoder/fn-sdk/ui";
 import {
   colorThemeSchema,
   contrast,

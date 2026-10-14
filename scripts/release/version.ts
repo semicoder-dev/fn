@@ -9,4 +9,4 @@ assert(difference >= 0 && parts[difference]! > current[difference]!, "Version mu
 assert(Number.isSafeInteger(config.build + 1), "Build number exhausted");
 await writeFile(new URL("package.json", `file://${root}`), JSON.stringify({ ...pkg, version }, null, 2) + "\n");
 await writeFile(new URL("release/config.json", `file://${root}`), JSON.stringify({ ...config, build: config.build + 1 }, null, 2) + "\n");
-console.log(`Malatang ${version}, build ${config.build + 1}. Commit both files before tagging v${version}.`);
+console.log(`fn ${version}, build ${config.build + 1}. Commit both files before tagging v${version}.`);

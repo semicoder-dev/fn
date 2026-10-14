@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { z } from "@semicoder/fia/api";
 import { run, themeMode } from "../shared/api";
 import { colorThemeSchema, defaultColorTheme } from "../shared/theme";
-import type { JSONValue } from "@semicoder/malatang-sdk/types";
+import type { JSONValue } from "@semicoder/fn-sdk/types";
 import { migratePresetModel } from "./model-migrations";
 
 import { marketBinding, marketRecord, defaultMarkets } from "../shared/marketplace";

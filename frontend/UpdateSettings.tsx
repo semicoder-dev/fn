@@ -1,4 +1,4 @@
-import { Alert, Button, PageHeader, Panel } from "@semicoder/malatang-sdk/ui";
+import { Alert, Button, PageHeader, Panel } from "@semicoder/fn-sdk/ui";
 import React, { useEffect, useRef, useState } from "react";
 import { native, type UpdateState } from "@semicoder/fia/client";
 

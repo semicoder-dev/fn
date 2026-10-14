@@ -19,7 +19,7 @@ function sdkStyles(): Plugin {
     return pending;
   };
   return {
-    name: "malatang-sdk-styles",
+    name: "fn-sdk-styles",
     buildStart: rebuild,
     configureServer(server) {
       server.watcher.add(source);

@@ -13,7 +13,7 @@ afterEach(async () => {
   for (const cleanup of cleanups.splice(0)) await cleanup();
 });
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), "malatang-start-"));
+  const root = await mkdtemp(join(tmpdir(), "fn-start-"));
   cleanups.push(() => rm(root, { recursive: true, force: true }));
   const dataDirectory = join(root, "data");
   const codeDirectory = join(root, "code");

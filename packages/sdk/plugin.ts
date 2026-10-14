@@ -23,13 +23,13 @@ export async function checkPlugin(directory: string) {
     !/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(pkg.version)
   )
     throw new Error("package name/version 无效");
-  if (pkg.malatang?.sdkVersion !== "0.3") throw new Error("插件需要 SDK 0.3，请更新清单并重新构建");
-  const manifest = manifestSchema.parse(pkg.malatang);
+  if (pkg.fn?.sdkVersion !== "0.3") throw new Error("插件需要 SDK 0.3，请更新清单并重新构建");
+  const manifest = manifestSchema.parse(pkg.fn);
   await safeFile(root, "src/client.tsx");
   const backendExists = await Bun.file(join(root, "src/backend.ts")).exists();
   if (Boolean(manifest.backend) !== backendExists)
     throw new Error("src/backend.ts 与 manifest.backend 必须同时声明或省略");
-  const diagnostics = await checkStyles(root, pkg.malatangStyleExceptions ?? {});
+  const diagnostics = await checkStyles(root, pkg.fnStyleExceptions ?? {});
   for await (const name of new Bun.Glob("src/**/*.{ts,tsx}").scan({ cwd: root })) {
     await safeFile(root, name);
     const source = await Bun.file(join(root, name)).text();
@@ -38,7 +38,7 @@ export async function checkPlugin(directory: string) {
     for (const match of source.matchAll(/(?:from\s*|import\s*\(?\s*)["']([^"']+)["']/g)) {
       const specifier = match[1]!;
       if (
-        /^(radix-ui|@radix-ui\/|@base-ui\/|lucide-react|@semicoder\/malatang-sdk\/(?:src\/|theme\.css|ui\.css))/.test(
+        /^(radix-ui|@radix-ui\/|@base-ui\/|lucide-react|@semicoder\/fn-sdk\/(?:src\/|theme\.css|ui\.css))/.test(
           specifier,
         )
       )
@@ -59,10 +59,10 @@ export async function checkPlugin(directory: string) {
   let compiler: string;
   try {
     compiler = join(dirname(require.resolve("typescript/package.json")), "bin/tsc");
-    require.resolve("@semicoder/malatang-sdk/plugin");
+    require.resolve("@semicoder/fn-sdk/plugin");
   } catch {
     throw new Error(
-      "缺少项目依赖；请在项目目录运行 bun install --ignore-scripts（需要 typescript 和 @semicoder/malatang-sdk）",
+      "缺少项目依赖；请在项目目录运行 bun install --ignore-scripts（需要 typescript 和 @semicoder/fn-sdk）",
     );
   }
   // Compiler diagnostics go to stderr, leaving stdout available for --json.
@@ -92,7 +92,7 @@ export async function checkPlugin(directory: string) {
 export async function buildCheckedPlugin(directory: string) {
   const root = resolve(directory);
   const pkg = await Bun.file(join(root, "package.json")).json();
-  if (!pkg.malatang) throw new Error("此目录不是麻辣烫插件项目");
+  if (!pkg.fn) throw new Error("此目录不是fn插件项目");
   try {
     const checked = await checkPlugin(root);
     await buildPlugin(root);
@@ -116,7 +116,7 @@ async function verifyDist(root: string, manifest: ReturnType<typeof manifestSche
 }
 export async function packPlugin(directory: string) {
   const { root, pkg, manifest } = await buildCheckedPlugin(directory);
-  const temporary = await mkdtemp(join(tmpdir(), "malatang-pack-"));
+  const temporary = await mkdtemp(join(tmpdir(), "fn-pack-"));
   const archive = join(root, `${manifest.id}-${pkg.version}.tgz`);
   // Own the package layout: no scripts, SDK dependency, source or local paths shipped to users.
   try {
@@ -126,7 +126,7 @@ export async function packPlugin(directory: string) {
     await Bun.write(
       join(packed, "package.json"),
       JSON.stringify(
-        { name: pkg.name, version: pkg.version, type: "module", malatang: manifest },
+        { name: pkg.name, version: pkg.version, type: "module", fn: manifest },
         null,
         2,
       ),
@@ -138,7 +138,7 @@ export async function packPlugin(directory: string) {
     await execute(["tar", "-xzf", staged, "-C", unpacked], root, true);
     const extracted = join(unpacked, "package");
     const receipt = await Bun.file(join(extracted, "package.json")).json();
-    await verifyDist(extracted, manifestSchema.parse(receipt.malatang));
+    await verifyDist(extracted, manifestSchema.parse(receipt.fn));
     for await (const name of new Bun.Glob("dist/**/*").scan({ cwd: root, onlyFiles: true })) {
       if (
         !Buffer.from(await Bun.file(join(root, name)).arrayBuffer()).equals(
@@ -168,7 +168,7 @@ export async function runPluginTool(
     }
     const command = args[0];
     if (!["create", "check", "build", "pack"].includes(command!))
-      throw new Error("未知 plugin 命令；运行 malatang plugin --help");
+      throw new Error("未知 plugin 命令；运行 fn plugin --help");
     const positional: string[] = [];
     const flags: Record<string, string> = {};
     for (let index = 1; index < args.length; index++) {
@@ -192,7 +192,7 @@ export async function runPluginTool(
     let result: unknown;
     if (command === "create") {
       if (!options.sdkArchive)
-        throw new Error("请通过 malatang plugin create 创建项目以获得 SDK 快照");
+        throw new Error("请通过 fn plugin create 创建项目以获得 SDK 快照");
       result = await createPlugin(root, {
         template: flags["--template"],
         id: flags["--id"],

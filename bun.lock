@@ -3,11 +3,11 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "malatang",
+      "name": "fn",
       "dependencies": {
         "@earendil-works/pi-ai": "1.0.2",
         "@semicoder/fia": "workspace:*",
-        "@semicoder/malatang-sdk": "workspace:*",
+        "@semicoder/fn-sdk": "workspace:*",
         "jose": "^6",
         "react": "19.2.7",
         "react-dom": "19.2.7",
@@ -46,7 +46,7 @@
       },
     },
     "packages/sdk": {
-      "name": "@semicoder/malatang-sdk",
+      "name": "@semicoder/fn-sdk",
       "version": "0.3.2",
       "dependencies": {
         "@base-ui/react": "^1.9.0",
@@ -385,7 +385,7 @@
 
     "@semicoder/fia": ["@semicoder/fia@workspace:framework/fia/packages/cli"],
 
-    "@semicoder/malatang-sdk": ["@semicoder/malatang-sdk@workspace:packages/sdk"],
+    "@semicoder/fn-sdk": ["@semicoder/fn-sdk@workspace:packages/sdk"],
 
     "@smithy/core": ["@smithy/core@3.35.1", "", { "dependencies": { "@smithy/types": "^4.19.0", "tslib": "^2.6.2" } }, "sha512-i4YPS4B6ts7bjn7UwLnGjiZdprOvHvgGobFZsYK3GIY3E5hIqtj0rReU69BcTpGp+fvtraSNXeG1l+jtJvF55w=="],
 
