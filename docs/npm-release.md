@@ -35,6 +35,8 @@
 
 2026-10-15 只读预检：当前账号在 `@semicoder` 组织为 owner；旧包 `@semicoder/malatang-sdk` 的连接为 `semicoder-dev/malatang` / `publish-npm.yml` / `npm`，状态 Valid。新包 registry 返回 404；本机 `npm whoami` 返回 401，浏览器验证不恢复 CLI 认证，也不验证新包 OIDC。发行时需恢复认证并按上述步骤独立验收；本轮未改配置或创建包。
 
+同日按用户继续授权完成 CLI 网页登录后，`npm whoami` 与 `npm org ls semicoder --json` 已确认账号及 owner 权限，npm 配置文件权限 0600。GitHub CLI 凭证保存于系统 keyring，两仓 admin 权限通过；在仍继承失效环境 token 的当前会话，使用 `env -u GH_TOKEN -u GITHUB_TOKEN gh ...`（Git 命令同理）读取新凭证。新 SDK 的 OIDC 仍未配置或验证，认证恢复不触发发布。
+
 工作流采用 OIDC，使用 Node 24、npm 11.19.0、Bun 1.4.3。只有 publish job 申请 `id-token: write`，不配置 `NPM_TOKEN` / `NODE_AUTH_TOKEN`。仅目标仓库的 SDK 标签可以进入发布 job；手动验收不需要 npm 认证。公开包、公开仓库经 OIDC 发布时 npm 自动生成 provenance。依据：[npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/)。
 
 ## 本地验收
