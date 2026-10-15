@@ -29,3 +29,14 @@ assert(
   ).includes("--m-bg"),
 );
 console.log("Standalone SDK imports, schema validation and frontend/backend builds passed");
+
+
+const webFixture = {
+  id: "web", pluginId: "smoke", kind: "search", status: "completed",
+  result: { text: "archive network API", results: [], engines: [] }, error: null,
+  createdAt: 1, updatedAt: 1,
+};
+Object.assign(globalThis, { __FN_BRIDGE__: {
+  call: async () => webFixture, on: () => () => {}, onReconnect: () => () => {},
+} });
+assert.equal((await createPluginClient("smoke").web.search({ query: "archive" })).text, "archive network API");

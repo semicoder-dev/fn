@@ -1,3 +1,5 @@
+import type { WebClient } from "./web";
+export type { WebClient, WebOptions, WebTask, WebEngine, WebSource, WebSearchInput, WebFetchInput, WebSearchResult, WebFetchResult } from "./web";
 export type JSONValue =
   | null
   | boolean
@@ -110,6 +112,7 @@ export interface InstallJob {
 
 export interface PluginContext {
   readonly pluginId: string;
+  web: WebClient;
   models: { list(): ModelInfo[]; start(input: ModelRequest): Promise<ModelRun> };
   kv: {
     get(key: string): JSONValue | null;

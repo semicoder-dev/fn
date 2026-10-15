@@ -197,3 +197,30 @@ await buildPlugin(".");
 ### 自定义主题继承
 
 宿主可在运行时覆盖 `--m-*` 配色，分别保存浅色和深色主题；`theme.css` 提供默认值，`tailwind.css` 的语义工具类引用这些变量。SDK 组件、插件页面及同作用域 Portal 自动继承，不需重新构建。插件不得重定义主题 token；固定品牌色和数据颜色仍使用明确的样式例外。主题设置和预览由宿主管理，原生标题栏只跟随明暗模式。
+
+## 网络工具（开发源码，尚未发布）
+
+公开 SDK 0.3.4 / 应用 0.4.4 不包含本节接口。需要本次开发宿主和配套 SDK；已有插件 API 与 manifest 0.3 保持兼容。
+
+```ts
+const controller = new AbortController();
+const search = await client.web.search(
+  { query: "Bun runtime", engines: ["duckduckgo"], limit: 5 },
+  { signal: controller.signal },
+);
+const page = await client.web.fetch(
+  { url: "https://example.com", format: "markdown", maxBytes: 100_000 },
+  { signal: controller.signal },
+);
+// 用户取消、组件卸载时调用 controller.abort()。
+```
+
+后端 `PluginContext.web.search/fetch` 接受相同参数并直接等待结果。前端 SDK 封装后台任务、订阅、重连重读与每秒轮询兜底；已取得任务 ID 后，查询和取消的连接异常会重试，最多等待 150 秒；`AbortSignal` 实际取消宿主网络请求，已发起请求不会因重连自动重发。页面卸载时由插件主动 abort。
+
+搜索输入：query（1–4000 字符）、engines（baidu/wechat/toutiao/duckduckgo，默认全部，不重复）、limit（1–30，默认 10）、timeRange（day/week/month/year）、site、timeoutMs（每引擎默认 3000，最大 120000）。结果保留 text、results 和各引擎 engines 状态；全部引擎失败仍返回逐引擎状态，不能把空结果等同于没有相关网页。
+
+抓取输入：url（HTTP(S)、不含凭证、最长 2000）、format（markdown/text/html，默认 markdown）、maxBytes（默认 100000，最大 1000000）、timeoutMs（每请求默认 30000，最大 120000）。结果含 url、finalUrl、status、contentType、title、format、text、truncated 和可选 redirect。HTTP 错误页保留状态及正文，跨域跳转需要调用者显式决定后续抓取；HTTP 地址会升级到 HTTPS。静态网页抓取不执行页面 JavaScript，不复用浏览器登录状态。
+
+每次调用独立编号，不跨调用累计来源；没有会话 API 或持久化网络历史。宿主最多并发 8 项，单任务总时限 120 秒；完整 JSON 结果最多 256 KiB（含转义和元数据，独立于 maxBytes），超限拒绝并提供 code="result_too_large"。任务失败通过带 code 的 Error 返回，主动取消为 AbortError。完成任务最多在内存保留 32 条/10 分钟，重启清空；需要长期保存时由插件自行保存。
+
+网络任务运行时阻止对应插件停用、更新、卸载和应用更新；退出应用会取消任务。宿主 API 为 web.search/web.fetch（`{ pluginId, input }` → WebTask）、web.get/web.cancel（`{ pluginId, taskId }` → WebTask），事件 web.changed 只携带标识和状态，需重读结果。首次启动回复丢失时 SDK 报连接错误、不重复提交；未取得 ID 的任务由宿主总时限回收。

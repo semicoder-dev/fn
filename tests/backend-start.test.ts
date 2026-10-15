@@ -1,3 +1,4 @@
+import { registerFixture } from "./plugin-fixture";
 import { afterEach, expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -186,4 +187,26 @@ test("backend account edits use only the credential file and expose no tokens or
   });
   expect(f.keychainCalls).toBe(0);
   expect(JSON.stringify(f.events)).not.toContain("oaiapp_fixture");
+});
+
+
+test("web shared API returns tasks, enforces plugin ownership and keeps network results out of persistence", async () => {
+  const f = await fixture();
+  const store = new Store(f.dataDirectory); await store.open();
+  await registerFixture(store, join(f.dataDirectory, "web-fixture"));
+  await registerFixture(store, join(f.dataDirectory, "other-fixture"), { id: "other" });
+  await f.start();
+  const before = await Bun.file(join(f.dataDirectory, "platform.json")).text();
+  await expect(f.call("web.search", { pluginId: "missing", input: { query: "test" } })).rejects.toThrow();
+  const task = await f.call("web.fetch", { pluginId: "translate", input: { url: "https://127.0.0.1" } }) as { id: string };
+  await expect(f.call("web.get", { pluginId: "other", taskId: task.id })).rejects.toThrow("不存在");
+  await expect(f.call("web.cancel", { pluginId: "other", taskId: task.id })).rejects.toThrow("不存在");
+  let current: unknown;
+  for (let i = 0; i < 100; i++) {
+    current = await f.call("web.get", { pluginId: "translate", taskId: task.id });
+    if ((current as { status: string }).status !== "running") break;
+    await Bun.sleep(1);
+  }
+  expect(current).toMatchObject({ status: "failed", error: { code: "private_address" } });
+  expect(await Bun.file(join(f.dataDirectory, "platform.json")).text()).toBe(before);
 });

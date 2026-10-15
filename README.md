@@ -98,3 +98,9 @@ bun run npm:pack
 日常不升版本或 build，改动归集到[待发布清单](release/notes/unreleased.md)。仅明确要求发布时准备新版本，应用 `v*`、SDK `sdk-v*`、官方插件和官网分别验收；不复用历史标签。
 
 两个 GitHub 仓库更名、SDK 0.3.4、官方插件 0.1.2、市场索引及应用 0.4.4 均已公开验收。官网按同批产物同步，部署独立验收。新应用身份需要独立更新站状态，不读取旧身份清单。完整流程见[应用发布说明](docs/github-release.md)和[SDK 发布说明](docs/npm-release.md)。FIA 独立 npm 在共仓期间继续暂停。
+
+## 网络工具开发进度（未发布）
+
+本分支新增插件前后端 `web.search/fetch` 与宿主后台任务 API，详见 [SDK 网络工具](packages/sdk/README.md#网络工具开发源码尚未发布)。每次调用独立来源编号，支持取消，不保存网络历史。公开应用 0.4.4 / SDK 0.3.4 尚不含这些接口。
+
+后端消费 `vendor/agent-webtool/snapshot.json` 所标记的未发布固定归档；归档、源码指纹、SHA-256 与锁文件纳入本仓库，安装和构建不读取相邻项目。`bun run webtool:check` 校验归档，`check/build` 自动执行；开发维护者显式运行 `bun scripts/webtool-snapshot.ts --refresh ../agent-webtool` 才会重建并独立验收上游归档，随后运行 `bun install` 更新锁文件。正式发行前切换到验收过的精确 npm 版本，本次没有自动发布。

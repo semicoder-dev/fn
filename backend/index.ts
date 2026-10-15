@@ -1,3 +1,4 @@
+import { WebTools } from "./web";
 import { defineBackend, implementAPI } from "@semicoder/fia/backend";
 import { ChatGPT } from "./chatgpt";
 import { ChatGPTStorage } from "./chatgpt-storage";
@@ -16,8 +17,13 @@ let appearance: Appearance;
 let models: Models;
 let plugins: Plugins;
 let markets: Marketplaces;
+let web: WebTools;
 export default defineBackend({
   api: implementAPI(api, {
+    "web.search": ({ pluginId, input }) => plugins.use(pluginId, () => web.start(pluginId, "search", input)),
+    "web.fetch": ({ pluginId, input }) => plugins.use(pluginId, () => web.start(pluginId, "fetch", input)),
+    "web.get": ({ pluginId, taskId }) => { plugins.get(pluginId); return web.get(pluginId, taskId); },
+    "web.cancel": ({ pluginId, taskId }) => { plugins.get(pluginId); return web.cancel(pluginId, taskId); },
     "appearance.get": () => appearance.get(),
     "appearance.set": (input) => appearance.set(input),
     "chatgpt.status": () => chatgpt.status(),
@@ -132,11 +138,14 @@ export default defineBackend({
       chatgpt,
     );
     markets = new Marketplaces(store, () => emit("marketplaces.changed", { revision: ++revision }));
+    web = new WebTools(({ pluginId, id, kind, status }) => emit("web.changed", { pluginId, id, kind, status }));
     plugins = new Plugins(
       store,
       models,
       () => emit("plugins.changed", { revision: ++revision }),
       markets,
+      fetch,
+      web,
     );
     await plugins.open();
     const mode = app.mode;
@@ -151,10 +160,11 @@ export default defineBackend({
     await native.windows.setTitlebar({ id: "main", items: [] });
   },
   beforeUpdate: () => ({
-    ready: !models.busy() && !plugins.busy() && !chatgpt.busy(),
-    reason: "模型、插件或登录任务正在运行",
+    ready: !models.busy() && !plugins.busy() && !chatgpt.busy() && !web.busy(),
+    reason: "模型、网络、插件或登录任务正在运行",
   }),
   async stop() {
+    await web?.stop();
     await chatgpt?.stop();
     await models?.stop();
     await markets?.stop();

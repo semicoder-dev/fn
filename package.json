@@ -12,7 +12,7 @@
     "dev": "bun run sdk:snapshot && bun framework/fia/tools/develop-app.ts .",
     "agent": "fia agent",
     "run": "bun run sdk:snapshot && bun framework/fia/tools/application-command.ts run",
-    "build": "bun run sdk:snapshot && bun framework/fia/tools/application-command.ts build",
+    "build": "bun run webtool:check && bun run sdk:snapshot && bun framework/fia/tools/application-command.ts build",
     "release": "bun run sdk:snapshot && bun framework/fia/tools/application-command.ts release",
     "release:update": "bun framework/fia/tools/application-command.ts release --update",
     "version:app": "bun scripts/release/version.ts",
@@ -20,7 +20,7 @@
     "npm:check": "bun scripts/npm/check.ts",
     "npm:pack": "bun run sdk:styles && bun scripts/npm/pack.ts",
     "release:check": "bun scripts/release/check.ts",
-    "check": "bun run framework:check && bun run styles:check && bun run sdk:snapshot && fia check",
+    "check": "bun run webtool:check && bun run framework:check && bun run styles:check && bun run sdk:snapshot && fia check",
     "test": "bun test ./tests",
     "sdk:snapshot": "bun run sdk:styles && bun scripts/sdk-snapshot.ts",
     "styles:check": "bun scripts/check-styles.ts",
@@ -28,7 +28,8 @@
     "framework:check": "bun framework/fia/tools/task.ts check",
     "framework:pack": "bun framework/fia/tools/task.ts pack",
     "framework:verify": "bun framework/fia/tools/verify-standalone.ts",
-    "sdk:styles": "bun packages/sdk/styles.ts"
+    "sdk:styles": "bun packages/sdk/styles.ts",
+    "webtool:check": "bun scripts/webtool-snapshot.ts"
   },
   "dependencies": {
     "@earendil-works/pi-ai": "1.0.2",
@@ -36,7 +37,8 @@
     "@semicoder/fn-sdk": "workspace:*",
     "jose": "^6",
     "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react-dom": "19.2.7",
+    "agent-webtool": "file:vendor/agent-webtool/agent-webtool-0.8.0-fn.dev1718dd4499f7.tgz"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

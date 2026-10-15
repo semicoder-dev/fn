@@ -1,3 +1,4 @@
+import { webFetchInput, webSearchInput, webTask, webChange } from "./web";
 import { defineAPI, z } from "@semicoder/fia/api";
 import { chatGPTStatus, chatGPTModel, chatGPTLabel } from "./chatgpt";
 import { appearanceSchema as appearance, appearanceUpdate } from "./theme";
@@ -102,6 +103,22 @@ const empty = z.strictObject({});
 const selection = z.strictObject({ pluginId, runId: z.string() });
 export default defineAPI({
   methods: {
+    "web.search": {
+      description: "Start an independent web search. Returns a short-lived task; read web.get for results.",
+      input: z.strictObject({ pluginId, input: webSearchInput }), output: webTask,
+    },
+    "web.fetch": {
+      description: "Start an independent page fetch. HTTP error pages and redirects retain structured metadata.",
+      input: z.strictObject({ pluginId, input: webFetchInput }), output: webTask,
+    },
+    "web.get": {
+      description: "Read a plugin-owned network task. Results expire after 10 minutes or capacity eviction.",
+      input: z.strictObject({ pluginId, taskId: z.string() }), output: webTask,
+    },
+    "web.cancel": {
+      description: "Cancel a plugin-owned network task and wait for its terminal state.",
+      input: z.strictObject({ pluginId, taskId: z.string() }), output: webTask,
+    },
     "appearance.get": {
       description: "Read the saved application theme preference.",
       input: empty,
@@ -323,6 +340,9 @@ export default defineAPI({
     },
   },
   events: {
+    "web.changed": {
+      description: "A network task changed. Reread web.get; notifications have no replay.", payload: webChange,
+    },
     "appearance.changed": {
       description: "Theme preference changed. Reread appearance.get on reconnect.",
       payload: appearance,
