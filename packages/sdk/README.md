@@ -1,8 +1,8 @@
 # fn SDK
 
-本地开发、尚未发布。包名为 `@semicoder/fn-sdk`，源码版本保持 0.3.2，manifest `sdkVersion` 保持 `0.3`。仅适用于 fn 宿主，不支持旧包名、清单字段或运行时全局标识。使用 Base UI 1.9 + Tailwind CSS 4.3；CLI 随应用携带固定 SDK 归档，创建的项目可独立开发。
+包名为 `@semicoder/fn-sdk`，manifest `sdkVersion` 为 `0.3`。仅适用于 fn 宿主，不支持旧包名、清单字段或运行时全局标识。使用 Base UI 1.9 + Tailwind CSS 4.3；CLI 随应用携带固定 SDK 归档，创建的项目可独立开发。
 
-应用、SDK 和官网分别发布；当前可使用本地 SDK 归档，不能将版本号视为 npm 已发布证据。
+应用、SDK 和官网分别发布；npm 包版本见当前 package.json。开发时也可使用经过校验的 SDK 归档，宿主安装与版本状态见[官网安装页](https://semicoder.dev/fn/docs/installation)。
 
 ## 一个插件包
 
