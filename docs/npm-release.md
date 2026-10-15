@@ -1,14 +1,20 @@
 # fn SDK npm 发布
 
-`@semicoder/fn-sdk` 首次发行进行中。0.3.3 完整归档已通过本地及 GitHub 验收，并由维护者认证提交 npm；公开分发与独立消费仍须核实。当前 0.3.4 为后续真实 OIDC 候选，manifest 保持 0.3。仓库已更名为 `semicoder-dev/fn`，源码在 `packages/sdk`；应用与 SDK 独立发版。
+`@semicoder/fn-sdk@0.3.4` 已公开，manifest 保持 0.3。仓库为 `semicoder-dev/fn`，源码在 `packages/sdk`；应用与 SDK 独立发版。
 
-2026-10-15 用户已授权本次发行。首发候选 `edfeeb7` 的 [手动验收 38687233141](https://github.com/semicoder-dev/fn/actions/runs/38687233141) 成功，43 文件归档与本地逐字节一致，SHA-256 `721c8f22fe6e3df527a7d23579ad695f892ae05e22e34ca8439e98bda79e85a9`。新 Trusted Publisher 已通过 npm CLI 创建并回读确认：仓库 `semicoder-dev/fn`、工作流 `publish-npm.yml`、环境 `npm`，仅允许 publish / stage publish；npm 环境仅追加精确 `sdk-v0.3.4`，其余保护保留。配置成功不代表 OIDC 已实测，正式标签发布结果另记。
+## 2026-10-15 新包首发与真实 OIDC
+
+- 首次完整 SDK 0.3.3 由维护者认证发布，来源 `edfeeb7c16b5c90328f4223a0c01001762955687`，[手动验收 38687233141](https://github.com/semicoder-dev/fn/actions/runs/38687233141) 成功。归档 SHA-256 `721c8f22fe6e3df527a7d23579ad695f892ae05e22e34ca8439e98bda79e85a9`，公开包与本地/CI 一致，独立消费通过；未创建重复发布的 sdk-v0.3.3 标签。
+- 新 Trusted Publisher 指向 `semicoder-dev/fn` / `publish-npm.yml` / `npm`，只允许 publish / stage publish，不允许 dist-tag 修改；npm 环境仅追加精确 `sdk-v0.3.4`，其他保护保留。`sdk-v0.3.4` 固定 `38c93301fccf07bc6e979b062cb8d6c21bc36022`，[真实 OIDC 38689178626](https://github.com/semicoder-dev/fn/actions/runs/38689178626) 成功，已满足新连接首次成功验证。
+- npm latest 为 0.3.4，SHA-256 `255abaa94ef839a57810e7ce9aad87c873cd9578430fd9b427c7994cf901cbf5` 与 CI/本地逐字节一致；provenance 的归档摘要、仓库、工作流、标签和提交均已核对。新缓存 registry 安装、notes/model 创建/检查/构建/打包、runtime/UI/backend 与旧 manifest 拒绝通过。
+- npm 在首次处理完整归档时生成了 `0.0.0-stage` 服务占位记录；本次没有执行 staged publish，也没有以占位内容代替 SDK。该记录不是 SDK 安装入口，正式 latest 为 0.3.4。
+- 官方插件已切换精确公开 0.3.4，旧 vendor 快照只作历史证据。应用 0.4.4 内嵌 SDK 展开的 43 个文件与公开包一致。官网按同批产物同步，部署单独验收。
 
 ## 首次发行前置条件
 
 先完成 GitHub 仓库更名并核对新包名可用性和发布权限，为新包配置指向 `semicoder-dev/fn` / `publish-npm.yml` / `npm` 的 Trusted Publisher。既有旧包的 OIDC 成功记录不能证明新包已配置。不要复用或移动已经公开的 `sdk-v0.3.2` 标签；发布时确定尚未使用的新版本。
 
-官方插件本地独立消费 `vendor/fn-sdk.tgz`，以归档的来源和 SHA-256 为证。新 npm 包正式发布并独立验收后，插件仓库再改用固定 npm 版本并重新生成锁文件。不得将尚未发布的新包写成默认 registry 安装教程。
+首次发布前官方插件使用固定 vendor 快照；新包独立验收后已切换固定 npm 0.3.4 并更新锁文件。后续版本同样先验收公开产物，再更新默认安装教程。
 
 ## 首次配置
 
@@ -35,7 +41,7 @@
 
    新连接须在创建后两天内完成首次成功发布，否则过期。安排后续尚未发布的 SDK 版本和精确标签许可后再创建连接；首次手动发布的版本不能再次通过 OIDC 发布。新连接未真实成功前，不将旧包的 Valid 状态作为新包发行证据。官方支持 staged publishing 创建新包，但该操作会公开 `0.0.0-stage` 占位版本，不属于只读预检；当前流程仍发布已验收的完整 SDK 归档，不自动改用占位方案。依据：[Trusted Publisher 有效期](https://docs.npmjs.com/trusted-publishers/#trusted-publisher-configuration-expiry)、[Staged publishing](https://docs.npmjs.com/staged-publishing)。
 
-2026-10-15 只读预检：当前账号在 `@semicoder` 组织为 owner；旧包 `@semicoder/malatang-sdk` 的连接为 `semicoder-dev/malatang` / `publish-npm.yml` / `npm`，状态 Valid。新包 registry 返回 404；本机 `npm whoami` 返回 401，浏览器验证不恢复 CLI 认证，也不验证新包 OIDC。发行时需恢复认证并按上述步骤独立验收；本轮未改配置或创建包。
+2026-10-15 首发前只读预检（以下两段为历史阶段）：当前账号在 `@semicoder` 组织为 owner；旧包 `@semicoder/malatang-sdk` 的连接为 `semicoder-dev/malatang` / `publish-npm.yml` / `npm`，状态 Valid。新包 registry 返回 404；本机 `npm whoami` 返回 401，浏览器验证不恢复 CLI 认证，也不验证新包 OIDC。发行时需恢复认证并按上述步骤独立验收；本轮未改配置或创建包。
 
 同日按用户继续授权完成 CLI 网页登录后，`npm whoami` 与 `npm org ls semicoder --json` 已确认账号及 owner 权限，npm 配置文件权限 0600。GitHub CLI 凭证保存于系统 keyring，两仓 admin 权限通过；在仍继承失效环境 token 的当前会话，使用 `env -u GH_TOKEN -u GITHUB_TOKEN gh ...`（Git 命令同理）读取新凭证。新 SDK 的 OIDC 仍未配置或验证，认证恢复不触发发布。
 
@@ -65,7 +71,7 @@ bun run npm:pack
 
 ## 后续发布
 
-以下为下一 SDK 版本的操作示例（先配置并验证 OIDC）：
+以下为下一 SDK 版本的操作示例（核对当前 Trusted Publisher 与精确标签权限）：
 
 ```sh
 bun run version:sdk <尚未发布的新版本>
