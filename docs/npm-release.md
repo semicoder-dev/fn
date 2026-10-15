@@ -25,11 +25,15 @@
 
    | 字段                 | 值                                                                    |
    | -------------------- | --------------------------------------------------------------------- |
-   | Organization or user | `semicoder-dev`                                                            |
-   | Repository           | `fn`                                                            |
+   | Organization or user | `semicoder-dev`                                                       |
+   | Repository           | `fn`                                                                  |
    | Workflow filename    | `publish-npm.yml`                                                     |
    | Environment name     | `npm`                                                                 |
    | Allowed actions      | `npm publish` 及 npm 必需的 `npm stage publish`；不允许 dist-tag 修改 |
+
+   新连接须在创建后两天内完成首次成功发布，否则过期。安排后续尚未发布的 SDK 版本和精确标签许可后再创建连接；首次手动发布的版本不能再次通过 OIDC 发布。新连接未真实成功前，不将旧包的 Valid 状态作为新包发行证据。官方支持 staged publishing 创建新包，但该操作会公开 `0.0.0-stage` 占位版本，不属于只读预检；当前流程仍发布已验收的完整 SDK 归档，不自动改用占位方案。依据：[Trusted Publisher 有效期](https://docs.npmjs.com/trusted-publishers/#trusted-publisher-configuration-expiry)、[Staged publishing](https://docs.npmjs.com/staged-publishing)。
+
+2026-10-15 只读预检：当前账号在 `@semicoder` 组织为 owner；旧包 `@semicoder/malatang-sdk` 的连接为 `semicoder-dev/malatang` / `publish-npm.yml` / `npm`，状态 Valid。新包 registry 返回 404；本机 `npm whoami` 返回 401，浏览器验证不恢复 CLI 认证，也不验证新包 OIDC。发行时需恢复认证并按上述步骤独立验收；本轮未改配置或创建包。
 
 工作流采用 OIDC，使用 Node 24、npm 11.19.0、Bun 1.4.3。只有 publish job 申请 `id-token: write`，不配置 `NPM_TOKEN` / `NODE_AUTH_TOKEN`。仅目标仓库的 SDK 标签可以进入发布 job；手动验收不需要 npm 认证。公开包、公开仓库经 OIDC 发布时 npm 自动生成 provenance。依据：[npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/)。
 
