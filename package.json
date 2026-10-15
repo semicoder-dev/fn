@@ -1,6 +1,6 @@
 {
   "name": "fn",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "private": true,
   "homepage": "https://semicoder.dev/fn",
   "workspaces": [

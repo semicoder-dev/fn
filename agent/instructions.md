@@ -27,4 +27,4 @@ Events have no replay. Read snapshots initially and after reconnecting. After an
 
 fn 仅接受 @semicoder/fn-sdk、fn 清单字段及 SDK 0.3 契约；旧名称不兼容。当前应用、SDK 与官方市场尚未以新名称发布，使用本地源码及归档，本地版本字符串不能代替发行证据。
 
-The marketplace API and removal of bundled plugins are local, unreleased changes. marketplaces.changed and plugins.changed have no replay. A failed source retains its cached index for browsing, but installing/updating requires fresh verification. The default official source is not yet published; do not report local candidate archives as available online.
+marketplaces.changed and plugins.changed have no replay. A failed source retains its cached index for browsing, but installing/updating requires fresh verification. The official source is maintained in semicoder-dev/fn-plugins and lists only verified public archives; local candidate archives are not published plugins.

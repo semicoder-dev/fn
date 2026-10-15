@@ -2,9 +2,9 @@
 
 基于 FIA 的本地插件应用平台。宿主提供模型、存储和统一界面组件，独立插件组合这些能力，拥有自己的应用页面。
 
-**本地开发、尚未发布。** 本次从 malatang 更名为 fn，应用源码保持 **0.4.3 / build 7**、SDK 保持 **0.3.2 / manifest 0.3**，这些版本号不代表新名称的产物已公开。历史发行见[应用发布记录](docs/github-release.md)和[旧 SDK 发行证据](docs/npm-release.md)。不提供旧名称兼容或数据迁移，不读取或删除旧应用数据。
+本次从 malatang 更名为 fn，当前发行候选为 **0.4.4 / build 8**，内嵌 **SDK 0.3.4 / manifest 0.3**。应用、SDK、官方插件和官网分别验收，实际公开结果见[应用发布记录](docs/github-release.md)和[SDK 发行证据](docs/npm-release.md)。不提供旧名称兼容或数据迁移，不读取或删除旧应用数据。
 
-目标官网为 [Semicoder · fn](https://semicoder.dev/fn)，安装入口为其 [/docs/installation](https://semicoder.dev/fn/docs/installation)。新官网、GitHub 仓库名称、npm 包、DMG 和市场尚未上线；当前使用本地源码及插件归档。
+官网为 [Semicoder · fn](https://semicoder.dev/fn)，统一入口为[下载与安装](https://semicoder.dev/fn/docs/installation)。首次发行正在进行；在公开 DMG 验收前使用下方源码构建步骤。
 
 ## 开发运行
 
@@ -35,7 +35,7 @@ bun run build
 
 ## 使用与能力
 
-1. 从独立 `fn-plugins` 仓库构建译文或随手记，使用应用中心的“从地址安装”选择本地 `.tgz`。新官方源尚未发布，本地市场索引为空，宿主不内置插件。
+1. 在应用中心从官方市场自主安装译文或随手记；也可从独立 `fn-plugins` 仓库构建后，通过“从地址安装”选择本地 `.tgz`。市场只上架已验收的公开归档，宿主不内置插件。
 2. 在「设置 → 模型服务」配置 API Key / Token、自定义 OpenAI-compatible 服务，或通过 Continue with ChatGPT 连接订阅账号并添加模型。
 3. 打开译文选择模型、输入文字并生成；随手记使用本地 KV，无需模型。未配置模型时不会生成模拟结果。
 4. 在「设置 → 外观」选择浅色、深色、跟随系统，以及默认、GitHub 或自定义配色；公共 UI 与插件继承主题。

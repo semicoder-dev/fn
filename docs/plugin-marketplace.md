@@ -1,6 +1,6 @@
-# 插件市场（开发中，未发布）
+# 插件市场
 
-宿主不携带或自动安装插件，首次进入应用中心。fn 当前为本地开发、尚未发布，无旧 API 兼容或数据迁移层。官方仓库的本地索引为空，首次发布前通过本地归档安装插件。
+宿主不携带或自动安装插件，首次进入应用中心。fn 仅接受新清单，无旧 API 兼容或数据迁移层。官方仓库通过公开归档验收后更新市场索引，也可通过本地归档安装插件。
 
 ## 使用
 
@@ -12,7 +12,7 @@
 
 ## 静态索引 v1
 
-索引 URL 为无凭证、无片段的 HTTPS 地址；重定向仍须 HTTPS。默认地址为 `https://raw.githubusercontent.com/semicoder-dev/fn-plugins/main/marketplace.json`，仓库与线上索引尚未发布。
+索引 URL 为无凭证、无片段的 HTTPS 地址；重定向仍须 HTTPS。默认地址为 `https://raw.githubusercontent.com/semicoder-dev/fn-plugins/main/marketplace.json`，由独立仓库维护；具体已上架版本以公开索引和发行证据为准。
 
 ```json
 {

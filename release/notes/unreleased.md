@@ -1,6 +1,8 @@
 # 待发布改动
 
-## fn 全面更名（2026-10-14，本地未发布）
+## fn 全面更名（已归集至 0.4.4 候选，待正式验收）
+
+2026-10-15 用户授权依次发行，版本说明见 [0.4.4](0.4.4.md)。以下保留更名阶段的来源与验收事实，正式发布完成后移出待发布清单。
 
 - 来源：应用基线 cc183e1，特性分支 codex/rename-fn；本条随完整更名实现提交，来源可通过本文件 Git 历史定位。应用保持 0.4.3 / build 7，SDK 0.3.2 / manifest 0.3，FIA 0.18.0。
 - 名称与身份：显示名 fn、com.semicoder.fn、fn / fn-dev / fn-preview；包名 @semicoder/fn-sdk、清单 fn、fnStyleExceptions、`__FN_BRIDGE__` / `__FN_MODULES__`；应用/SDK/插件/CI/发布配置全部同步。
