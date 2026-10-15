@@ -9,6 +9,3 @@ resources/plugins/*.tgz
 artifacts/
 resources/sdk/
 *.tgz
-
-# Checked, unpublished development dependency; no sibling checkout required.
-!vendor/agent-webtool/*.tgz

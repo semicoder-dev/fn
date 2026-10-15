@@ -1,6 +1,6 @@
 {
   "name": "@semicoder/fn-sdk",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Model, storage, UI and plugin build SDK for fn",
   "homepage": "https://semicoder.dev/fn",
   "bugs": {
