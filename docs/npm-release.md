@@ -1,6 +1,8 @@
 # fn SDK npm 发布
 
-`@semicoder/fn-sdk` 当前为本地开发、尚未发布；源码版本保持 0.3.2，manifest 为 0.3。目标仓库为 `semicoder-dev/fn`，源码在 `packages/sdk`。应用与 SDK 独立发版，本次不执行发布。
+`@semicoder/fn-sdk` 首次发行进行中。0.3.3 完整归档已通过本地及 GitHub 验收，并由维护者认证提交 npm；公开分发与独立消费仍须核实。当前 0.3.4 为后续真实 OIDC 候选，manifest 保持 0.3。仓库已更名为 `semicoder-dev/fn`，源码在 `packages/sdk`；应用与 SDK 独立发版。
+
+2026-10-15 用户已授权本次发行。首发候选 `edfeeb7` 的 [手动验收 38687233141](https://github.com/semicoder-dev/fn/actions/runs/38687233141) 成功，43 文件归档与本地逐字节一致，SHA-256 `721c8f22fe6e3df527a7d23579ad695f892ae05e22e34ca8439e98bda79e85a9`。新 Trusted Publisher 已通过 npm CLI 创建并回读确认：仓库 `semicoder-dev/fn`、工作流 `publish-npm.yml`、环境 `npm`，仅允许 publish / stage publish；npm 环境仅追加精确 `sdk-v0.3.4`，其余保护保留。配置成功不代表 OIDC 已实测，正式标签发布结果另记。
 
 ## 首次发行前置条件
 
