@@ -209,6 +209,38 @@ test("persistence failure rolls back activated replacement", async () => {
   expect(f.plugins.list()[0]).toMatchObject({ version: "1.0.0", status: "active" });
   f.store.update = update;
 });
+test("installation stays running until rollback is complete and the next job can start", async () => {
+  const f = await setup();
+  const key = `rollback-${crypto.randomUUID()}`;
+  let resume!: () => void;
+  const state = { calls: 0, ready: new Promise<void>((resolve) => { resume = resolve; }) };
+  const globals = globalThis as unknown as Record<string, unknown>;
+  globals[key] = state;
+  try {
+    await f.release("1.0.0", `export default { methods: {}, activate() {
+      const state = globalThis[${JSON.stringify(key)}];
+      if (++state.calls === 2) return state.ready;
+    } }`);
+    f.plugins.installFromMarket(f.market.id, "sample");
+    await f.finish();
+    await f.release("2.0.0", 'export default { methods: {}, activate() { throw Error("rollback"); } }');
+    f.plugins.update("sample");
+    await waitFor(() => state.calls === 2);
+    expect(f.plugins.listJobs()[0]?.status).toBe("installing");
+    expect(f.plugins.busy()).toBe(true);
+    resume();
+    expect((await f.finish()).status).toBe("failed");
+    expect(f.plugins.busy()).toBe(false);
+    await f.release("2.0.0");
+    f.plugins.update("sample");
+    expect((await f.finish()).status).toBe("completed");
+    expect(f.plugins.busy()).toBe(false);
+  } finally {
+    resume();
+    await f.plugins.stop();
+    delete globals[key];
+  }
+});
 test("origin binding prevents cross-market updates and manual installations are never adopted", async () => {
   const f = await setup();
   const { entry, archive } = await f.release("1.0.0");

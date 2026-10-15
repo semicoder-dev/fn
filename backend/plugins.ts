@@ -371,6 +371,7 @@ export class Plugins {
     let old: Loaded | undefined;
     let candidate: Loaded | undefined;
     let switching = false;
+    let finalStatus: "completed" | "failed" = "failed";
     const signal = AbortSignal.any([slot.controller.signal, AbortSignal.timeout(120000)]);
     try {
       await mkdir(installation, { recursive: true });
@@ -472,7 +473,7 @@ export class Plugins {
       committed = true;
       this.web?.clear(plugin.info.id);
       plugin.changing = false;
-      slot.job.status = "completed";
+      finalStatus = "completed";
       slot.job.message = updateId ? "更新完成" : "安装完成，可以从侧栏打开";
       if (
         previous &&
@@ -483,7 +484,6 @@ export class Plugins {
         await rm(previous.installation, { recursive: true, force: true }).catch(() => {});
       await rm(join(installation, "download.tgz"), { force: true }).catch(() => {});
     } catch (error) {
-      slot.job.status = "failed";
       slot.job.message = this.stopping ? "应用关闭，安装已取消" : message(error);
       if (switching && candidate && !committed) {
         await Promise.resolve()
@@ -501,6 +501,9 @@ export class Plugins {
       if (!committed) await rm(installation, { recursive: true, force: true }).catch(() => {});
     } finally {
       this.installation = undefined;
+      // A terminal job must also be ready for the next operation, including
+      // rollback activation and temporary-file cleanup.
+      slot.job.status = finalStatus;
       this.changed();
     }
   }
