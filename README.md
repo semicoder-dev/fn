@@ -2,9 +2,9 @@
 
 基于 FIA 的本地插件应用平台。宿主提供模型、存储和统一界面组件，独立插件组合这些能力，拥有自己的应用页面。
 
-本次从 malatang 更名为 fn，当前发行版本为 **0.4.4 / build 8**，内嵌 **SDK 0.3.4 / manifest 0.3**。应用、SDK、官方插件和官网分别验收，实际公开结果见[应用发布记录](docs/github-release.md)和[SDK 发行证据](docs/npm-release.md)。不提供旧名称兼容或数据迁移，不读取或删除旧应用数据。
+当前发行版本为 **0.4.5 / build 9**，内嵌 **SDK 0.3.5 / manifest 0.3**。应用、SDK、官方插件和官网分别验收，实际公开结果见[应用发布记录](docs/github-release.md)和[SDK 发行证据](docs/npm-release.md)。不提供旧名称兼容或数据迁移，不读取或删除旧应用数据。
 
-官网为 [Semicoder · fn](https://semicoder.dev/fn)，统一入口为[下载与安装](https://semicoder.dev/fn/docs/installation)。0.4.4 完整 DMG 已通过签名、公证和独立安装验收；源码开发见下方步骤。
+官网为 [Semicoder · fn](https://semicoder.dev/fn)，统一入口为[下载与安装](https://semicoder.dev/fn/docs/installation)。0.4.5 完整 DMG 已通过签名、公证和独立安装验收；源码开发见下方步骤。
 
 ## 开发运行
 
@@ -97,7 +97,7 @@ bun run npm:pack
 
 日常不升版本或 build，改动归集到[待发布清单](release/notes/unreleased.md)。仅明确要求发布时准备新版本，应用 `v*`、SDK `sdk-v*`、官方插件和官网分别验收；不复用历史标签。
 
-两个 GitHub 仓库更名、SDK 0.3.4、官方插件 0.1.2、市场索引及应用 0.4.4 均已公开验收。官网按同批产物同步，部署独立验收。新应用身份需要独立更新站状态，不读取旧身份清单。完整流程见[应用发布说明](docs/github-release.md)和[SDK 发布说明](docs/npm-release.md)。FIA 独立 npm 在共仓期间继续暂停。
+网络工具接口已随 SDK 0.3.5 / 应用 0.4.5 发布，精确依赖 agent-webtool 0.8.1。官方插件保持 0.1.2，无需重建；从 0.4.4 升级需要完整 DMG，保留现有 fn 数据。官网按同批产物同步，部署独立验收。新应用身份需要独立更新站状态，不读取旧身份清单。完整流程见[应用发布说明](docs/github-release.md)和[SDK 发布说明](docs/npm-release.md)。FIA 独立 npm 在共仓期间继续暂停。
 
 ## 插件网络工具
 

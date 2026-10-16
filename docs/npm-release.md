@@ -1,6 +1,15 @@
 # fn SDK npm 发布
 
-`@semicoder/fn-sdk@0.3.4` 已公开，manifest 保持 0.3。仓库为 `semicoder-dev/fn`，源码在 `packages/sdk`；应用与 SDK 独立发版。
+`@semicoder/fn-sdk@0.3.5` 已公开，manifest 保持 0.3。仓库为 `semicoder-dev/fn`，源码在 `packages/sdk`；应用与 SDK 独立发版。
+
+## 0.3.5 网络工具发行（2026-10-16）
+
+`sdk-v0.3.5` 固定 `8f38541e6731d847aa806c7ae93ea1985e11678e`，增加前后端 `web.search/fetch`、公开类型及 AbortSignal；需要 fn 0.4.5，manifest 仍为 0.3，已有接口保持兼容。
+
+- [候选归档 38823701388](https://github.com/semicoder-dev/fn/actions/runs/38823701388)、[正式 OIDC 38824246359](https://github.com/semicoder-dev/fn/actions/runs/38824246359) 成功。正式流程首次在宿主安装竞态测试失败、publish 跳过；定位后修复应用并补回归，SDK 内容未变，保留原标签重跑全部检查成功。
+- npm latest 为 0.3.5；公开归档、候选、正式工作流和本地验收归档逐字节一致，SHA-256 `39daa73ac992e9deabce84967c93d7f461eddb2c1e850ade32500c50e23683e6`。SLSA provenance 的包 SHA-512、仓库、标签、提交一致。
+- 全新缓存 registry 安装，SDK 导入、schema、前后端网络 API、notes/model 独立构建通过。服务端 agent-webtool 不作为 SDK 依赖发布。官方插件仍为 0.1.2、固定 SDK 0.3.4，不强制重建。
+- npm 环境仅追加精确 sdk-v0.3.5 许可；保留保护和 Trusted Publisher。npm 处理完成后验收，不移动标签或覆盖归档。应用与官网交付另行记录。
 
 ## 2026-10-15 新包首发与真实 OIDC
 
