@@ -1,3 +1,4 @@
+import ChatMonitor from "./ChatMonitor";
 import React, { useEffect, useState } from "react";
 import type { PluginInfo } from "@semicoder/fn-sdk/types";
 import {
@@ -50,7 +51,13 @@ export default function App() {
   const active = plugins.filter((plugin) => plugin.enabled && plugin.status === "active");
   const selected = active.find((plugin) => plugin.id === page);
   const title =
-    page === "plugins" ? "应用中心" : page === "settings" ? "设置" : (selected?.name ?? "工作台");
+    page === "chat"
+      ? "机器人通信"
+      : page === "plugins"
+        ? "应用中心"
+        : page === "settings"
+          ? "设置"
+          : (selected?.name ?? "工作台");
 
   return (
     <div className="app-shell">
@@ -69,6 +76,14 @@ export default function App() {
           ))}
         </div>
         <div className="activity-tools">
+          <ActivityButton
+            label="机器人通信"
+            aria-current={page === "chat" ? "page" : undefined}
+            className={`activity-button ${page === "chat" ? "active" : ""}`}
+            onClick={() => setPage("chat")}
+          >
+            <span aria-hidden="true">↔</span>
+          </ActivityButton>
           <ActivityButton
             label="应用中心"
             aria-current={page === "plugins" ? "page" : undefined}
@@ -93,6 +108,9 @@ export default function App() {
             暂时无法连接宿主：{error}
           </div>
         )}
+        <PageSlot visible={page === "chat"} keepAlive label="机器人通信">
+          <ChatMonitor visible={page === "chat"} />
+        </PageSlot>
         <PageSlot visible={page === "plugins"} keepAlive label="应用中心">
           <PluginManager plugins={plugins} open={setPage} visible={page === "plugins"} />
         </PageSlot>
@@ -113,6 +131,7 @@ export default function App() {
         {!selected &&
           page !== "plugins" &&
           page !== "settings" &&
+          page !== "chat" &&
           (loaded ? (
             <div className="page-scroll">
               <Page>

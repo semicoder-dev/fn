@@ -1037,3 +1037,26 @@
     grid-column: 1 / -1;
   }
 }
+
+.chat-monitor-columns {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr);
+  gap: 20px;
+}
+.chat-monitor-bot {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  height: auto;
+  padding: 16px;
+}
+@media (max-width: 760px) {
+  .chat-monitor-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chat-monitor-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

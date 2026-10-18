@@ -71,10 +71,12 @@ public struct BuiltinKeyValueInput: Codable, Sendable {
 public struct BuiltinNotificationInput: Codable, Sendable {
   public let title: String
   public let body: String
+  public let id: String?
 
-  public init(title: String, body: String) {
+  public init(title: String, body: String, id: String? = nil) {
     self.title = title
     self.body = body
+    self.id = id
   }
 }
 

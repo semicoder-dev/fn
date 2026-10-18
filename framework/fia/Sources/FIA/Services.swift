@@ -96,11 +96,11 @@ public final class NotificationService {
     public func requestAuthorization() async throws -> Bool {
         try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
     }
-    public func deliver(title: String, body: String) async throws {
+    public func deliver(title: String, body: String, id: String? = nil) async throws {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
-        try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+        try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id ?? UUID().uuidString, content: content, trigger: nil))
     }
 }
 

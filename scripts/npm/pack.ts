@@ -43,6 +43,7 @@ try {
   }
   for (const name of [
     "./types",
+    "./chat",
     "./client",
     "./ui",
     "./runtime",

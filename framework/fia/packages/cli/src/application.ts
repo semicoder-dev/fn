@@ -72,6 +72,7 @@ export function infoPlist(
   config: ResolvedFIAConfig,
   bundleIdentifier = config.app.identifier,
   hasIcon = !!config.app.icon,
+  cloudKitContainers: readonly string[] = [],
 ) {
   const values: Record<string, string> = {
     CFBundleExecutable: "FIAHost",
@@ -83,6 +84,7 @@ export function infoPlist(
     CFBundlePackageType: "APPL",
     LSMinimumSystemVersion: "14.0",
     ...config.permissions,
+    ...(cloudKitContainers.length ? { FIACloudKitContainers: cloudKitContainers.join(",") } : {}),
     ...(hasIcon ? { CFBundleIconFile: "AppIcon" } : {}),
   };
   return (
@@ -199,6 +201,12 @@ export async function buildApplication(
       ? localProfile(config, options.development ? "development" : "preview")
       : undefined;
   if (profile) config = profile.config;
+  const signingMode = options.development
+    ? "development"
+    : options.preview
+      ? "preview"
+      : "production";
+  const applicationSigning = selectApplicationSigning(config, signingMode);
   await verifyAssets();
   const root = config.projectRoot;
   const parent = profile?.directory ?? resolve(root, "dist");
@@ -255,12 +263,34 @@ export async function buildApplication(
       ? config.signing?.releaseIdentity
       : (config.signing?.developmentIdentity ?? "-");
     if (!identity) throw new Error("signing.releaseIdentity is required for distribution");
+    if (applicationSigning && identity === "-")
+      throw new Error("Application entitlements require a real signing identity");
+    if (applicationSigning?.provisioningProfile)
+      await cp(
+        resolve(root, applicationSigning.provisioningProfile),
+        resolve(contents, "embedded.provisionprofile"),
+      );
+    const applicationEntitlements = applicationSigning
+      ? resolve(root, applicationSigning.entitlements)
+      : undefined;
+    if (applicationSigning?.cloudKitContainers?.length && applicationEntitlements) {
+      const parsed = await checked(
+        runner,
+        ["/usr/bin/plutil", "-convert", "json", "-o", "-", applicationEntitlements],
+        root,
+      );
+      validateCloudKitEntitlements(
+        applicationSigning.cloudKitContainers,
+        JSON.parse(parsed.stdout),
+        profile?.bundleIdentifier ?? config.app.identifier,
+      );
+    }
     const entitlements = resolve(temporary, "bun.entitlements.plist");
     await writeFile(
       entitlements,
       '<?xml version="1.0"?><plist version="1.0"><dict><key>com.apple.security.cs.allow-jit</key><true/><key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/></dict></plist>',
     );
-    const sign = async (path: string, bun = false) =>
+    const sign = async (path: string, bun = false, application = false) =>
       checked(
         runner,
         [
@@ -269,7 +299,11 @@ export async function buildApplication(
           "--sign",
           identity,
           ...(identity === "-" ? [] : ["--timestamp", "--options", "runtime"]),
-          ...(bun ? ["--entitlements", entitlements] : []),
+          ...(bun
+            ? ["--entitlements", entitlements]
+            : application && applicationEntitlements
+              ? ["--entitlements", applicationEntitlements]
+              : []),
           path,
         ],
         root,
@@ -312,9 +346,14 @@ export async function buildApplication(
     );
     await writeFile(
       resolve(contents, "Info.plist"),
-      infoPlist(config, profile?.bundleIdentifier, !!config.app.icon || !!profile),
+      infoPlist(
+        config,
+        profile?.bundleIdentifier,
+        !!config.app.icon || !!profile,
+        applicationSigning?.cloudKitContainers,
+      ),
     );
-    await sign(app);
+    await sign(app, false, true);
     await checked(runner, ["/usr/bin/codesign", "--verify", "--deep", "--strict", app], root);
     const destination = resolve(parent, config.app.name + ".app");
     const backup = destination + ".previous";
@@ -746,4 +785,43 @@ export async function runDevelopment(
     process.off("SIGTERM", onSignal);
     await session.close();
   }
+}
+
+/** A configured application must explicitly opt into every build mode; never inherit production signing into Dev. */
+export function selectApplicationSigning(
+  config: Pick<ResolvedFIAConfig, "signing">,
+  mode: "development" | "preview" | "production",
+) {
+  const profiles = config.signing?.application;
+  if (!profiles) return undefined;
+  const profile = profiles[mode];
+  if (!profile)
+    throw new Error(
+      `signing.application.${mode} is required; signing profiles are never inherited across environments`,
+    );
+  return profile;
+}
+
+export function validateCloudKitEntitlements(
+  containers: readonly string[],
+  entitlements: Record<string, unknown>,
+  bundleIdentifier: string,
+) {
+  const allowed = entitlements["com.apple.developer.icloud-container-identifiers"];
+  const services = entitlements["com.apple.developer.icloud-services"];
+  const appID = entitlements["com.apple.application-identifier"];
+  if (
+    !Array.isArray(allowed) ||
+    containers.some((id) => !allowed.includes(id)) ||
+    !Array.isArray(services) ||
+    !services.includes("CloudKit") ||
+    typeof appID !== "string" ||
+    !appID.endsWith("." + bundleIdentifier) ||
+    !["Development", "Production"].includes(
+      String(entitlements["com.apple.developer.icloud-container-environment"]),
+    )
+  )
+    throw new Error(
+      "CloudKit entitlements must match the selected application identity and container allowlist",
+    );
 }

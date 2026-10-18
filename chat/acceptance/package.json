@@ -1,0 +1,1 @@
+{"name":"fn-chat-acceptance","version":"0.0.0","private":true,"type":"module","fn":{"schemaVersion":1,"id":"chat-acceptance","name":"聊天验收","description":"验证多端文字、请求卡片和持久事件","icon":"聊","color":"#3976DB","sdkVersion":"0.3","frontend":"dist/client.js","backend":"dist/backend.js","styles":"dist/client.css"}}

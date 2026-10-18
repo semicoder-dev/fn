@@ -14,6 +14,7 @@ public final class FIARuntime {
   public let clipboard = ClipboardService()
   public let dialogs = DialogService()
   public let notifications = NotificationService()
+  let cloudKit: CloudKitService
   public let screens = ScreenService()
   public let screenCapture = ScreenCaptureService()
   public let system = SystemService()
@@ -50,6 +51,7 @@ public final class FIARuntime {
     manifest: RuntimeManifest, bundle: Bundle = .main, supportDirectory: URL? = nil,
     updateNetwork: URLSession = .shared
   ) throws {
+    cloudKit = CloudKitService(containers: Set((bundle.object(forInfoDictionaryKey: "FIACloudKitContainers") as? String ?? "").split(separator: ",").map(String.init)))
     self.manifest = manifest
     self.bundle = bundle
     let support = try supportDirectory ?? manifest.supportRoot()
@@ -110,6 +112,8 @@ public final class FIARuntime {
       try await self.updateGate("resume")
     }
     updater.allowsAutomaticPrompts = { [weak self] in self?.windows.states.contains(where: { $0.orderedIn }) ?? false }
+    cloudKit.onChange = { [weak self] event in self?.emit("cloudKit.changed", event) }
+    cloudKit.register(in: native)
     registerServices()
     registerRuntimeMethods()
   }
@@ -555,7 +559,7 @@ public final class FIARuntime {
       "notifications.deliver", input: NotificationInput.self, output: FIAEmpty.self,
       permission: "notifications"
     ) { [notifications] input in
-      try await notifications.deliver(title: input.title, body: input.body)
+      try await notifications.deliver(title: input.title, body: input.body, id: input.id)
       return FIAEmpty()
     }
     native.register(

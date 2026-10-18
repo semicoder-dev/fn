@@ -1,3 +1,17 @@
+export type CloudKitScope = { container: string; accountKey: string; zone: string };
+export type CloudKitRecord = {
+  id: string;
+  type: string;
+  fields: Record<string, string>;
+  systemFields?: string;
+};
+export type CloudKitChanges = {
+  records: CloudKitRecord[];
+  deletedIDs: string[];
+  token: string;
+  moreComing: boolean;
+};
+
 // Shared typed native API. The browser and Bun use the same contract.
 import type { NativeCallOptions, NativeTransport } from "./client.ts";
 export type BuiltinApplicationInfo = {
@@ -33,6 +47,7 @@ export type BuiltinKeyValueInput = {
 };
 
 export type BuiltinNotificationInput = {
+  readonly id?: string;
   readonly title: string;
   readonly body: string;
 };
@@ -150,6 +165,49 @@ export function createNativeAPI(transport: NativeTransport) {
         transport.call("keychain.set", input, { timeoutMs: 0, ...options }),
       delete: (input: BuiltinKeyInput, options?: NativeCallOptions): Promise<boolean> =>
         transport.call("keychain.delete", input, { timeoutMs: 0, ...options }),
+    },
+    cloudKit: {
+      account: (
+        input: { container: string },
+        options?: NativeCallOptions,
+      ): Promise<{ status: number; accountKey?: string }> =>
+        transport.call("cloudKit.account", input, options),
+      ensureZone: (
+        scope: CloudKitScope,
+        options?: NativeCallOptions,
+      ): Promise<Record<string, never>> => transport.call("cloudKit.ensureZone", scope, options),
+      read: (
+        input: { scope: CloudKitScope; id: string },
+        options?: NativeCallOptions,
+      ): Promise<CloudKitRecord> => transport.call("cloudKit.read", input, options),
+      commit: (
+        input: { scope: CloudKitScope; records: CloudKitRecord[]; deletedIDs: string[] },
+        options?: NativeCallOptions,
+      ): Promise<CloudKitRecord[]> => transport.call("cloudKit.commit", input, options),
+      changes: (
+        input: { scope: CloudKitScope; token?: string },
+        options?: NativeCallOptions,
+      ): Promise<CloudKitChanges> => transport.call("cloudKit.changes", input, options),
+      subscribe: (
+        input: {
+          scope: CloudKitScope;
+          id: string;
+          recordType: string;
+          title: string;
+          body: string;
+        },
+        options?: NativeCallOptions,
+      ): Promise<Record<string, never>> => transport.call("cloudKit.subscribe", input, options),
+      registerPush: (options?: NativeCallOptions): Promise<Record<string, never>> =>
+        transport.call("cloudKit.registerPush", {}, options),
+      subscribeZone: (
+        input: { scope: CloudKitScope; id: string },
+        options?: NativeCallOptions,
+      ): Promise<Record<string, never>> => transport.call("cloudKit.subscribeZone", input, options),
+      unsubscribe: (
+        input: { scope: CloudKitScope; id: string },
+        options?: NativeCallOptions,
+      ): Promise<Record<string, never>> => transport.call("cloudKit.unsubscribe", input, options),
     },
     notifications: {
       requestAuthorization: (options?: NativeCallOptions): Promise<boolean> =>

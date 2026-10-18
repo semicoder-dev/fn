@@ -191,6 +191,7 @@ export class NativeClient extends EventTarget implements NativeTransport {
   readonly dialogs = this.api.dialogs;
   readonly keychain = this.api.keychain;
   readonly notifications = this.api.notifications;
+  readonly cloudKit = this.api.cloudKit;
   readonly screens = this.api.screens;
   readonly screen = this.api.screen;
   readonly system = this.api.system;
@@ -438,7 +439,14 @@ export class NativeClient extends EventTarget implements NativeTransport {
 
 export const native = new NativeClient();
 
-export type { TitlebarItem, WindowOptions, UpdateState } from "./api.ts";
+export type {
+  TitlebarItem,
+  WindowOptions,
+  UpdateState,
+  CloudKitScope,
+  CloudKitRecord,
+  CloudKitChanges,
+} from "./api.ts";
 
 export { createClient, APIError } from "./api-client.ts";
 export type { APIClient, CallOptions } from "./business-api.ts";

@@ -224,3 +224,15 @@ socket.addEventListener("open", () => socket.send("hello"));
 FIA 活跃源码现位于麻辣烫仓库的 `framework/fia/`，保留独立 API、模板、测试与打包边界；麻辣烫稳定后再拆回独立仓库。公开 npm 0.18.0 不包含本次联调工具或 Bun 1.4.3 运行时。普通消费已发布 npm 包的应用仍不需要 Swift；维护共仓源码需要 Bun 1.4.3 和 Swift 6 工具链。框架维护流程保存在源码仓库的 `docs/co-development.md`。
 
 开发 CLI 新增可重复的 `fia dev --watch-ignore <相对目录>`，按目录边界排除指定子树，不影响相似前缀的其他目录。该参数仅供外层工具已经负责构建/重启的目录；默认生成应用无需设置。嵌套的 node_modules、.git、.fia、.build、dist 也不会触发后端重载。
+
+## CloudKit 原生能力（未发布）
+
+源码 `native/CloudKitTransport` 为 macOS/iOS 共用独立 Swift Package。Host 与 TypeScript `native.cloudKit` 提供 `account`、`ensureZone`、`read`、`commit`、`changes`、`subscribe`、`subscribeZone`、`unsubscribe`、`registerPush`。每次操作携带 `{ container, accountKey, zone }`；Host 校验应用容器白名单及当前系统账号。`cloudKit.changed` 事件提示账号变化、远程通知或点击通知，业务需重新读取持久状态，事件无重放保证。
+
+记录格式为 `{ id, type, fields: Record<string,string>, systemFields? }`；字段总量最多 64 KiB。`systemFields` 是读取结果中的不透明系统元数据，更新时原样回传。`commit` 同 zone 原子提交并检查 change tag，桥接层每批最多两条以遵守原生帧上限；Swift transport 本身允许 200 条。`changes` 每页两条，持续拉取至 `moreComing=false`，业务数据和最终 token 必须在同一本地事务落盘。错误 `details.reason` 区分 `serverRecordChanged`、`changeTokenExpired`、`accountChanged` 等，重试遵循 `retryAfterSeconds`。
+
+`subscribeZone({ scope, id })` 创建只携带 content-available 的 zone 变化订阅；`subscribe` 仍为指定记录类型的创建提醒。`unsubscribe({ scope, id })` 幂等删除应用自己的旧订阅。业务不得把推送当成可靠事件日志；需要增量补拉与自己的离线队列。
+
+应用配置 `signing.application` 可按 `development`、`preview`、`production` 分别指定 `entitlements`、`provisioningProfile` 和 `cloudKitContainers`。一旦声明该映射，缺少当前模式配置会失败，不跨模式回退；CloudKit 配置必须包含 profile，构建校验 bundle/container entitlement 绑定并嵌入 profile。Bun 的签名权限单独保留。未声明应用签名配置的普通应用沿用原路径。
+
+本地签名 FIA Host 已真实验证账号访问、记录写入/回读、旧 change tag 拒绝、游标和订阅；双端原型验证了不同 App ID 共用开发容器和 iPhone 锁屏可见通知。生产 Developer ID/CloudKit 组合、业务可靠性及多设备全矩阵仍需独立验收。公开 npm 0.18.0 不包含本节能力。

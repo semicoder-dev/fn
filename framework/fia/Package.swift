@@ -4,12 +4,13 @@ import PackageDescription
 let package = Package(
     name: "FIA", platforms: [.macOS(.v14)],
     products: [.executable(name: "FIAHost", targets: ["FIAHost"])],
+    dependencies: [.package(path: "native/CloudKitTransport")],
     targets: [
         .target(name: "FIACore", linkerSettings: [.linkedFramework("Security")]),
         .target(name: "FIAProcessSupport", publicHeadersPath: "include"),
         .target(name: "FIAMacOS", dependencies: ["FIACore", "FIAProcessSupport"], linkerSettings: [
             .linkedFramework("AppKit"), .linkedFramework("Carbon"), .linkedFramework("CFNetwork"), .linkedFramework("Security")]),
-        .target(name: "FIA", dependencies: ["FIACore", "FIAMacOS"], linkerSettings: [
+        .target(name: "FIA", dependencies: ["FIACore", "FIAMacOS", .product(name: "FIACloudKit", package: "CloudKitTransport")], linkerSettings: [
             .linkedFramework("AppKit"), .linkedFramework("WebKit"), .linkedFramework("ScreenCaptureKit"),
             .linkedFramework("UserNotifications"), .linkedFramework("CoreText")]),
         .executableTarget(name: "FIAHost", dependencies: ["FIA"]),

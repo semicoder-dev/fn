@@ -1,0 +1,3 @@
+// Native chat clients use the Development CloudKit container.
+FN_CLOUDKIT_CONTAINER = iCloud.com.semicoder.fn.development
+#include? "Local.xcconfig"

@@ -73,6 +73,16 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    func application(_ application: NSApplication, didRegisterForRemoteNotificationsWithDeviceToken token: Data) {
+        runtime.cloudKit.registeredPush()
+    }
+    func application(_ application: NSApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        runtime.cloudKit.registeredPush(error: error)
+    }
+    func application(_ application: NSApplication, didReceiveRemoteNotification userInfo: [String: Any]) {
+        runtime.cloudKit.receivedPush(userInfo)
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
     }

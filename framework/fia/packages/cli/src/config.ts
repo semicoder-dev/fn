@@ -1,3 +1,10 @@
+/** Native application signing inputs are selected explicitly for each build mode. */
+export interface ApplicationSigningProfile {
+  entitlements: string;
+  provisioningProfile?: string;
+  cloudKitContainers?: readonly string[];
+}
+
 /** Context passed to an application command's default-exported async function. */
 export interface FIACommandContext {
   args: string[];
@@ -25,6 +32,9 @@ export interface FIAConfig {
     developmentIdentity?: string;
     releaseIdentity?: string;
     notarizationProfile?: string;
+    application?: Partial<
+      Record<"development" | "preview" | "production", ApplicationSigningProfile>
+    >;
   };
 }
 

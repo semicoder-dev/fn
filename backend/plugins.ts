@@ -1,3 +1,9 @@
+import type {
+  ChatClient,
+  ChatEventContext,
+  ChatUserMessage,
+  ChatResponse,
+} from "@semicoder/fn-sdk/chat";
 import type { WebTools } from "./web";
 import { mkdir, realpath, rm } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -65,6 +71,7 @@ export class Plugins {
     private markets?: Marketplaces,
     private fetcher: typeof fetch = fetch,
     private web?: WebTools,
+    private chat?: (pluginId: string) => ChatClient,
   ) {}
   async open() {
     for (const record of this.store.value.plugins) {
@@ -131,9 +138,18 @@ export class Plugins {
   private context(id: string): PluginContext {
     return {
       pluginId: id,
+      ...(this.chat ? { chat: this.chat(id) } : {}),
       web: {
-        search: (input, options) => this.use(id, () => { if (!this.web) throw new Error("网络工具不可用"); return this.web.client(id).search(input, options); }),
-        fetch: (input, options) => this.use(id, () => { if (!this.web) throw new Error("网络工具不可用"); return this.web.client(id).fetch(input, options); }),
+        search: (input, options) =>
+          this.use(id, () => {
+            if (!this.web) throw new Error("网络工具不可用");
+            return this.web.client(id).search(input, options);
+          }),
+        fetch: (input, options) =>
+          this.use(id, () => {
+            if (!this.web) throw new Error("网络工具不可用");
+            return this.web.client(id).fetch(input, options);
+          }),
       },
       models: {
         list: () => this.models.list(),
@@ -156,10 +172,10 @@ export class Plugins {
       throw new Error(
         "插件 SDK 版本不兼容：请使用 SDK 0.3 重新构建并安装插件；原有 KV 数据仍会保留。",
       );
-    if (["models", "plugins", "settings"].includes(pkg.fn?.id))
+    if (["models", "plugins", "settings", "inbox"].includes(pkg.fn?.id))
       throw new Error("此插件 ID 为宿主保留名称");
     const manifest = manifestSchema.parse(pkg.fn);
-    if (["models", "plugins", "settings"].includes(manifest.id))
+    if (["models", "plugins", "settings", "inbox"].includes(manifest.id))
       throw new Error("此插件 ID 为宿主保留名称");
     if (typeof pkg.name !== "string" || typeof pkg.version !== "string")
       throw new Error("插件缺少 package name/version");
@@ -219,6 +235,19 @@ export class Plugins {
             inputSchema: z.json().parse(method.inputSchema),
           };
         });
+        if (backend.chat) {
+          const chat = backend.chat;
+          if (
+            !Number.isSafeInteger(chat.version) ||
+            chat.version < 1 ||
+            typeof chat.onMessage !== "function" ||
+            typeof chat.onResponse !== "function"
+          )
+            throw new Error("聊天处理器声明无效");
+          const timeout = chat.timeoutMs ?? 600_000;
+          if (!Number.isSafeInteger(timeout) || timeout < 1000 || timeout > 86_400_000)
+            throw new Error("聊天处理超时配置无效");
+        }
         plugin.backend = backend;
         await backend.activate?.(this.context(plugin.info.id));
       }
@@ -228,6 +257,65 @@ export class Plugins {
       plugin.info.status = "error";
       plugin.info.error = message(error);
     }
+  }
+  chatCatalog() {
+    return [...this.registry.values()]
+      .filter((p) => p.backend?.chat)
+      .map((p) => ({
+        pluginId: p.info.id,
+        name: p.info.name,
+        icon: p.info.icon,
+        enabled: p.info.enabled && p.info.status === "active",
+        version: p.info.version + ":" + p.backend!.chat!.version,
+      }));
+  }
+  chatVersion(pluginId: string) {
+    const p = this.get(pluginId);
+    if (p.changing || !p.info.enabled || p.info.status !== "active" || !p.backend?.chat)
+      throw new Error("目标机器人不可用");
+    return {
+      version: p.info.version + ":" + p.backend.chat.version,
+      timeoutMs: p.backend.chat.timeoutMs ?? 600_000,
+    };
+  }
+  async executeChat(
+    event: ChatUserMessage | ChatResponse,
+    context: Pick<ChatEventContext, "eventId" | "conversationId" | "signal" | "progress">,
+  ) {
+    await this.use(event.pluginId, async (p) => {
+      if (this.chatVersion(event.pluginId).version !== event.botVersion)
+        throw new Error("机器人版本已改变");
+      context.signal.throwIfAborted();
+      const full = { ...this.context(event.pluginId), ...context };
+      if (full.chat) {
+        const chat = full.chat;
+        full.chat = {
+          sendText: async (text) => {
+            context.signal.throwIfAborted();
+            return chat.sendText(text);
+          },
+          request: async (input) => {
+            context.signal.throwIfAborted();
+            return chat.request(input);
+          },
+          get: async (id) => {
+            context.signal.throwIfAborted();
+            return chat.get(id);
+          },
+          list: async (input) => {
+            context.signal.throwIfAborted();
+            return chat.list(input);
+          },
+          cancel: async (id) => {
+            context.signal.throwIfAborted();
+            return chat.cancel(id);
+          },
+        };
+      }
+      // Captured clients stop with the account; delayed handlers cannot send under a new identity.
+      if (event.kind === "userText") await p.backend!.chat!.onMessage(event, full);
+      else await p.backend!.chat!.onResponse(event, full);
+    });
   }
   async invoke(id: string, method: string, input: JSONValue): Promise<JSONValue> {
     return this.use(id, async (plugin) => {
@@ -241,7 +329,13 @@ export class Plugins {
   }
   async setEnabled(id: string, enabled: boolean) {
     const plugin = this.get(id);
-    if (this.stopping || plugin.changing || plugin.calls || this.models.busy(id) || this.web?.busy(id))
+    if (
+      this.stopping ||
+      plugin.changing ||
+      plugin.calls ||
+      this.models.busy(id) ||
+      this.web?.busy(id)
+    )
       throw new Error("插件正在运行，请先停止任务");
     if (enabled && plugin.invalidManifest)
       throw new Error(plugin.info.error ?? "插件清单无效，请重新构建安装");
@@ -271,7 +365,13 @@ export class Plugins {
   }
   async uninstall(id: string) {
     const plugin = this.get(id);
-    if (this.stopping || plugin.changing || plugin.calls || this.models.busy(id) || this.web?.busy(id))
+    if (
+      this.stopping ||
+      plugin.changing ||
+      plugin.calls ||
+      this.models.busy(id) ||
+      this.web?.busy(id)
+    )
       throw new Error("插件正在运行，请先停止任务");
     plugin.changing = true;
     try {
@@ -320,7 +420,13 @@ export class Plugins {
   }
   update(id: string, source?: string) {
     const plugin = this.get(id);
-    if (this.stopping || plugin.changing || plugin.calls || this.models.busy(id) || this.web?.busy(id))
+    if (
+      this.stopping ||
+      plugin.changing ||
+      plugin.calls ||
+      this.models.busy(id) ||
+      this.web?.busy(id)
+    )
       throw new Error("插件正在运行，请先停止任务");
     if (source) {
       this.validateSource(source);
@@ -538,7 +644,8 @@ export class Plugins {
   }
   busy() {
     return (
-      Boolean(this.installation) || Boolean(this.web?.busy()) ||
+      Boolean(this.installation) ||
+      Boolean(this.web?.busy()) ||
       [...this.registry.values()].some((item) => item.calls || item.changing)
     );
   }

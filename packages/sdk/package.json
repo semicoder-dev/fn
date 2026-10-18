@@ -32,7 +32,8 @@
     "./ui.css": "./dist/ui.css",
     "./plugin": "./plugin.ts",
     "./manifest": "./src/manifest.ts",
-    "./tailwind.css": "./src/tailwind.css"
+    "./tailwind.css": "./src/tailwind.css",
+    "./chat": "./src/chat.ts"
   },
   "publishConfig": {
     "access": "public",

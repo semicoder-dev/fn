@@ -1,5 +1,17 @@
+import type { ChatClient, PluginChat } from "./chat";
+export type { ChatClient, ChatCard, ChatMessage, ChatEventContext, PluginChat } from "./chat";
 import type { WebClient } from "./web";
-export type { WebClient, WebOptions, WebTask, WebEngine, WebSource, WebSearchInput, WebFetchInput, WebSearchResult, WebFetchResult } from "./web";
+export type {
+  WebClient,
+  WebOptions,
+  WebTask,
+  WebEngine,
+  WebSource,
+  WebSearchInput,
+  WebFetchInput,
+  WebSearchResult,
+  WebFetchResult,
+} from "./web";
 export type JSONValue =
   | null
   | boolean
@@ -112,6 +124,7 @@ export interface InstallJob {
 
 export interface PluginContext {
   readonly pluginId: string;
+  chat?: ChatClient;
   web: WebClient;
   models: { list(): ModelInfo[]; start(input: ModelRequest): Promise<ModelRun> };
   kv: {
@@ -128,6 +141,8 @@ export interface PluginMethod {
 }
 
 export interface BackendPlugin {
+  /** Explicit opt-in; existing methods are never exposed remotely. */
+  chat?: PluginChat;
   methods: Record<string, PluginMethod>;
   activate?(context: PluginContext): void | Promise<void>;
   dispose?(): void | Promise<void>;

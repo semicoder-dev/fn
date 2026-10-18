@@ -1,3 +1,4 @@
+import ChatMonitor from "./ChatMonitor";
 import ComponentGallery from "./ComponentGallery";
 import { SlidersHorizontal, Sun, RefreshCw, Blocks, Button } from "@semicoder/fn-sdk/ui";
 import React, { useState } from "react";
@@ -13,6 +14,13 @@ export default function Settings({ visible = true }: { visible?: boolean }) {
       <nav className="settings-nav" aria-label="设置分类">
         <h1>设置</h1>
         <p>管理你的工作空间</p>
+        <Button
+          variant="ghost"
+          className={section === "chat" ? "selected" : ""}
+          onClick={() => setSection("chat")}
+        >
+          聊天同步
+        </Button>
         <Button
           variant="ghost"
           className={section === "models" ? "selected" : ""}
@@ -52,6 +60,9 @@ export default function Settings({ visible = true }: { visible?: boolean }) {
         )}
       </nav>
       <div className="settings-main">
+        <PageSlot visible={section === "chat"} keepAlive label="聊天同步">
+          <ChatMonitor visible={visible && section === "chat"} settings />
+        </PageSlot>
         {import.meta.env.DEV && (
           <PageSlot visible={section === "components"} keepAlive label="组件样例">
             <ComponentGallery />

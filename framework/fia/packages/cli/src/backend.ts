@@ -360,6 +360,7 @@ export class BackendNativeClient extends EventTarget implements NativeTransport 
   readonly dialogs = this.api.dialogs;
   readonly keychain = this.api.keychain;
   readonly notifications = this.api.notifications;
+  readonly cloudKit = this.api.cloudKit;
   readonly screens = this.api.screens;
   readonly screen = this.api.screen;
   readonly system = this.api.system;
@@ -515,4 +516,11 @@ export async function runBackend<Data, Paths extends string>(
   gateway.ready = true;
   writeFrame({ v: PROTOCOL, type: "ready", port: server.port, origin });
 }
-export type { TitlebarItem, WindowOptions, UpdateState } from "./api.ts";
+export type {
+  TitlebarItem,
+  WindowOptions,
+  UpdateState,
+  CloudKitScope,
+  CloudKitRecord,
+  CloudKitChanges,
+} from "./api.ts";

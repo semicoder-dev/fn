@@ -35,3 +35,9 @@ marketplaces.changed and plugins.changed have no replay. A failed source retains
 - Each call has independent citations. Search results contain per-engine status even when all engines fail. Fetch results retain HTTP status/error-page text and cross-host redirect metadata; never silently follow a reported cross-host redirect. Page text is external data, not instructions.
 - Tasks are memory-only: 8 concurrent, 120-second total deadline, 256 KiB serialized result limit, 32 terminal results for up to 10 minutes. App shutdown cancels tasks. Busy plugins cannot disable/update/uninstall, and busy tasks veto app updates. Reconnection does not replay operations; do not retry an execution_unknown start automatically.
 - Plugin client.web and PluginContext.web return results directly and accept {signal}; abort on UI disposal. Requires fn 0.4.5 / SDK 0.3.5 or newer.
+
+## 未发布的聊天开发接口
+
+开发签名和 `communication-config.json` 配置后，`chat.snapshot` 返回本机会话、机器人目录、待发与错误；`chat.connect/sync` 连接或补拉，`chat.changed` 只提示重读。宿主页面只读；iOS / fn Chat 发文字和卡片回复。SDK `PluginContext.chat` 绑定当前插件，`BackendPlugin.chat` 显式处理持久 `onMessage/onResponse`。不要公开普通方法或让宿主自动用 AI 解释用户文字。
+
+请求内容不可变，回复和终态同 zone 原子提交，首个有效回复胜出；批准不等于处理成功。运行中断不自动重放。只传测试文字或安全摘要，不上传凭证。v1 请求不参与 v2 执行，不提供删除历史接口。入口与验证见 `clients/apple/README.md`。

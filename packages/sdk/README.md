@@ -224,3 +224,64 @@ const page = await client.web.fetch(
 每次调用独立编号，不跨调用累计来源；没有会话 API 或持久化网络历史。宿主最多并发 8 项，单任务总时限 120 秒；完整 JSON 结果最多 256 KiB（含转义和元数据，独立于 maxBytes），超限拒绝并提供 code="result_too_large"。任务失败通过带 code 的 Error 返回，主动取消为 AbortError。完成任务最多在内存保留 32 条/10 分钟，重启清空；需要长期保存时由插件自行保存。
 
 网络任务运行时阻止对应插件停用、更新、卸载和应用更新；退出应用会取消任务。宿主 API 为 web.search/web.fetch（`{ pluginId, input }` → WebTask）、web.get/web.cancel（`{ pluginId, taskId }` → WebTask），事件 web.changed 只携带标识和状态，需重读结果。首次启动回复丢失时 SDK 报连接错误、不重复提交；未取得 ID 的任务由宿主总时限回收。
+
+## 机器人聊天（开发分支，未发布）
+
+源码新增 `@semicoder/fn-sdk/chat`、可选 `PluginContext.chat` 和 `BackendPlugin.chat`。公开 SDK 0.3.5 / fn 0.4.5 没有这些接口。本次直接替换未发布的 `communication` / `remoteActions`，不提供兼容层。开发安装见 [fn Chat](../../clients/apple/README.md)。官方翻译、随手记无需改动，不声明聊天的插件不会出现在机器人目录。
+
+每个“宿主实例＋插件”只有一个固定会话。宿主接收用户纯文字与结构化卡片回复，插件自行理解文字；普通 `methods` 不会自动变成远程入口。iOS / Mac 聊天端不运行插件或模型。
+
+```ts
+import { definePlugin } from "@semicoder/fn-sdk/runtime";
+import type { ChatCard } from "@semicoder/fn-sdk/chat";
+
+const card: ChatCard = {
+  version: 1, template: "approval", title: "继续处理？", summary: "确认后继续本次任务。",
+  blocks: [{ type: "text", text: "这里展示用户需要确认的具体内容。" }],
+  inputs: [],
+  actions: [{ id: "approve", label: "批准", style: "primary" }, { id: "reject", label: "拒绝" }],
+};
+export default definePlugin({
+  methods: {},
+  chat: {
+    version: 1,
+    async onMessage(message, ctx) {
+      await ctx.progress("正在准备请求");
+      const requestId = await ctx.chat!.request({ card });
+      await ctx.kv.set("request:" + requestId, { sourceEventId: ctx.eventId, text: message.text });
+    },
+    async onResponse(response, ctx) {
+      const checkpoint = ctx.kv.get("request:" + response.requestId);
+      if (!checkpoint) throw new Error("业务检查点不存在，需人工确认");
+      ctx.signal.throwIfAborted();
+      await ctx.chat!.sendText(response.actionId === "approve" ? "已确认" : "已拒绝");
+    },
+  },
+});
+```
+
+| 方法 | 契约 |
+| --- | --- |
+| `sendText(text)` | 创建完整机器人文字，立即返回持久消息 ID，可多次调用 |
+| `request({card, expiresAt?})` | 创建不可变请求卡片，立即返回持久 ID；默认二十四小时过期 |
+| `get(id)` | 读取本插件消息及请求/处理状态，不属于本插件时返回 null |
+| `list({before?, limit?})` | 新到旧分页，默认 20 条，最多 50 条，同时受返回体大小限制；使用返回的 next 继续 |
+| `cancel(id)` | 持久排队取消自己的请求；云端条件提交后生效，不能撤回已接受回复或已发生副作用 |
+
+发送成功只表示本地持久化；云端接受和宿主处理状态分开。所有写入绑定创建时的宿主、插件和账号，切换服务端或系统账号不会重定向队列。新系统账号不能使用旧回调捕获的 chat client。可在本地插件方法中主动发文字或卡片；客户端没有主动操作表单。
+
+处理回调取得稳定 `eventId`、`conversationId`、`signal` 和 `progress(text)`。同一会话串行，不同机器人可并行；默认超时十分钟，`timeoutMs` 可在宿主限定范围内调整。宿主保存领取和处理结果，已开始但异常中断的事件显示“结果待确认”，不自动重放。回调应使用 `eventId` 做业务幂等并遵循取消信号；超时/取消后不能继续通过该回调上下文发送聊天消息。运行期间仍遵守插件占用规则。
+
+`request` 不创建等待用户的长寿命 Promise。插件持久保存业务检查点，通过持久 `onResponse` 继续；`get/list` 用于核对历史，不会重新执行回调。`chat.version` 是处理语义版本，插件包版本和此版本一起组成机器人版本；变更后，旧排队文字和旧卡片不能进入新处理器。
+
+卡片是 fn 的有限 JSON 契约，不执行 Slack JSON、HTML 或脚本：
+
+- `version: 1`；模板 `approval`、`choice`、`form`。
+- 必填标题、摘要、`blocks`、`inputs`、`actions`。展示块为文字、标签/值字段和分隔线。
+- 输入类型 `text`、`number`、`boolean`、`select`、`multiSelect`，均声明稳定 `id`、`label`、`required`；可选字段省略时不回传。文本可限长度，数字可限最小/最大，选择必须来自 options，多选不可重复。
+- 按钮声明 `id`、`label` 和可选样式 `normal/primary/danger`。回复事件携带 `requestId`、`actionId` 和 values。
+- 整个序列化消息 payload 不超过 64 KiB；文字最多 16,000 个 UTF-16 单元，进度最多 512。无附件，无逐字流式输出。
+
+回复与终态在同一 zone 原子提交，首个有效回复生效；取消、过期参与同一状态竞争。执行前再次验证宿主、插件、机器人版本、有效期和输入。未知卡片显示摘要并禁用提交。请求内容不能修改，进度/处理状态使用独立记录，不产生新的可见提醒。
+
+完整示例：[验收插件](../../chat/acceptance/src/backend.ts)；两端共用样例：`chat/fixtures/v2.json`。有限卡片组合与交互回传参考 [Slack Block Kit](https://docs.slack.dev/block-kit/)，同步提示使用 [CKRecordZoneSubscription](https://developer.apple.com/documentation/cloudkit/ckrecordzonesubscription)。

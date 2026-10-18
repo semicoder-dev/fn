@@ -1,3 +1,4 @@
+import { chatSnapshot } from "./chat/api";
 import { webFetchInput, webSearchInput, webTask, webChange } from "./web";
 import { defineAPI, z } from "@semicoder/fia/api";
 import { chatGPTStatus, chatGPTModel, chatGPTLabel } from "./chatgpt";
@@ -103,21 +104,43 @@ const empty = z.strictObject({});
 const selection = z.strictObject({ pluginId, runId: z.string() });
 export default defineAPI({
   methods: {
+    "chat.snapshot": {
+      description: "Read this host's robot conversations and processing state.",
+      input: z.strictObject({ pluginId: z.string().optional(), before: z.string().optional() }),
+      output: chatSnapshot,
+    },
+    "chat.connect": {
+      description: "Connect the configured system iCloud account.",
+      input: empty,
+      output: z.null(),
+    },
+    "chat.sync": {
+      description: "Synchronize chat records and pending events.",
+      input: empty,
+      output: z.null(),
+    },
     "web.search": {
-      description: "Start an independent web search. Returns a short-lived task; read web.get for results.",
-      input: z.strictObject({ pluginId, input: webSearchInput }), output: webTask,
+      description:
+        "Start an independent web search. Returns a short-lived task; read web.get for results.",
+      input: z.strictObject({ pluginId, input: webSearchInput }),
+      output: webTask,
     },
     "web.fetch": {
-      description: "Start an independent page fetch. HTTP error pages and redirects retain structured metadata.",
-      input: z.strictObject({ pluginId, input: webFetchInput }), output: webTask,
+      description:
+        "Start an independent page fetch. HTTP error pages and redirects retain structured metadata.",
+      input: z.strictObject({ pluginId, input: webFetchInput }),
+      output: webTask,
     },
     "web.get": {
-      description: "Read a plugin-owned network task. Results expire after 10 minutes or capacity eviction.",
-      input: z.strictObject({ pluginId, taskId: z.string() }), output: webTask,
+      description:
+        "Read a plugin-owned network task. Results expire after 10 minutes or capacity eviction.",
+      input: z.strictObject({ pluginId, taskId: z.string() }),
+      output: webTask,
     },
     "web.cancel": {
       description: "Cancel a plugin-owned network task and wait for its terminal state.",
-      input: z.strictObject({ pluginId, taskId: z.string() }), output: webTask,
+      input: z.strictObject({ pluginId, taskId: z.string() }),
+      output: webTask,
     },
     "appearance.get": {
       description: "Read the saved application theme preference.",
@@ -340,8 +363,13 @@ export default defineAPI({
     },
   },
   events: {
+    "chat.changed": {
+      description: "Chat state changed; reread the snapshot after subscribing and reconnecting.",
+      payload: z.strictObject({ revision: z.number() }),
+    },
     "web.changed": {
-      description: "A network task changed. Reread web.get; notifications have no replay.", payload: webChange,
+      description: "A network task changed. Reread web.get; notifications have no replay.",
+      payload: webChange,
     },
     "appearance.changed": {
       description: "Theme preference changed. Reread appearance.get on reconnect.",

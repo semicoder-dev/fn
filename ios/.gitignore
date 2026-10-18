@@ -1,0 +1,4 @@
+build/
+*.xcodeproj/
+Config/Local.xcconfig
+*.xcuserstate

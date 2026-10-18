@@ -154,8 +154,41 @@ export function validateConfig(input: unknown, root: string): ResolvedFIAConfig 
   }
   if (value.signing !== undefined) {
     const signing = object(value.signing, "signing");
-    keys(signing, ["developmentIdentity", "releaseIdentity", "notarizationProfile"], "signing");
-    for (const [key, item] of Object.entries(signing)) nonempty(item, "signing." + key);
+    keys(
+      signing,
+      ["developmentIdentity", "releaseIdentity", "notarizationProfile", "application"],
+      "signing",
+    );
+    for (const [key, item] of Object.entries(signing))
+      if (key !== "application") nonempty(item, "signing." + key);
+    if (signing.application !== undefined) {
+      const profiles = object(signing.application, "signing.application");
+      keys(profiles, ["development", "preview", "production"], "signing.application");
+      for (const [mode, entry] of Object.entries(profiles)) {
+        const profile = object(entry, "signing.application." + mode);
+        keys(
+          profile,
+          ["entitlements", "provisioningProfile", "cloudKitContainers"],
+          "application signing profile",
+        );
+        nonempty(profile.entitlements, "application entitlements");
+        if (profile.provisioningProfile !== undefined)
+          nonempty(profile.provisioningProfile, "application provisioning profile");
+        if (profile.cloudKitContainers !== undefined) {
+          if (
+            !Array.isArray(profile.cloudKitContainers) ||
+            profile.cloudKitContainers.length === 0 ||
+            profile.cloudKitContainers.length > 8 ||
+            profile.cloudKitContainers.some(
+              (id: unknown) => typeof id !== "string" || !/^iCloud\.[A-Za-z0-9.-]+$/.test(id),
+            )
+          )
+            fail("Invalid CloudKit container identifiers");
+          if (!profile.provisioningProfile)
+            fail("CloudKit requires an embedded provisioning profile");
+        }
+      }
+    }
   }
   return {
     ...(value as unknown as FIAConfig),

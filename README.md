@@ -8,6 +8,8 @@
 
 ## 开发运行
 
+iOS 与独立 Mac 原生聊天客户端已在特性分支接入：以 fn 宿主为服务端、每个插件为机器人，共享 v2 CloudKit 聊天、请求卡片和已读/归档。尚未发布；开发安装见 [fn Chat 开发指南](clients/apple/README.md)，插件接口见 [SDK 文档](packages/sdk/README.md)。公开 0.4.5 / SDK 0.3.5 不包含这些能力。
+
 支持 macOS 14+ / Apple Silicon。源码开发需要 Bun 1.4.3 和 Swift 6 工具链（Xcode / Command Line Tools）。进入本仓库根目录：
 
 ```sh

@@ -1,0 +1,418 @@
+{
+  "records": [
+    {
+      "type": "FnChatHost",
+      "value": {
+        "protocolVersion": 2,
+        "id": "host-a",
+        "role": "host",
+        "name": "开发 Mac",
+        "updatedAt": 1792100000000
+      }
+    },
+    {
+      "type": "FnChatClient",
+      "value": {
+        "protocolVersion": 2,
+        "id": "phone-a",
+        "role": "client",
+        "platform": "iOS",
+        "name": "手机",
+        "updatedAt": 1792100000000
+      }
+    },
+    {
+      "type": "FnChatBot",
+      "value": {
+        "protocolVersion": 2,
+        "hostId": "host-a",
+        "pluginId": "fixture",
+        "conversationId": "chat:host-a:fixture",
+        "name": "验收",
+        "icon": "聊",
+        "version": "0.0.0:1",
+        "enabled": true,
+        "updatedAt": 1792100000000
+      }
+    },
+    {
+      "type": "FnChatUserMessage",
+      "value": {
+        "protocolVersion": 2,
+        "hostId": "host-a",
+        "pluginId": "fixture",
+        "conversationId": "chat:host-a:fixture",
+        "deviceId": "phone-a",
+        "createdAt": 1792100000000,
+        "id": "user-a",
+        "kind": "userText",
+        "text": "你好",
+        "botVersion": "0.0.0:1"
+      }
+    },
+    {
+      "type": "FnChatBotMessage",
+      "value": {
+        "protocolVersion": 2,
+        "hostId": "host-a",
+        "pluginId": "fixture",
+        "conversationId": "chat:host-a:fixture",
+        "deviceId": "host-a",
+        "createdAt": 1792100000000,
+        "id": "bot-a",
+        "kind": "botText",
+        "text": "收到"
+      }
+    },
+    {
+      "type": "FnChatBotMessage",
+      "value": {
+        "protocolVersion": 2,
+        "hostId": "host-a",
+        "pluginId": "fixture",
+        "conversationId": "chat:host-a:fixture",
+        "deviceId": "host-a",
+        "createdAt": 1792100000000,
+        "id": "request-a",
+        "kind": "request",
+        "card": {
+          "version": 1,
+          "template": "form",
+          "title": "请求",
+          "summary": "测试",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "你好"
+            },
+            {
+              "type": "divider"
+            },
+            {
+              "type": "fields",
+              "fields": [
+                {
+                  "label": "字段",
+                  "value": "值"
+                }
+              ]
+            }
+          ],
+          "inputs": [
+            {
+              "id": "text",
+              "label": "文字",
+              "type": "text",
+              "required": true,
+              "maxLength": 10
+            },
+            {
+              "id": "count",
+              "label": "数字",
+              "type": "number",
+              "required": true,
+              "minimum": 1,
+              "maximum": 5
+            },
+            {
+              "id": "enabled",
+              "label": "开关",
+              "type": "boolean",
+              "required": true
+            },
+            {
+              "id": "choice",
+              "label": "单选",
+              "type": "select",
+              "required": true,
+              "options": [
+                {
+                  "id": "a",
+                  "label": "A"
+                },
+                {
+                  "id": "b",
+                  "label": "B"
+                }
+              ]
+            },
+            {
+              "id": "choices",
+              "label": "多选",
+              "type": "multiSelect",
+              "required": true,
+              "options": [
+                {
+                  "id": "a",
+                  "label": "A"
+                },
+                {
+                  "id": "b",
+                  "label": "B"
+                }
+              ]
+            }
+          ],
+          "actions": [
+            {
+              "id": "submit",
+              "label": "提交",
+              "style": "primary"
+            }
+          ]
+        },
+        "expiresAt": 1792186400000,
+        "botVersion": "0.0.0:1"
+      }
+    },
+    {
+      "type": "FnChatResponse",
+      "value": {
+        "protocolVersion": 2,
+        "hostId": "host-a",
+        "pluginId": "fixture",
+        "conversationId": "chat:host-a:fixture",
+        "deviceId": "phone-a",
+        "createdAt": 1792100000000,
+        "id": "response-a",
+        "kind": "response",
+        "requestId": "request-a",
+        "actionId": "submit",
+        "values": {
+          "text": "你好",
+          "count": 2,
+          "enabled": false,
+          "choice": "a",
+          "choices": [
+            "a",
+            "b"
+          ]
+        },
+        "botVersion": "0.0.0:1"
+      }
+    },
+    {
+      "type": "FnChatRequestState",
+      "value": {
+        "protocolVersion": 2,
+        "requestId": "request-a",
+        "phase": "pending",
+        "revision": 0,
+        "updatedAt": 1792100000000
+      }
+    },
+    {
+      "type": "FnChatDelivery",
+      "value": {
+        "protocolVersion": 2,
+        "hostId": "host-a",
+        "pluginId": "fixture",
+        "conversationId": "chat:host-a:fixture",
+        "eventId": "user-a",
+        "attemptId": "attempt-a",
+        "status": "running",
+        "updatedAt": 1792100000000,
+        "progress": "处理中"
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "type": "FnChatUserMessage",
+      "value": {
+        "protocolVersion": 1,
+        "hostId": "host-a",
+        "pluginId": "fixture",
+        "conversationId": "chat:host-a:fixture",
+        "deviceId": "phone-a",
+        "createdAt": 1792100000000,
+        "id": "user-a",
+        "kind": "userText",
+        "text": "你好",
+        "botVersion": "0.0.0:1"
+      }
+    },
+    {
+      "type": "FnChatUserMessage",
+      "value": {
+        "protocolVersion": 2,
+        "hostId": "host-b",
+        "pluginId": "fixture",
+        "conversationId": "chat:host-a:fixture",
+        "deviceId": "phone-a",
+        "createdAt": 1792100000000,
+        "id": "user-a",
+        "kind": "userText",
+        "text": "你好",
+        "botVersion": "0.0.0:1"
+      }
+    },
+    {
+      "type": "FnChatBotMessage",
+      "value": {
+        "protocolVersion": 2,
+        "hostId": "host-a",
+        "pluginId": "fixture",
+        "conversationId": "chat:host-a:fixture",
+        "deviceId": "phone-a",
+        "createdAt": 1792100000000,
+        "id": "user-a",
+        "kind": "userText",
+        "text": "你好",
+        "botVersion": "0.0.0:1"
+      }
+    },
+    {
+      "type": "FnChatUserMessage",
+      "value": {
+        "protocolVersion": 2,
+        "hostId": "host-a",
+        "pluginId": "fixture",
+        "conversationId": "chat:host-a:fixture",
+        "deviceId": "phone-a",
+        "createdAt": 1792100000000,
+        "id": "user-a",
+        "kind": "userText",
+        "text": "  ",
+        "botVersion": "0.0.0:1"
+      }
+    },
+    {
+      "type": "FnChatBotMessage",
+      "value": {
+        "protocolVersion": 2,
+        "hostId": "host-a",
+        "pluginId": "fixture",
+        "conversationId": "chat:host-a:fixture",
+        "deviceId": "host-a",
+        "createdAt": 1792100000000,
+        "id": "request-a",
+        "kind": "request",
+        "card": {
+          "version": 1,
+          "template": "form",
+          "title": "请求",
+          "summary": "测试",
+          "blocks": [
+            {
+              "type": "text",
+              "text": "你好"
+            },
+            {
+              "type": "divider"
+            },
+            {
+              "type": "fields",
+              "fields": [
+                {
+                  "label": "字段",
+                  "value": "值"
+                }
+              ]
+            }
+          ],
+          "inputs": [
+            {
+              "id": "text",
+              "label": "文字",
+              "type": "text",
+              "required": true,
+              "maxLength": 10
+            },
+            {
+              "id": "count",
+              "label": "数字",
+              "type": "number",
+              "required": true,
+              "minimum": 1,
+              "maximum": 5
+            },
+            {
+              "id": "enabled",
+              "label": "开关",
+              "type": "boolean",
+              "required": true
+            },
+            {
+              "id": "choice",
+              "label": "单选",
+              "type": "select",
+              "required": true,
+              "options": [
+                {
+                  "id": "a",
+                  "label": "A"
+                },
+                {
+                  "id": "b",
+                  "label": "B"
+                }
+              ]
+            },
+            {
+              "id": "choices",
+              "label": "多选",
+              "type": "multiSelect",
+              "required": true,
+              "options": [
+                {
+                  "id": "a",
+                  "label": "A"
+                },
+                {
+                  "id": "b",
+                  "label": "B"
+                }
+              ]
+            }
+          ],
+          "actions": [
+            {
+              "id": "submit",
+              "label": "提交",
+              "style": "primary"
+            }
+          ]
+        },
+        "expiresAt": 1,
+        "botVersion": "0.0.0:1"
+      }
+    },
+    {
+      "type": "FnChatClient",
+      "value": {
+        "protocolVersion": 2,
+        "id": "phone-a",
+        "role": "host",
+        "platform": "iOS",
+        "name": "手机",
+        "updatedAt": 1792100000000
+      }
+    },
+    {
+      "type": "FnChatBot",
+      "value": {
+        "protocolVersion": 2,
+        "hostId": "host-a",
+        "pluginId": "fixture",
+        "conversationId": "chat:host-a:fixture",
+        "name": "验收",
+        "icon": "聊",
+        "version": "0.0.0:1",
+        "enabled": true,
+        "updatedAt": 1792100000000,
+        "extra": true
+      }
+    }
+  ],
+  "values": {
+    "text": "你好",
+    "count": 2,
+    "enabled": false,
+    "choice": "a",
+    "choices": [
+      "a",
+      "b"
+    ]
+  }
+}

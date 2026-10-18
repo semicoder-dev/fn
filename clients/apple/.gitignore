@@ -1,0 +1,5 @@
+*.xcodeproj/
+build/
+Config/Local.xcconfig
+**/.build/
+**/.swiftpm/

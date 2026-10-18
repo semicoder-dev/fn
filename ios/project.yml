@@ -1,0 +1,114 @@
+name: FnCommunicationProbe
+options:
+  minimumXcodeGenVersion: 2.45.0
+configs:
+  Debug: debug
+  Release: release
+configFiles:
+  Debug: Config/Development.xcconfig
+  Release: Config/Development.xcconfig
+packages:
+  FnProbeCore:
+    path: ProbeCore
+  FIACloudKit:
+    path: ../framework/fia/native/CloudKitTransport
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    CODE_SIGN_STYLE: Automatic
+    GENERATE_INFOPLIST_FILE: YES
+    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.1.0"
+    INFOPLIST_KEY_FNCloudKitContainer: $(FN_CLOUDKIT_CONTAINER)
+    INFOPLIST_KEY_FNCloudKitZone: $(FN_CLOUDKIT_ZONE)
+    INFOPLIST_KEY_FNCommunicationEnvironment: development
+    INFOPLIST_KEY_CFBundleDisplayName: fn CloudKit Probe
+targets:
+  FnMacBetaSigning:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources: [Probe]
+    dependencies:
+      - package: FIACloudKit
+      - package: FnProbeCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.semicoder.fn.beta
+        CODE_SIGN_ENTITLEMENTS: Config/macOSProduction.entitlements
+        FN_CLOUDKIT_CONTAINER: iCloud.com.semicoder.fn.production
+        ENABLE_HARDENED_RUNTIME: YES
+  FnPhoneProbe:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources: [Probe]
+    dependencies:
+      - package: FIACloudKit
+      - package: FnProbeCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.semicoder.fn.ios.dev
+        CODE_SIGN_ENTITLEMENTS: Config/iOS.entitlements
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+    info:
+      path: build/iOS-Info.plist
+      properties:
+        FNCloudKitContainer: $(FN_CLOUDKIT_CONTAINER)
+        FNCloudKitZone: $(FN_CLOUDKIT_ZONE)
+        UIBackgroundModes: [remote-notification]
+  FnMacProbe:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources: [Probe]
+    info:
+      path: build/macOS-Info.plist
+      properties:
+        FNCloudKitContainer: $(FN_CLOUDKIT_CONTAINER)
+        FNCloudKitZone: $(FN_CLOUDKIT_ZONE)
+    dependencies:
+      - package: FIACloudKit
+      - package: FnProbeCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.semicoder.fn.cloudkit-probe.dev
+        CODE_SIGN_ENTITLEMENTS: Config/macOS.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+  FnMacHostSigning:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources: [Probe]
+    dependencies:
+      - package: FIACloudKit
+      - package: FnProbeCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.semicoder.fn.dev
+        CODE_SIGN_ENTITLEMENTS: Config/macOS.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+    info:
+      path: build/HostSigning-Info.plist
+      properties:
+        FNCloudKitContainer: $(FN_CLOUDKIT_CONTAINER)
+        FNCloudKitZone: $(FN_CLOUDKIT_ZONE)
+schemes:
+  FnMacBetaSigning:
+    build:
+      targets:
+        FnMacBetaSigning: all
+  FnPhoneProbe:
+    build:
+      targets:
+        FnPhoneProbe: all
+  FnMacProbe:
+    build:
+      targets:
+        FnMacProbe: all
+  FnMacHostSigning:
+    build:
+      targets:
+        FnMacHostSigning: all

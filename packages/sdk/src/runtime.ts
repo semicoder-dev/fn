@@ -3,7 +3,11 @@ import type { BackendPlugin, JSONValue, PluginContext, PluginMethod } from "./ty
 export { z };
 export type { BackendPlugin, PluginContext } from "./types";
 
-export function defineMethod<T>(description: string, schema: z.ZodType<T>, handler: (input: T, context: PluginContext) => unknown | Promise<unknown>): PluginMethod {
+export function defineMethod<T>(
+  description: string,
+  schema: z.ZodType<T>,
+  handler: (input: T, context: PluginContext) => unknown | Promise<unknown>,
+): PluginMethod {
   return {
     description,
     inputSchema: z.toJSONSchema(schema) as JSONValue,
@@ -11,4 +15,6 @@ export function defineMethod<T>(description: string, schema: z.ZodType<T>, handl
   };
 }
 
-export function definePlugin(plugin: BackendPlugin): BackendPlugin { return plugin; }
+export function definePlugin(plugin: BackendPlugin): BackendPlugin {
+  return plugin;
+}

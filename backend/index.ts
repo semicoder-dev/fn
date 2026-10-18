@@ -1,3 +1,4 @@
+import { ChatService } from "./chat/service";
 import { WebTools } from "./web";
 import { defineBackend, implementAPI } from "@semicoder/fia/backend";
 import { ChatGPT } from "./chatgpt";
@@ -18,12 +19,30 @@ let models: Models;
 let plugins: Plugins;
 let markets: Marketplaces;
 let web: WebTools;
+let chat: ChatService;
 export default defineBackend({
   api: implementAPI(api, {
-    "web.search": ({ pluginId, input }) => plugins.use(pluginId, () => web.start(pluginId, "search", input)),
-    "web.fetch": ({ pluginId, input }) => plugins.use(pluginId, () => web.start(pluginId, "fetch", input)),
-    "web.get": ({ pluginId, taskId }) => { plugins.get(pluginId); return web.get(pluginId, taskId); },
-    "web.cancel": ({ pluginId, taskId }) => { plugins.get(pluginId); return web.cancel(pluginId, taskId); },
+    "chat.snapshot": ({ pluginId, before }) => chat.snapshot(pluginId, before),
+    "chat.connect": async () => {
+      await chat.connect();
+      return null;
+    },
+    "chat.sync": async () => {
+      await chat.sync();
+      return null;
+    },
+    "web.search": ({ pluginId, input }) =>
+      plugins.use(pluginId, () => web.start(pluginId, "search", input)),
+    "web.fetch": ({ pluginId, input }) =>
+      plugins.use(pluginId, () => web.start(pluginId, "fetch", input)),
+    "web.get": ({ pluginId, taskId }) => {
+      plugins.get(pluginId);
+      return web.get(pluginId, taskId);
+    },
+    "web.cancel": ({ pluginId, taskId }) => {
+      plugins.get(pluginId);
+      return web.cancel(pluginId, taskId);
+    },
     "appearance.get": () => appearance.get(),
     "appearance.set": (input) => appearance.set(input),
     "chatgpt.status": () => chatgpt.status(),
@@ -138,7 +157,17 @@ export default defineBackend({
       chatgpt,
     );
     markets = new Marketplaces(store, () => emit("marketplaces.changed", { revision: ++revision }));
-    web = new WebTools(({ pluginId, id, kind, status }) => emit("web.changed", { pluginId, id, kind, status }));
+    web = new WebTools(({ pluginId, id, kind, status }) =>
+      emit("web.changed", { pluginId, id, kind, status }),
+    );
+    chat = new ChatService(
+      app.dataDirectory,
+      app.mode ?? "production",
+      app.identifier,
+      native,
+      () => plugins,
+      () => emit("chat.changed", { revision: ++revision }),
+    );
     plugins = new Plugins(
       store,
       models,
@@ -146,15 +175,15 @@ export default defineBackend({
       markets,
       fetch,
       web,
+      (pluginId) => chat.client(pluginId),
     );
     await plugins.open();
+    void chat
+      .start()
+      .catch((error) => console.warn("Communication startup failed:", String(error)));
     const mode = app.mode;
     const title =
-      mode === "development"
-        ? "fn · 开发版"
-        : mode === "preview"
-          ? "fn · 预览版"
-          : "fn";
+      mode === "development" ? "fn · 开发版" : mode === "preview" ? "fn · 预览版" : "fn";
     await native.windows.update({ id: "main", title, width: 1200, height: 800 });
     // FIA preserves its rightmost browser button when application items are empty.
     await native.windows.setTitlebar({ id: "main", items: [] });
@@ -164,6 +193,7 @@ export default defineBackend({
     reason: "模型、网络、插件或登录任务正在运行",
   }),
   async stop() {
+    chat?.stop();
     await web?.stop();
     await chatgpt?.stop();
     await models?.stop();
