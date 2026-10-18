@@ -9,6 +9,15 @@ export { readSSE } from "./sse";
 import { readSSE } from "./sse";
 
 export class Models {
+  private agentLeases = new Map<string, { pluginId: string; modelId: string }>();
+  reserveAgent(pluginId: string, modelId: string) {
+    if (this.active.size + this.starting + this.agentLeases.size >= 8) throw new Error("最多同时运行 8 个任务");
+    const config = this.store.value.models.find(model => model.id === modelId);
+    if (!config || !this.info(config).configured) throw new Error("模型不可用，请先在设置中配置模型");
+    const id = crypto.randomUUID();
+    this.agentLeases.set(id, { pluginId, modelId });
+    return { config: structuredClone(config), release: () => { this.agentLeases.delete(id); } };
+  }
   private terminal = new Map<string, ModelRun>();
   private starting = 0;
   private active = new Map<string, { controller: AbortController; run: ModelRun; done: Promise<void> }>();
@@ -32,6 +41,7 @@ export class Models {
     const provider = preset ? validatePreset(preset, input.model, baseURL, options) : input.provider;
     if (!preset && Object.keys(options).length) throw new Error("自定义兼容服务不支持预设服务商选项");
     const config = await this.store.update(state => {
+      if ([...this.agentLeases.values()].some(lease => lease.modelId === input.id)) throw new Error("Agent 正在使用此模型，请先停止任务");
       const existing = state.models.find(model => model.id === input.id);
       if (existing?.chatgptProfileId) throw new Error("订阅模型与账号绑定，请删除后从 ChatGPT 连接中重新添加");
       if (input.id && !existing) throw new Error("模型不存在");
@@ -57,8 +67,12 @@ export class Models {
     this.modelsChanged(); return this.info(config);
   }
   async remove(id: string) {
+    if ([...this.agentLeases.values()].some(lease => lease.modelId === id)) throw new Error("Agent 正在使用此模型，请先停止任务");
     if ([...this.active.values()].some(item => item.run.modelId === id)) throw new Error("此模型正在运行，请先停止任务");
-    await this.store.update(state => { state.models = state.models.filter(model => model.id !== id); });
+    await this.store.update(state => {
+      if ([...this.agentLeases.values()].some(lease => lease.modelId === id)) throw new Error("Agent 正在使用此模型，请先停止任务");
+      state.models = state.models.filter(model => model.id !== id);
+    });
     this.modelsChanged();
   }
   get(pluginId: string, runId: string): ModelRun {
@@ -69,9 +83,9 @@ export class Models {
   listRuns(pluginId: string): ModelRun[] {
     return this.store.value.runs.filter(run => run.pluginId === pluginId).slice(-30).reverse().map(run => { const full = this.get(pluginId, run.id); return { ...full, input: full.input.slice(0, 300), output: full.output.slice(0, 300) }; });
   }
-  busy(pluginId?: string): boolean { return this.starting > 0 || [...this.active.values()].some(item => !pluginId || item.run.pluginId === pluginId); }
+  busy(pluginId?: string): boolean { return this.starting > 0 || [...this.agentLeases.values()].some(item => !pluginId || item.pluginId === pluginId) || [...this.active.values()].some(item => !pluginId || item.run.pluginId === pluginId); }
   async start(pluginId: string, request: ModelRequest): Promise<ModelRun> {
-    if (this.active.size + this.starting >= 8) throw new Error("最多同时运行 8 个任务");
+    if (this.active.size + this.starting + this.agentLeases.size >= 8) throw new Error("最多同时运行 8 个任务");
     const config = this.store.value.models.find(model => model.id === request.modelId);
     if (!config) throw new Error("模型不存在，请先在设置 → 模型服务中添加模型");
     if (config.preset && !config.chatgptProfileId && !isPresetModelAvailable(config.preset, config.model)) throw new Error("预设模型已不在当前目录中，请在设置 → 模型服务中重新选择模型");

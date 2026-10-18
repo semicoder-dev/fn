@@ -19,3 +19,7 @@ FIA 仅提供运行时和受管命令，沿用[共仓开发](fia-integration.md)
 ## 插件市场
 
 官方插件已迁到独立 fn-plugins 仓库；宿主仅保留 SDK 模板与开发 CLI，不打包插件。第三方可托管 HTTPS 索引和预构建归档，协议、哈希、来源绑定与更新行为见[市场契约](plugin-marketplace.md)。官方插件以独立版本发行，公开归档验收后才上架。
+
+## Agent 开发接口（未发布）
+
+宿主可执行多步模型/工具循环，插件通过前后端 `agents` API 使用；自定义工具由 `defineTool` / `BackendPlugin.tools` 显式声明。已有 notes/model 模板及旧文本调用保持可用，不自动启用 Agent。新插件需使用包含本次改动的宿主生成的 SDK 快照，公开 0.3.5 尚无该接口；方法、消息、历史恢复和取消见 [Agent 文档](agents.md)。

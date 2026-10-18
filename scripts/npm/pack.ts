@@ -44,6 +44,7 @@ try {
   for (const name of [
     "./types",
     "./chat",
+    "./agent",
     "./client",
     "./ui",
     "./runtime",

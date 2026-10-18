@@ -8,7 +8,7 @@
         "@earendil-works/pi-ai": "1.0.2",
         "@semicoder/fia": "workspace:*",
         "@semicoder/fn-sdk": "workspace:*",
-        "agent-webtool": "0.8.1",
+        "agent-webtool": "file:vendor/agent-webtool-dev.tgz",
         "jose": "^6",
         "react": "19.2.7",
         "react-dom": "19.2.7",
@@ -508,7 +508,7 @@
 
     "agent-base": ["agent-base@9.0.0", "", {}, "sha512-TQf59BsZnytt8GdJKLPfUZ54g/iaUL2OWDSFCCvMOhsHduDQxO8xC4PNeyIkVcA5KwL2phPSv0douC0fgWzmnA=="],
 
-    "agent-webtool": ["agent-webtool@0.8.1", "", { "dependencies": { "cheerio": "^1.2.0", "marked": "^18.0.4", "marked-terminal": "^7.3.0", "turndown": "^7.2.4", "undici": "^7.25.0", "zod": "^4.4.3" }, "bin": { "webtool": "dist/cli.mjs", "agent-webtool": "dist/cli.mjs" } }, "sha512-eZcnZ0TLOJabMWYkeu75bW4qnVEOYepwQxnDBLcxpELq6pT21tch8ttUPlF09rCp5c6Ec4dOS5n9tN76Ik248w=="],
+    "agent-webtool": ["agent-webtool@vendor/agent-webtool-dev.tgz", { "dependencies": { "cheerio": "^1.2.0", "marked": "^18.0.4", "marked-terminal": "^7.3.0", "turndown": "^7.2.4", "undici": "^7.25.0", "zod": "^4.4.3" }, "bin": { "agent-webtool": "./dist/cli.mjs", "webtool": "./dist/cli.mjs" } }, "sha512-1O2oyBUbirrwQsqnYEf99mQHQDbjHIfk9nzjzREjY2LmZa/3iYR45f1rtkevlRzId0OaiCwF11bVf9hoCoEthA=="],
 
     "ansi-escapes": ["ansi-escapes@7.3.0", "", { "dependencies": { "environment": "^1.0.0" } }, "sha512-BvU8nYgGQBxcmMuEeUEmNTvrMVjJNSH7RgW24vXexN4Ven6qCvy4TntnvlnwnMLTVlcRQQdbRY8NKnaIoeWDNg=="],
 

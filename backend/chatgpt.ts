@@ -341,6 +341,40 @@ export class ChatGPT {
       throw error;
     } finally { controller.abort(); this.requests.delete(controller); }
   }
+  /** Agent transport uses the same account checks, revocation and cancellation as text generation. */
+  async agentRequest<T>(id: string, modelId: string, signal: AbortSignal, run: (fetcher: typeof fetch, signal: AbortSignal, checkEvent: (event: unknown) => void) => Promise<T>): Promise<T> {
+    if (this.blocked.has(id)) throw new Error(messages.subscription_sharing_usage_limit_exceeded);
+    const controller = new AbortController(); this.requests.set(controller, id);
+    const combined = AbortSignal.any([signal, controller.signal]);
+    try {
+      await this.model(id, modelId);
+      const access = await this.credential(id); combined.throwIfAborted();
+      const authenticated = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = input instanceof Request ? input.url : String(input);
+        if (url !== RESOURCE + "/responses") throw new Error("无效的 ChatGPT 模型请求地址");
+        const headers = new Headers(init?.headers);
+        headers.set("authorization", "Bearer " + access);
+        const response = await this.fetcher(input, { ...init, headers, redirect: "error", signal: combined });
+        if (!response.ok) {
+          const error = failure(await response.json().catch(() => null), response.status, response.headers.get("x-request-id") ?? undefined);
+          if (error.code === "subscription_sharing_usage_limit_exceeded") this.blocked.add(id);
+          throw error;
+        }
+        return response;
+      }) as typeof fetch;
+      const checkEvent = (value: unknown) => {
+        const parsed = z.object({ type: z.string(), response: z.object({ error: z.unknown().optional() }).optional(), error: z.unknown().optional() }).passthrough().safeParse(value);
+        if (!parsed.success) return;
+        const event = parsed.data;
+        if (event.type === "response.failed" || event.type === "error") {
+          const error = failure(event.type === "response.failed" ? { error: event.response?.error } : event);
+          if (error.code === "subscription_sharing_usage_limit_exceeded") this.blocked.add(id);
+          throw error;
+        }
+      };
+      return await run(authenticated, combined, checkEvent);
+    } finally { controller.abort(); this.requests.delete(controller); }
+  }
   async signOut(id: string) {
     this.get(id); this.signingOut.add(id); this.services.changed();
     for (const [controller, profileId] of this.requests) if (profileId === id) controller.abort();

@@ -376,3 +376,42 @@ test("waiting and exchanging login cannot race account edits or resurrect a remo
   await callback; await cancellation; await f.auth.remove([id]);
   expect((await f.callback()).status).toBe(400); expect(f.saved.profiles).toHaveLength(0);
 });
+
+test("agent Responses transport preserves function calls, results and account cancellation", async () => {
+  const { createAgentModel } = await import("../backend/agent/model");
+  const f = await fixture(); const id = await f.login();
+  let turn = 0;
+  f.setResponse(() => {
+    turn++;
+    if (turn === 1) return events([
+      { type: "response.created", response: { id: "r1" } },
+      { type: "response.output_item.added", output_index: 0, item: { type: "function_call", id: "fc_1", call_id: "call_1", name: "web_search", arguments: "" } },
+      { type: "response.function_call_arguments.delta", output_index: 0, delta: '{"query":"test"}' },
+      { type: "response.output_item.done", output_index: 0, item: { type: "function_call", id: "fc_1", call_id: "call_1", name: "web_search", arguments: '{"query":"test"}' } },
+      { type: "response.completed", response: { id: "r1", status: "completed", output: [], usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15 } } },
+    ]);
+    return events([
+      { type: "response.created", response: { id: "r2" } },
+      { type: "response.output_item.added", output_index: 0, item: { type: "message", id: "msg_2", role: "assistant", content: [] } },
+      { type: "response.output_text.delta", output_index: 0, delta: "summary" },
+      { type: "response.output_item.done", output_index: 0, item: { type: "message", id: "msg_2", role: "assistant", content: [{ type: "output_text", text: "summary" }] } },
+      { type: "response.completed", response: { id: "r2", status: "completed", output: [], usage: { input_tokens: 20, output_tokens: 5, total_tokens: 25 } } },
+    ]);
+  });
+  const generate = createAgentModel(f.auth);
+  const config = { id: "model", name: "test", provider: "chatgpt", model: "gpt-account-second", baseURL: resource, apiKey: "", preset: null, options: {}, chatgptProfileId: id };
+  const request = { config, system: "research", messages: [{ role: "user" as const, content: [{ type: "text" as const, text: "find" }] }], tools: [{ name: "web_search", description: "search", inputSchema: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } }], signal: new AbortController().signal, partial: () => {} };
+  const first = await generate(request);
+  expect(first.finishReason).toBe("tool-calls");
+  const tool = first.content.find(block => block.type === "tool-call")!;
+  const second = await generate({ ...request, messages: [...request.messages, first, { role: "tool", callId: tool.id, name: tool.name, content: [{ type: "text", text: "evidence" }], isError: false }] });
+  expect(second.content).toEqual([{ type: "text", text: "summary" }]);
+  expect(JSON.stringify([first, second])).not.toContain("access-secret");
+  const calls = f.calls.filter(call => call.url === resource + "/responses");
+  expect(new Headers(calls[0]!.init!.headers).get("authorization")).toBe("Bearer access-secret");
+  expect(JSON.parse(String(calls[1]!.init!.body))).toMatchObject({ store: false, stream: true, input: expect.arrayContaining([{ type: "function_call_output", call_id: "call_1", output: "evidence" }]) });
+  let started!: () => void;
+  const ready = new Promise<void>(resolve => { started = resolve; });
+  const pending = f.auth.agentRequest(id, config.model, new AbortController().signal, async (_fetch, signal) => { started(); await new Promise((_resolve, reject) => signal.addEventListener("abort", () => reject(signal.reason), { once: true })); });
+  await ready; await f.auth.signOut(id); await expect(pending).rejects.toThrow();
+});

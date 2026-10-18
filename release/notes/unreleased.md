@@ -2,6 +2,23 @@
 
 2026-10-18 追加授权：聊天 v2 的 iOS **0.2.0（2）** 已完成 Apple 处理并加入本人内部 TestFlight 组，v2 生产 schema 和订阅已部署验证；详情见 [TestFlight 记录](../../clients/apple/TESTFLIGHT.md)。下方是先前本地实施边界，手机内测不代表 Mac/SDK 公开发行，相关改动继续留在本清单。
 
+## 宿主 Agent loop 与结构化消息（2026-10-18，本地未发布）
+
+后续插件消费：用户追加要求搜索插件接入 fn Chat，已在独立 fn-plugins `codex/web-search-chat` 实现 `web-search` 0.1.0，使用固定开发 SDK 快照；网页与 Chat 共享宿主循环，原生模型选择卡片、进度、答案/来源和取消均已接入。本次无宿主协议或客户端改动，未上架；说明见该插件 README，验证见 workspace 搜索插件交付记录。
+
+真实搜索反馈修复：Agent 每次模型请求附宿主当前时间和时区，避免猜测“今天”；web_search 的空白 site 视为不限站点，timeRange 支持 all 映射为无时间筛选，公共 web API 不变。插件补充空结果放宽限制、动态空页面换源策略，按当前轮次展示来源和具体查询/结果数，直接显示失败与无来源提示。开发插件重装保留原有设置与历史，手机协议无变化。
+
+搜索引擎验证码曾被误判为正常零结果：通用识别修复位于 agent-webtool `codex/search-challenge-detection`，fn 开发分支暂时固定消费 `vendor/agent-webtool-dev.tgz`，哈希与来源见同目录 JSON；不是公开 npm 0.8.1。发布前必须切回独立验收的公开版本。插件在引擎受阻时报告原因，并尝试直接读取公开新闻栏目及具体报道。
+
+来源：`codex/agent-loop`，基线 `6649a64`；参考 DeepSeek Harness `687f282e86`，不引入运行时依赖。应用/SDK/FIA 版本及 build 保持不变。
+
+- 前后端 `agents` SDK 与共享 API：显式工具选择、多步循环、后续轮次、状态和分页事件、取消与空闲会话删除。
+- text/reasoning/tool-call 消息、模型 usage/opaque replay、工具模型内容与展示 meta 分离；独立 SQLite 事件日志及重启中断不重放。
+- 宿主 web_search/web_fetch 和插件 defineTool 声明；参数校验、顺序执行、错误结果、有界时限/体积/步数及插件/模型/应用更新占用。
+- 模型继续复用 Pi；自定义兼容服务走 Chat Completions，ChatGPT 订阅走账号绑定的 Responses，不切换计费路径。旧文本 models/runs 保持可用。
+- 说明与边界见 [Agent 文档](../../docs/agents.md)。Semicoder 前后端 SDK/自动化页同步未发布范围，默认公开安装入口不变。
+- 验证：完整 check、最终 142 项应用测试 / 1342 断言、应用构建、隔离数据的打包启动/退出及 SDK 归档独立消费通过；官网内容/链接、生产构建和 38 个静态页面检查通过。追加真实 GPT-6-Luna 天气/新闻基础验收已返回带来源答案，插件最终归档通过 ChatRunner/Agent 模拟集成；手机再次发送和推送尚未复验。未发布应用、SDK 或插件。
+
 ## 多端机器人聊天 v2（2026-10-18，本地未发布）
 
 来源：`codex/ios-communication`，基线 `b915d82` 加当前工作树；保留已有 CloudKit/签名开发改动。应用、SDK、FIA 与手机版本/build 均未改变。普通开发未授权推送、发布、TestFlight 上传或生产 schema 部署。

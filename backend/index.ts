@@ -1,5 +1,7 @@
 import { ChatService } from "./chat/service";
 import { WebTools } from "./web";
+import { Agents } from "./agent/service";
+import { createAgentModel } from "./agent/model";
 import { defineBackend, implementAPI } from "@semicoder/fia/backend";
 import { ChatGPT } from "./chatgpt";
 import { ChatGPTStorage } from "./chatgpt-storage";
@@ -20,8 +22,17 @@ let plugins: Plugins;
 let markets: Marketplaces;
 let web: WebTools;
 let chat: ChatService;
+let agents: Agents;
 export default defineBackend({
   api: implementAPI(api, {
+    "agents.tools": ({ pluginId }) => plugins.use(pluginId, () => agents.catalog(pluginId)),
+    "agents.create": ({ pluginId, input }) => plugins.use(pluginId, () => agents.create(pluginId, input)),
+    "agents.send": ({ pluginId, sessionId, text }) => plugins.use(pluginId, () => agents.send(pluginId, sessionId, text)),
+    "agents.list": ({ pluginId }) => { plugins.get(pluginId); return agents.list(pluginId); },
+    "agents.get": ({ pluginId, sessionId }) => { plugins.get(pluginId); return agents.get(pluginId, sessionId); },
+    "agents.events": ({ pluginId, sessionId, after }) => { plugins.get(pluginId); return agents.events(pluginId, sessionId, after); },
+    "agents.cancel": ({ pluginId, sessionId }) => { plugins.get(pluginId); return agents.cancel(pluginId, sessionId); },
+    "agents.remove": ({ pluginId, sessionId }) => { plugins.get(pluginId); agents.remove(pluginId, sessionId); return null; },
     "chat.snapshot": ({ pluginId, before }) => chat.snapshot(pluginId, before),
     "chat.connect": async () => {
       await chat.connect();
@@ -168,6 +179,8 @@ export default defineBackend({
       () => plugins,
       () => emit("chat.changed", { revision: ++revision }),
     );
+    agents = new Agents(app.dataDirectory, models, web, id => plugins.agentTools(id), change => emit("agents.changed", change), createAgentModel(chatgpt));
+    await agents.open();
     plugins = new Plugins(
       store,
       models,
@@ -176,6 +189,7 @@ export default defineBackend({
       fetch,
       web,
       (pluginId) => chat.client(pluginId),
+      agents,
     );
     await plugins.open();
     void chat
@@ -189,11 +203,12 @@ export default defineBackend({
     await native.windows.setTitlebar({ id: "main", items: [] });
   },
   beforeUpdate: () => ({
-    ready: !models.busy() && !plugins.busy() && !chatgpt.busy() && !web.busy(),
+    ready: !agents.busy() && !models.busy() && !plugins.busy() && !chatgpt.busy() && !web.busy(),
     reason: "模型、网络、插件或登录任务正在运行",
   }),
   async stop() {
     chat?.stop();
+    await agents?.stop();
     await web?.stop();
     await chatgpt?.stop();
     await models?.stop();

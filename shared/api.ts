@@ -1,4 +1,5 @@
 import { chatSnapshot } from "./chat/api";
+import { agentCreate, agentSession, agentSummary, agentSnapshot, agentEventPage, agentChange, agentToolInfo } from "@semicoder/fn-sdk/agent";
 import { webFetchInput, webSearchInput, webTask, webChange } from "./web";
 import { defineAPI, z } from "@semicoder/fia/api";
 import { chatGPTStatus, chatGPTModel, chatGPTLabel } from "./chatgpt";
@@ -104,6 +105,35 @@ const empty = z.strictObject({});
 const selection = z.strictObject({ pluginId, runId: z.string() });
 export default defineAPI({
   methods: {
+    "agents.tools": { description: "List host web tools and tools explicitly declared by this plugin.", input: z.strictObject({ pluginId }), output: z.array(agentToolInfo) },
+    "agents.create": {
+      description: "Create a persistent plugin-owned agent session with explicit tools and loop limits.",
+      input: z.strictObject({ pluginId, input: agentCreate }), output: agentSession,
+    },
+    "agents.list": {
+      description: "List up to 100 plugin-owned agent session summaries, without message bodies.",
+      input: z.strictObject({ pluginId }), output: z.array(agentSummary),
+    },
+    "agents.get": {
+      description: "Read session state and the live assistant snapshot. Re-read after reconnecting.",
+      input: z.strictObject({ pluginId, sessionId: z.string() }), output: agentSnapshot,
+    },
+    "agents.events": {
+      description: "Read durable ordered events after a sequence cursor, up to 100 events / 256 KiB per page.",
+      input: z.strictObject({ pluginId, sessionId: z.string(), after: z.number().int().nonnegative().default(0) }), output: agentEventPage,
+    },
+    "agents.send": {
+      description: "Start a new turn in an idle session. Returns immediately; no automatic retry on lost replies.",
+      input: z.strictObject({ pluginId, sessionId: z.string(), text: z.string().trim().min(1).max(16000) }), output: agentSession,
+    },
+    "agents.cancel": {
+      description: "Request cancellation. State remains cancelling until active model/tool execution settles.",
+      input: z.strictObject({ pluginId, sessionId: z.string() }), output: agentSession,
+    },
+    "agents.remove": {
+      description: "Delete an idle agent session and its event history. Active sessions must settle first.",
+      input: z.strictObject({ pluginId, sessionId: z.string() }), output: z.null(),
+    },
     "chat.snapshot": {
       description: "Read this host's robot conversations and processing state.",
       input: z.strictObject({ pluginId: z.string().optional(), before: z.string().optional() }),
@@ -363,6 +393,7 @@ export default defineAPI({
     },
   },
   events: {
+    "agents.changed": { description: "Agent state or live content changed. Re-read snapshot and durable events using seq; notifications are not replayed.", payload: agentChange },
     "chat.changed": {
       description: "Chat state changed; reread the snapshot after subscribing and reconnecting.",
       payload: z.strictObject({ revision: z.number() }),

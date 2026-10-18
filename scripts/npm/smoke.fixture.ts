@@ -2,7 +2,7 @@ import { messageSchema as chatMessageSchema } from "@semicoder/fn-sdk/chat";
 // Copied to a temporary consumer of the npm archive by pack.ts.
 import { strict as assert } from "node:assert";
 import { buildPlugin } from "@semicoder/fn-sdk/build";
-import { defineMethod, definePlugin, z } from "@semicoder/fn-sdk/runtime";
+import { defineMethod, definePlugin, defineTool, z } from "@semicoder/fn-sdk/runtime";
 import { createPluginClient } from "@semicoder/fn-sdk/client";
 import { Button, Panel } from "@semicoder/fn-sdk/ui";
 
@@ -82,3 +82,12 @@ await chatPlugin.chat!.onMessage(chatMessage, {} as never);
 assert.deepEqual(received, ["event"]);
 if (chatMessageSchema.safeParse({ protocolVersion: 2 }).success)
   throw new Error("Invalid chat message accepted");
+
+const agentProtocol = await import("@semicoder/fn-sdk/agent");
+const agentConfig = agentProtocol.agentCreate.parse({ modelId: "model", tools: ["web_search"] });
+assert.equal(agentConfig.maxSteps, 8);
+const agentTool = defineTool("Echo", z.object({ text: z.string() }), input => ({ content: [{ type: "text", text: input.text }] }));
+assert.deepEqual(await agentTool.execute({ text: "agent archive" }, {} as never), { content: [{ type: "text", text: "agent archive" }] });
+assert.throws(() => agentTool.execute({ text: 1 }, {} as never));
+assert.equal(typeof createPluginClient("smoke").agents.events, "function");
+assert.equal(typeof createPluginClient("smoke").agents.remove, "function");

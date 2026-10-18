@@ -41,3 +41,9 @@ marketplaces.changed and plugins.changed have no replay. A failed source retains
 开发签名和 `communication-config.json` 配置后，`chat.snapshot` 返回本机会话、机器人目录、待发与错误；`chat.connect/sync` 连接或补拉，`chat.changed` 只提示重读。宿主页面只读；iOS / fn Chat 发文字和卡片回复。SDK `PluginContext.chat` 绑定当前插件，`BackendPlugin.chat` 显式处理持久 `onMessage/onResponse`。不要公开普通方法或让宿主自动用 AI 解释用户文字。
 
 请求内容不可变，回复和终态同 zone 原子提交，首个有效回复胜出；批准不等于处理成功。运行中断不自动重放。只传测试文字或安全摘要，不上传凭证。v1 请求不参与 v2 执行，不提供删除历史接口。入口与验证见 `clients/apple/README.md`。
+
+## Agent sessions (development, unreleased)
+
+Use agents.tools({pluginId}) to discover only the host web tools and that plugin's explicitly declared tools. agents.create({pluginId,input:{modelId,system,tools,maxSteps,timeoutMs}}) creates a persistent session; agents.send({pluginId,sessionId,text}) starts a bounded turn and returns promptly. Subscribe to agents.changed before sending, read agents.get, and page agents.events({pluginId,sessionId,after}) until hasMore is false. Use sessionId + seq to deduplicate. Never retry a create/send with an unknown outcome automatically.
+
+Model messages, durable turn/step/tool events, and live partial snapshots are distinct. Tool meta is display-only; replay is opaque provider data. agents.cancel returns cancelling until execution settles. App restart marks unfinished turns interrupted and does not replay tools; check their possible effects before explicitly continuing. agents.remove deletes only idle session history. Plugin pages may unmount without cancelling host work. Read docs/agents.md for limits and backend tool contracts. Public SDK 0.3.5 / fn 0.4.5 do not include this capability.

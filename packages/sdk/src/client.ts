@@ -1,4 +1,5 @@
 import { createWebClient } from "./web-client";
+import { createAgentClient } from "./agent-client";
 import type { HostBridge, JSONValue, ModelInfo, ModelRequest, ModelRun } from "./types";
 
 export function createPluginClient(pluginId: string) {
@@ -6,6 +7,7 @@ export function createPluginClient(pluginId: string) {
   if (!bridge) throw new Error("This plugin must be opened in fn.");
   const call = <T>(method: string, input: unknown) => bridge.call(method, input) as Promise<T>;
   return {
+    agents: createAgentClient(bridge, pluginId),
     web: createWebClient(bridge, pluginId),
     models: {
       list: () => call<ModelInfo[]>("models.list", {}),

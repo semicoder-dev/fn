@@ -1,0 +1,17 @@
+{
+  "package": "agent-webtool",
+  "version": "0.8.1",
+  "published": false,
+  "sourceRepository": "semicoder-dev/agent-webtool",
+  "baseCommit": "08ce2797b3ccf19d9354eb4a38e28a1df8126526",
+  "sourceCommit": "6411f648fa87434e3de4ab550db8190c9fe03def",
+  "branch": "codex/search-challenge-detection",
+  "changes": [
+    "src/core/engines/baidu.ts",
+    "src/core/engines/duckduckgo.ts",
+    "test/search.test.ts",
+    "README.md"
+  ],
+  "sha256": "9485260eade7f33825f71a94948e9e6750cb2b31647e1cb77ae8d8e12719c7ac",
+  "note": "Unpublished development archive: classify verification pages as engine errors. Replace with a verified public npm version before release."
+}

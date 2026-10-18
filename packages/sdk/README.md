@@ -285,3 +285,13 @@ export default definePlugin({
 回复与终态在同一 zone 原子提交，首个有效回复生效；取消、过期参与同一状态竞争。执行前再次验证宿主、插件、机器人版本、有效期和输入。未知卡片显示摘要并禁用提交。请求内容不能修改，进度/处理状态使用独立记录，不产生新的可见提醒。
 
 完整示例：[验收插件](../../chat/acceptance/src/backend.ts)；两端共用样例：`chat/fixtures/v2.json`。有限卡片组合与交互回传参考 [Slack Block Kit](https://docs.slack.dev/block-kit/)，同步提示使用 [CKRecordZoneSubscription](https://developer.apple.com/documentation/cloudkit/ckrecordzonesubscription)。
+
+## Agent 会话（开发分支，未发布）
+
+`client.agents` / `PluginContext.agents` 新增 `tools/create/list/get/events/send/cancel/remove/onChange`；`@semicoder/fn-sdk/agent` 导出消息、会话、事件 schema/types 与 `deriveAgentMessages`。`defineTool` 从 runtime 导出，`BackendPlugin.tools` 声明插件自己的模型工具。公开 SDK 0.3.5 / fn 0.4.5 不包含这些能力，开发时消费同一次宿主构建的 SDK 快照。
+
+宿主负责有界多步模型调用、工具校验与执行、取消及持久事件。工具必须由会话明确选中；普通插件 methods 不会自动成为模型工具。text/reasoning/tool-call 内容块、工具结果和展示 meta 分离；provider replay 数据保留续接信息。旧 models/runs 接口继续支持单次文本生成。
+
+`send` 立即返回，不等待最终答案；`cancel` 返回 cancelling，需读取终态。订阅后立即 get，使用 events 的 seq 游标补取历史，重连重读，不自动重发不确定请求。页面卸载只清理订阅，任务仍由宿主管理。后端插件订阅随插件 dispose 清理。工具 signal 必须传给可取消的网络或异步操作；取消不回滚副作用。
+
+完整方法、示例、消息事件及限制见 [Agent 文档](../../docs/agents.md)。它与 fn Chat 的跨设备消息是不同协议；业务插件自行选择何时发送聊天结果。

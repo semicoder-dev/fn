@@ -33,7 +33,8 @@
     "./plugin": "./plugin.ts",
     "./manifest": "./src/manifest.ts",
     "./tailwind.css": "./src/tailwind.css",
-    "./chat": "./src/chat.ts"
+    "./chat": "./src/chat.ts",
+    "./agent": "./src/agent.ts"
   },
   "publishConfig": {
     "access": "public",

@@ -5,6 +5,8 @@ import type {
   ChatResponse,
 } from "@semicoder/fn-sdk/chat";
 import type { WebTools } from "./web";
+import type { Agents, PluginAgentTools } from "./agent/service";
+import { agentToolInfo, type AgentClient } from "@semicoder/fn-sdk/agent";
 import { mkdir, realpath, rm } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -37,6 +39,7 @@ type Loaded = {
   manifest: PluginManifest;
   root: string;
   backend?: BackendPlugin;
+  agentDisposers?: Set<() => void>;
   calls: number;
   changing: boolean;
 };
@@ -72,6 +75,7 @@ export class Plugins {
     private fetcher: typeof fetch = fetch,
     private web?: WebTools,
     private chat?: (pluginId: string) => ChatClient,
+    private agents?: Agents,
   ) {}
   async open() {
     for (const record of this.store.value.plugins) {
@@ -136,8 +140,29 @@ export class Plugins {
     }
   }
   private context(id: string): PluginContext {
+    const agentClient = () => {
+      if (!this.agents) throw new Error("Agent 能力不可用");
+      return this.agents.client(id);
+    };
+    const agents: AgentClient = {
+      tools: () => this.use(id, () => agentClient().tools()),
+      create: input => this.use(id, () => agentClient().create(input)),
+      send: (sessionId, text) => this.use(id, () => agentClient().send(sessionId, text)),
+      list: () => agentClient().list(), get: sessionId => agentClient().get(sessionId),
+      events: (sessionId, after) => agentClient().events(sessionId, after),
+      cancel: sessionId => agentClient().cancel(sessionId), remove: sessionId => agentClient().remove(sessionId),
+      onChange: listener => {
+        const plugin = this.get(id);
+        const dispose = agentClient().onChange(listener);
+        plugin.agentDisposers ??= new Set();
+        const cleanup = () => { dispose(); plugin.agentDisposers?.delete(cleanup); };
+        plugin.agentDisposers.add(cleanup);
+        return cleanup;
+      },
+    };
     return {
       pluginId: id,
+      agents,
       ...(this.chat ? { chat: this.chat(id) } : {}),
       web: {
         search: (input, options) =>
@@ -248,15 +273,29 @@ export class Plugins {
           if (!Number.isSafeInteger(timeout) || timeout < 1000 || timeout > 86_400_000)
             throw new Error("聊天处理超时配置无效");
         }
+        if (Object.keys(backend.tools ?? {}).length > 32) throw new Error("插件最多声明 32 个工具");
+        for (const [name, tool] of Object.entries(backend.tools ?? {})) {
+          if (["web_search", "web_fetch"].includes(name)) throw new Error("插件工具不能覆盖宿主网络工具");
+          agentToolInfo.parse({ name, description: tool.description, inputSchema: tool.inputSchema });
+          if (Buffer.byteLength(JSON.stringify(tool.inputSchema)) > 16 * 1024) throw new Error("工具参数声明超过 16 KiB");
+          if (typeof tool.execute !== "function") throw new Error("无效的插件工具：" + name);
+          if (!tool.inputSchema || typeof tool.inputSchema !== "object" || Array.isArray(tool.inputSchema) || tool.inputSchema.type !== "object") throw new Error("工具参数必须声明 JSON Schema object");
+          z.fromJSONSchema(tool.inputSchema);
+        }
         plugin.backend = backend;
         await backend.activate?.(this.context(plugin.info.id));
       }
       plugin.info.status = "active";
       plugin.info.error = null;
     } catch (error) {
+      for (const dispose of plugin.agentDisposers ?? []) dispose();
       plugin.info.status = "error";
       plugin.info.error = message(error);
     }
+  }
+  private async dispose(plugin: Loaded) {
+    try { await plugin.backend?.dispose?.(); }
+    finally { for (const dispose of plugin.agentDisposers ?? []) dispose(); }
   }
   chatCatalog() {
     return [...this.registry.values()]
@@ -268,6 +307,17 @@ export class Plugins {
         enabled: p.info.enabled && p.info.status === "active",
         version: p.info.version + ":" + p.backend!.chat!.version,
       }));
+  }
+  agentTools(id: string): PluginAgentTools {
+    const plugin = this.get(id);
+    if (this.stopping || plugin.changing || plugin.info.status !== "active") throw new Error("插件未就绪或已停用");
+    return Object.fromEntries(Object.entries(plugin.backend?.tools ?? {}).map(([name, definition]) => [name, {
+      definition,
+      execute: (input: unknown, signal: AbortSignal, sessionId: string, callId: string) => this.use(id, async () => {
+        signal.throwIfAborted();
+        return definition.execute(input, { ...this.context(id), signal, sessionId, callId });
+      }),
+    }]));
   }
   chatVersion(pluginId: string) {
     const p = this.get(pluginId);
@@ -343,7 +393,7 @@ export class Plugins {
       return structuredClone(plugin.info);
     plugin.changing = true;
     try {
-      if (!enabled) await plugin.backend?.dispose?.();
+      if (!enabled) await this.dispose(plugin);
       await this.store.update((state) => {
         state.disabled = [
           ...state.disabled.filter((item) => item !== id),
@@ -375,7 +425,7 @@ export class Plugins {
       throw new Error("插件正在运行，请先停止任务");
     plugin.changing = true;
     try {
-      await plugin.backend?.dispose?.();
+      await this.dispose(plugin);
       const record = this.store.value.plugins.find((item) => item.id === id);
       await this.store.update((state) => {
         state.plugins = state.plugins.filter((item) => item.id !== id);
@@ -555,7 +605,7 @@ export class Plugins {
       plugin.changing = true;
       if (old) {
         old.changing = true;
-        await old.backend?.dispose?.();
+        await this.dispose(old);
       }
       this.registry.set(plugin.info.id, plugin);
       if (plugin.info.enabled) {
@@ -593,7 +643,7 @@ export class Plugins {
       slot.job.message = this.stopping ? "应用关闭，安装已取消" : message(error);
       if (switching && candidate && !committed) {
         await Promise.resolve()
-          .then(() => candidate?.backend?.dispose?.())
+          .then(() => candidate && this.dispose(candidate))
           .catch(() => {});
         if (old) {
           this.registry.set(old.info.id, old);
@@ -655,7 +705,7 @@ export class Plugins {
     this.installation?.process?.kill();
     await this.installation?.done;
     await Promise.allSettled(
-      [...this.registry.values()].map((plugin) => plugin.backend?.dispose?.()),
+      [...this.registry.values()].map((plugin) => this.dispose(plugin)),
     );
   }
 }

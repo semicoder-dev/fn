@@ -37,7 +37,7 @@
     "jose": "^6",
     "react": "19.2.7",
     "react-dom": "19.2.7",
-    "agent-webtool": "0.8.1"
+    "agent-webtool": "file:vendor/agent-webtool-dev.tgz"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

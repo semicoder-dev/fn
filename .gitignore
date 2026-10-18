@@ -9,3 +9,4 @@ resources/plugins/*.tgz
 artifacts/
 resources/sdk/
 *.tgz
+!vendor/agent-webtool-dev.tgz

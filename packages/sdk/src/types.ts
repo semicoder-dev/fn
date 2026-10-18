@@ -1,4 +1,6 @@
 import type { ChatClient, PluginChat } from "./chat";
+import type { AgentClient, AgentTool } from "./agent";
+export type { AgentClient, AgentSession, AgentMessage, AgentEvent, AgentTool } from "./agent";
 export type { ChatClient, ChatCard, ChatMessage, ChatEventContext, PluginChat } from "./chat";
 import type { WebClient } from "./web";
 export type {
@@ -124,6 +126,7 @@ export interface InstallJob {
 
 export interface PluginContext {
   readonly pluginId: string;
+  agents: AgentClient;
   chat?: ChatClient;
   web: WebClient;
   models: { list(): ModelInfo[]; start(input: ModelRequest): Promise<ModelRun> };
@@ -141,6 +144,8 @@ export interface PluginMethod {
 }
 
 export interface BackendPlugin {
+  /** Explicitly selected by each agent session; never exposed to other plugins. */
+  tools?: Record<string, AgentTool>;
   /** Explicit opt-in; existing methods are never exposed remotely. */
   chat?: PluginChat;
   methods: Record<string, PluginMethod>;

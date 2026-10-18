@@ -17,7 +17,7 @@ const fields: Record<string, ProviderPreset["fields"]> = {
   "amazon-bedrock": [{ key: "region", label: "AWS 区域", placeholder: "us-east-1", required: true }],
 };
 
-function getProvider(id: string) {
+export function getProvider(id: string) {
   const provider = providers.get(id);
   if (!provider) throw new Error("未知的 Pi 服务商，请从预设列表中选择");
   return provider;

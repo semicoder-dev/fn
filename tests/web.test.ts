@@ -8,6 +8,35 @@ import { Models } from "../backend/models";
 import { Plugins } from "../backend/plugins";
 import { registerFixture } from "./plugin-fixture";
 import type { WebFetchResult, WebTask } from "@semicoder/fn-sdk/types";
+import { webSearch, createSourceContext } from "agent-webtool";
+import { createHash } from "node:crypto";
+
+test("pinned development webtool reports captcha pages as failures", async () => {
+  const provenance = await Bun.file("vendor/agent-webtool-dev.json").json();
+  expect(provenance.published).toBe(false);
+  expect(
+    createHash("sha256")
+      .update(await Bun.file("vendor/agent-webtool-dev.tgz").bytes())
+      .digest("hex"),
+  ).toBe(provenance.sha256);
+  const result = await webSearch(
+    { query: "新闻", engines: ["baidu", "duckduckgo"] },
+    {
+      sources: createSourceContext(),
+      fetch: async (url) => ({
+        finalUrl: url,
+        status: 200,
+        contentType: "text/html",
+        body: new TextEncoder().encode(
+          url.includes("baidu.com")
+            ? "<title>百度安全验证</title>"
+            : '<form id="challenge-form"><div id="anomaly-modal"></div></form>',
+        ).buffer,
+      }),
+    },
+  );
+  expect(result.engines.every((engine) => !engine.ok && engine.status === "error")).toBe(true);
+});
 
 const page: WebFetchResult = {
   url: "https://example.com",
