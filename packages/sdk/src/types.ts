@@ -85,6 +85,8 @@ export interface PluginManifest {
   name: string;
   description: string;
   icon: string;
+  /** Optional monochrome icon, built from src/icon.svg. icon remains the text fallback. */
+  iconSvg?: "dist/icon.svg";
   color: string;
   sdkVersion: "0.3";
   frontend: string;
@@ -99,6 +101,7 @@ export interface PluginInfo {
   name: string;
   description: string;
   icon: string;
+  iconURL: string | null;
   color: string;
   version: string;
   packageName: string;

@@ -1,5 +1,11 @@
 # 待发布改动
 
+## 插件 SVG 图标（2026-10-18，本地未发布）
+
+来源：codex/plugin-svg-icons，fn 基线 2e315eb；官方插件基线 0f00988，官网基线 6b84c0a。作者通过 src/icon.svg 和可选 iconSvg: dist/icon.svg 提供单色图标（8 KiB）；SDK 检查/构建/验包，模板和三个官方插件联动。PluginInfo 增加可空 iconURL；停用/后端错误仅放行声明图标。市场可选 iconSvg 携带内容，统一图片/CSS mask 跟随前景色，保留文字回退及 fn Chat 文字。
+
+三个官方开发插件统一使用带来源哈希的固定开发 SDK，正式市场与公开归档不改。应用/SDK/插件版本及 build 不变；发行前需公开兼容 SDK/宿主并为插件选择新版本。官网清单、分发、插件管理指南只增加未发布说明，默认公开安装路径不变。验证：完整 check、146 项应用测试、build、SDK/插件独立归档消费、原生与浏览器明暗/状态/430px 界面通过；官网内容、链接和格式通过。详见 workspace 的 SVG 交付记录。
+
 2026-10-18 追加授权：聊天 v2 的 iOS **0.2.0（2）** 已完成 Apple 处理并加入本人内部 TestFlight 组，v2 生产 schema 和订阅已部署验证；详情见 [TestFlight 记录](../../clients/apple/TESTFLIGHT.md)。下方是先前本地实施边界，手机内测不代表 Mac/SDK 公开发行，相关改动继续留在本清单。
 
 ## 宿主 Agent loop 与结构化消息（2026-10-18，本地未发布）

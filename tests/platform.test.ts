@@ -6,6 +6,7 @@ import { Store } from "../backend/store";
 import { Models, readSSE } from "../backend/models";
 import { fixturePackage, registerFixture, archiveFixture } from "./plugin-fixture";
 import { Plugins, containedFile, manifestSchema } from "../backend/plugins";
+import { MAX_ICON_SVG_BYTES } from "../packages/sdk/src/manifest";
 const directories: string[] = [];
 const runners: Models[] = [];
 afterEach(async () => {
@@ -198,6 +199,99 @@ test("manifest rejects incompatible SDK and resource traversal / symlinks", asyn
   await expect(containedFile(join(dir, "package"), "escape.js")).rejects.toThrow();
   const pkg = structuredClone(fixturePackage);
   expect(manifestSchema.safeParse({ ...pkg.fn, sdkVersion: "9.0" }).success).toBe(false);
+});
+const iconFixture =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/></svg>';
+test("declared SVG stays available when disabled or backend activation fails; other resources stay gated", async () => {
+  const { store, models, dir } = await setup();
+  const root = join(dir, "icon-plugin");
+  await registerFixture(store, root, {
+    iconSvg: iconFixture,
+    backend:
+      "export default { methods: {}, chat: { version: 1, onMessage() {}, onResponse() {} } }",
+  });
+  let plugins = new Plugins(store, models, () => {});
+  const request = (path: string, method = "GET") =>
+    new Request(`http://localhost/plugins/translate/${path}`, { method });
+  await plugins.open();
+  const info = plugins.list()[0]!;
+  expect(info.iconURL).toStartWith("/api/plugins/translate/dist/icon.svg?v=");
+  expect(plugins.chatCatalog()[0]).toMatchObject({ icon: "T" });
+  expect(plugins.chatCatalog()[0]).not.toHaveProperty("iconURL");
+  for (const status of ["active", "disabled"] as const) {
+    if (status === "disabled") await plugins.setEnabled("translate", false);
+    expect(plugins.list()[0]!.status).toBe(status);
+    const response = await plugins.asset(request("dist/icon.svg"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("image/svg+xml");
+    expect(response.headers.get("content-security-policy")).toContain("sandbox");
+    expect(await response.text()).toBe(iconFixture);
+    expect((await plugins.asset(request("dist/icon.svg", "HEAD"))).body).toBeNull();
+    expect((await plugins.asset(request("dist/backend.js"))).status).toBe(404);
+  }
+  expect((await plugins.asset(request("dist/client.js"))).status).toBe(404);
+  await plugins.stop();
+  plugins = new Plugins(store, models, () => {});
+  await plugins.open();
+  expect(plugins.list()[0]!.iconURL).toBe(info.iconURL);
+  expect((await plugins.asset(request("dist/icon.svg"))).status).toBe(200);
+  await plugins.stop();
+  await registerFixture(store, join(dir, "broken-icon"), {
+    id: "broken-icon",
+    iconSvg: iconFixture,
+    backend:
+      'export default { methods: {}, activate() { throw Error("icon fixture activation"); } }',
+  });
+  plugins = new Plugins(store, models, () => {});
+  await plugins.open();
+  expect(plugins.list().find((info) => info.id === "broken-icon")!.status).toBe("error");
+  expect(
+    (await plugins.asset(new Request("http://localhost/plugins/broken-icon/dist/icon.svg"))).status,
+  ).toBe(200);
+  expect(
+    (await plugins.asset(new Request("http://localhost/plugins/broken-icon/dist/client.js")))
+      .status,
+  ).toBe(404);
+  await plugins.stop();
+});
+
+test("missing, oversized and escaping declared SVG resources cannot load or install", async () => {
+  const { store, models, dir } = await setup();
+  for (const variant of ["missing", "oversized", "escape", "invalid"] as const) {
+    const root = join(dir, variant);
+    await registerFixture(store, root, { id: variant, iconSvg: iconFixture });
+    const file = join(root, "dist/icon.svg");
+    if (variant === "missing" || variant === "escape") await rm(file);
+    if (variant === "oversized") await Bun.write(file, " ".repeat(MAX_ICON_SVG_BYTES + 1));
+    if (variant === "invalid") await Bun.write(file, "invalid image");
+    if (variant === "escape") {
+      await Bun.write(join(dir, "outside.svg"), iconFixture);
+      await symlink(join(dir, "outside.svg"), file);
+    }
+  }
+  const plugins = new Plugins(store, models, () => {});
+  await plugins.open();
+  expect(plugins.list()).toHaveLength(4);
+  for (const info of plugins.list()) {
+    expect(info.status).toBe("error");
+    expect(info.iconURL).toBeNull();
+    expect(
+      (await plugins.asset(new Request(`http://localhost/plugins/${info.id}/dist/icon.svg`)))
+        .status,
+    ).toBe(404);
+  }
+  const { archive } = await archiveFixture(join(dir, "invalid-archive"), {
+    id: "invalid-install",
+    iconSvg: "not SVG",
+  });
+  const job = plugins.install(archive);
+  await waitFor(
+    () => plugins.listJobs().find((item) => item.id === job.id)?.status !== "installing",
+  );
+  expect(plugins.listJobs().find((item) => item.id === job.id)?.status).toBe("failed");
+  expect(plugins.listJobs().find((item) => item.id === job.id)?.message).toContain("SVG");
+  expect(plugins.list()).toHaveLength(4);
+  await plugins.stop();
 });
 test("page retention is opt-in and is included in discovery for current and invalid packages", async () => {
   const pkg = structuredClone(fixturePackage);

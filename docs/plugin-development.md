@@ -23,3 +23,17 @@ FIA 仅提供运行时和受管命令，沿用[共仓开发](fia-integration.md)
 ## Agent 开发接口（未发布）
 
 宿主可执行多步模型/工具循环，插件通过前后端 `agents` API 使用；自定义工具由 `defineTool` / `BackendPlugin.tools` 显式声明。已有 notes/model 模板及旧文本调用保持可用，不自动启用 Agent。新插件需使用包含本次改动的宿主生成的 SDK 快照，公开 0.3.5 尚无该接口；方法、消息、历史恢复和取消见 [Agent 文档](agents.md)。
+
+## SVG 插件图标（开发分支，未发布）
+
+此能力需要包含本次 SVG 改动的开发宿主及其固定 SDK 归档；公开 fn 0.4.5 / SDK 0.3.5 不识别新增字段。manifest 的 schemaVersion / sdkVersion 仍为 1 / 0.3，旧文字图标继续可用。
+
+在 `src/icon.svg` 放置带 `xmlns="http://www.w3.org/2000/svg"`、viewBox 和透明背景的单色 SVG；推荐 24 × 24 图形，使用 currentColor。文件最多 8 KiB（UTF-8 字节），必须位于项目内，不能通过软链接访问包外资源。清单中保留 `icon` 文字作为回退，并声明：
+
+```json
+{ "icon": "记", "iconSvg": "dist/icon.svg" }
+```
+
+`check` 检查源图标，`build` 自动复制为 `dist/icon.svg`，`pack` 包含并验证该文件；模板已默认提供。清单只接受固定包内路径，不接受 SVG 源码或远程 URL。声明文件缺失、超限或不含 SVG 根元素时检查/安装失败；图片解码和显示阶段加载失败时显示文字。
+
+宿主侧栏与应用中心通过图片和 CSS mask 使用当前位置的前景色，不保留 SVG 原色，不把源码插入宿主 DOM。应用中心保留插件色块；停用或后端启动失败时仍可显示已验证的声明图标。`PluginInfo.iconURL: string | null` 提供带版本标识的宿主资源 URL。fn Chat 仍使用原 `icon` 文字，不传输 SVG。

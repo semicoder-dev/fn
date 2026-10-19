@@ -37,6 +37,7 @@ export async function createPlugin(
     name,
     description: template === "notes" ? "使用宿主 KV 保存笔记" : "使用宿主模型进行流式生成",
     icon: template === "notes" ? "记" : "问",
+    iconSvg: "dist/icon.svg",
     color: "#686868",
     sdkVersion: "0.3",
     frontend: "dist/client.js",

@@ -41,10 +41,10 @@ async function setup() {
     await rm(directory, { recursive: true, force: true });
   });
   const market = await markets.add("Fixture", "https://fixture.test/index.json");
-  async function release(version: string, backend?: string, id = "sample") {
+  async function release(version: string, backend?: string, id = "sample", iconSvg?: string) {
     const { archive, pkg } = await archiveFixture(
       join(directory, `${id}-${version}-${crypto.randomUUID()}`),
-      { id, version, backend },
+      { id, version, backend, iconSvg },
     );
     const bytes = await Bun.file(archive).bytes();
     const entry: MarketEntry = {
@@ -54,6 +54,7 @@ async function setup() {
       name: id,
       description: "Fixture",
       icon: "T",
+      ...(iconSvg !== undefined ? { iconSvg } : {}),
       color: "#123456",
       sdkVersion: "0.3",
       url: `https://fixture.test/${id}-${version}.tgz`,
@@ -162,6 +163,46 @@ test("disabled plugin updates without activation and remains disabled", async ()
     status: "disabled",
   });
 });
+
+test("market carries inline SVG before installation; updates refresh the URL and invalid replacements roll back", async () => {
+  const f = await setup();
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/></svg>';
+  await f.release("1.0.0", undefined, "sample", svg);
+  await f.markets.refresh(f.market.id);
+  expect(f.markets.catalog({}, []).items[0]!.iconSvg).toBe(svg);
+  f.plugins.installFromMarket(f.market.id, "sample");
+  expect((await f.finish()).status).toBe("completed");
+  const original = f.plugins.list()[0]!.iconURL;
+  expect(original).toContain("dist/icon.svg?v=");
+  await f.release("1.1.0", undefined, "sample", svg.replace("M4 4h16v16H4z", "M2 2h20v20H2z"));
+  f.plugins.update("sample");
+  expect((await f.finish()).status).toBe("completed");
+  const updated = f.plugins.list()[0]!.iconURL;
+  expect(updated).not.toBe(original);
+  await f.release(
+    "1.2.0",
+    'export default { methods: {}, activate() { throw Error("broken replacement"); } }',
+    "sample",
+    svg,
+  );
+  f.plugins.update("sample");
+  expect((await f.finish()).status).toBe("failed");
+  expect(f.plugins.list()[0]!.iconURL).toBe(updated);
+  const { entry } = await f.release("1.3.0", undefined, "sample", "invalid SVG");
+  // A valid index can still point to a broken package; host inspection must catch it.
+  f.responses.set(
+    f.market.url,
+    JSON.stringify({ schemaVersion: 1, name: "Fixture", plugins: [{ ...entry, iconSvg: svg }] }),
+  );
+  f.plugins.update("sample");
+  expect((await f.finish()).status).toBe("failed");
+  expect(f.plugins.list()[0]!.iconURL).toBe(updated);
+  await f.release("1.4.0", undefined, "sample", `<svg>${"记".repeat(3000)}</svg>`);
+  await f.markets.refresh(f.market.id);
+  expect(f.markets.list().find((m) => m.id === f.market.id)!.error).not.toBeNull();
+  expect(f.markets.catalog({}, f.plugins.list()).items[0]!.iconSvg).toBe(svg);
+});
 test("hash mismatch, identity mismatch and backend failure leave the old version intact", async () => {
   const f = await setup();
   await f.release("1.0.0");
@@ -213,17 +254,26 @@ test("installation stays running until rollback is complete and the next job can
   const f = await setup();
   const key = `rollback-${crypto.randomUUID()}`;
   let resume!: () => void;
-  const state = { calls: 0, ready: new Promise<void>((resolve) => { resume = resolve; }) };
+  const state = {
+    calls: 0,
+    ready: new Promise<void>((resolve) => {
+      resume = resolve;
+    }),
+  };
   const globals = globalThis as unknown as Record<string, unknown>;
   globals[key] = state;
   try {
     await f.release("1.0.0", `export default { methods: {}, activate() {
       const state = globalThis[${JSON.stringify(key)}];
       if (++state.calls === 2) return state.ready;
-    } }`);
+    } }`,
+    );
     f.plugins.installFromMarket(f.market.id, "sample");
     await f.finish();
-    await f.release("2.0.0", 'export default { methods: {}, activate() { throw Error("rollback"); } }');
+    await f.release(
+      "2.0.0",
+      'export default { methods: {}, activate() { throw Error("rollback"); } }',
+    );
     f.plugins.update("sample");
     await waitFor(() => state.calls === 2);
     expect(f.plugins.listJobs()[0]?.status).toBe("installing");

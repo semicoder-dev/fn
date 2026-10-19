@@ -130,6 +130,7 @@ async function run() {
     name: "Fixture",
     description: "",
     icon: "F",
+    iconURL: null,
     color: "#000000",
     packageName: "fixture",
     source: "test",

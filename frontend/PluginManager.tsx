@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import PluginIcon from "./PluginIcon";
 import {
   Alert,
   AlertDialog,
@@ -230,7 +231,7 @@ export default function PluginManager({
               {catalog.items.map((entry) => (
                 <div className="plugin-row" key={`${entry.marketId}:${entry.id}`}>
                   <span className="app-icon" style={{ background: entry.color }}>
-                    {entry.icon}
+                    <PluginIcon icon={entry.icon} iconSvg={entry.iconSvg} />
                   </span>
                   <div className="plugin-row-info">
                     <div className="flex flex-wrap items-center gap-2">
@@ -313,7 +314,7 @@ export default function PluginManager({
           {plugins.map((plugin) => (
             <div className="plugin-row" key={plugin.id}>
               <span className="app-icon" style={{ background: plugin.color }}>
-                {plugin.icon}
+                <PluginIcon icon={plugin.icon} iconURL={plugin.iconURL} />
               </span>
               <div className="plugin-row-info">
                 <div className="flex flex-wrap items-center gap-2">

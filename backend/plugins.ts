@@ -32,7 +32,7 @@ import { Store } from "./store";
 import { Models } from "./models";
 
 export { manifestSchema } from "@semicoder/fn-sdk/manifest";
-import { manifestSchema } from "@semicoder/fn-sdk/manifest";
+import { iconSvgSchema, MAX_ICON_SVG_BYTES, manifestSchema } from "@semicoder/fn-sdk/manifest";
 type Loaded = {
   invalidManifest?: boolean;
   info: PluginInfo;
@@ -105,6 +105,7 @@ export class Plugins {
             icon: "!",
             color: "#bc6452",
             version: record.version,
+            iconURL: null,
             packageName: record.packageName,
             source: record.source,
             market: record.market,
@@ -207,6 +208,11 @@ export class Plugins {
     await containedFile(root, manifest.frontend);
     if (manifest.backend) await containedFile(root, manifest.backend);
     if (manifest.styles) await containedFile(root, manifest.styles);
+    if (manifest.iconSvg) {
+      const file = Bun.file(await containedFile(root, manifest.iconSvg));
+      if (file.size > MAX_ICON_SVG_BYTES) throw new Error("SVG 图标不能超过 8 KiB");
+      iconSvgSchema.parse(new TextDecoder("utf-8", { fatal: true }).decode(await file.bytes()));
+    }
     stableVersion.parse(pkg.version);
     const enabled = !this.store.value.disabled.includes(manifest.id);
     const prefix = `/api/plugins/${manifest.id}/`;
@@ -221,6 +227,7 @@ export class Plugins {
         name: manifest.name,
         description: manifest.description,
         icon: manifest.icon,
+        iconURL: manifest.iconSvg ? prefix + manifest.iconSvg + revision : null,
         color: manifest.color,
         version: pkg.version,
         packageName: pkg.name,
@@ -670,9 +677,10 @@ export class Plugins {
       const match = new URL(request.url).pathname.match(/^\/plugins\/([^/]+)\/(.+)$/);
       if (!match) return new Response("Not found", { status: 404 });
       const plugin = this.get(decodeURIComponent(match[1]!));
-      if (plugin.info.status !== "active")
-        return new Response("Plugin is disabled", { status: 404 });
       const name = decodeURIComponent(match[2]!);
+      const isIcon = !plugin.invalidManifest && name === plugin.manifest.iconSvg;
+      if (plugin.info.status !== "active" && !isIcon)
+        return new Response("Plugin is disabled", { status: 404 });
       // Frontend bundles and their assets live in dist; never serve backend source or package credentials.
       if (
         !name.startsWith("dist/") ||
@@ -686,6 +694,11 @@ export class Plugins {
           "Content-Type": file.type,
           "Cache-Control": "no-store",
           "X-Content-Type-Options": "nosniff",
+          ...(isIcon
+            ? {
+                "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+              }
+            : {}),
         },
       });
     } catch {

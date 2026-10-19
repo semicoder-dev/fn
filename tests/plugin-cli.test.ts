@@ -6,6 +6,7 @@ import { buildCheckedPlugin, checkPlugin, createPlugin, packPlugin } from "../pa
 import { checkStyles } from "../packages/sdk/src/style-check";
 import * as UI from "../packages/sdk/src/ui";
 import { uiExports } from "../packages/sdk/src/shared-modules";
+import { iconSvgSchema, MAX_ICON_SVG_BYTES } from "../packages/sdk/src/manifest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
 const directories: string[] = [];
@@ -89,9 +90,54 @@ for (const template of ["notes", "model"])
     expect(entries).toContain("package/package.json");
     expect(entries).toContain("package/dist/client.js");
     expect(entries).toContain("package/dist/client.css");
+    expect(entries).toContain("package/dist/icon.svg");
+    const sourceIcon = await Bun.file(join(root, "src/icon.svg")).text();
+    expect(await Bun.file(join(root, "dist/icon.svg")).text()).toBe(sourceIcon);
+    const extractedIcon = Bun.spawnSync(["tar", "-xOzf", archive, "package/dist/icon.svg"]);
+    expect(extractedIcon.exitCode).toBe(0);
+    expect(extractedIcon.stdout.toString()).toBe(sourceIcon);
     expect(entries).not.toContain("node_modules");
     expect(entries).not.toContain("src/");
   }, 15000);
+
+test("SVG icon is optional; declared icons must exist, fit the byte limit and remain inside the project", async () => {
+  const root = await fixture();
+  const path = join(root, "src/icon.svg");
+  const pkg = await Bun.file(join(root, "package.json")).json();
+  const svg = await Bun.file(path).text();
+  expect(pkg.fn.iconSvg).toBe("dist/icon.svg");
+  await rm(path);
+  await expect(checkPlugin(root)).rejects.toThrow();
+  await Bun.write(path, "not an SVG");
+  await expect(checkPlugin(root)).rejects.toThrow("SVG");
+  await Bun.write(path, `<svg>${" ".repeat(MAX_ICON_SVG_BYTES)}</svg>`);
+  await expect(buildCheckedPlugin(root)).rejects.toThrow("8 KiB");
+  expect(await Bun.file(join(root, "dist/icon.svg")).exists()).toBe(false);
+  const outside = join(await temporary(), "outside.svg");
+  await Bun.write(outside, svg);
+  await rm(path);
+  await symlink(outside, path);
+  await expect(checkPlugin(root)).rejects.toThrow("越出");
+  for (const iconSvg of [
+    "../outside.svg",
+    "/tmp/icon.svg",
+    "src/icon.svg",
+    "https://example.com/icon.svg",
+    svg,
+  ]) {
+    await Bun.write(
+      join(root, "package.json"),
+      JSON.stringify({ ...pkg, fn: { ...pkg.fn, iconSvg } }),
+    );
+    await expect(checkPlugin(root)).rejects.toThrow();
+  }
+  delete pkg.fn.iconSvg;
+  await Bun.write(join(root, "package.json"), JSON.stringify(pkg));
+  await buildCheckedPlugin(root);
+  expect(await Bun.file(join(root, "dist/icon.svg")).exists()).toBe(false);
+  expect(iconSvgSchema.safeParse(`<svg>${"记".repeat(3000)}</svg>`).success).toBe(false);
+  expect(iconSvgSchema.safeParse(svg).success).toBe(true);
+}, 15000);
 test("missing dependencies are actionable; failed builds remove stale dist", async () => {
   const missing = join(await temporary(), "missing");
   await createPlugin(missing, options);

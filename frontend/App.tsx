@@ -15,6 +15,7 @@ import PageSlot from "./PageSlot";
 import PluginManager from "./PluginManager";
 import Settings from "./Settings";
 import ActivityButton from "./ActivityButton";
+import PluginIcon from "./PluginIcon";
 
 export default function App() {
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
@@ -71,7 +72,7 @@ export default function App() {
               className={`activity-button ${page === plugin.id ? "active" : ""}`}
               onClick={() => setPage(plugin.id)}
             >
-              <span>{plugin.icon}</span>
+              <PluginIcon icon={plugin.icon} iconURL={plugin.iconURL} />
             </ActivityButton>
           ))}
         </div>

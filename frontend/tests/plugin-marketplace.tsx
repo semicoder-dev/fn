@@ -26,6 +26,7 @@ const installed: PluginInfo = {
   description: "已安装插件",
   version: "1.0.0",
   icon: "记",
+  iconURL: null,
   color: "#686868",
   source: "fixture",
   market: { marketId: "fixture", marketURL: source.url },

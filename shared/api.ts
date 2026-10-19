@@ -74,6 +74,7 @@ export const pluginInfo = z.strictObject({
   name: z.string(),
   description: z.string(),
   icon: z.string(),
+  iconURL: z.string().nullable(),
   color: z.string(),
   version: z.string(),
   packageName: z.string(),

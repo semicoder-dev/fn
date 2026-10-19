@@ -22,9 +22,21 @@ export const fixturePackage = {
 };
 export async function fixture(
   root: string,
-  options: { id?: string; version?: string; backend?: string; packageName?: string } = {},
+  options: {
+    id?: string;
+    version?: string;
+    backend?: string;
+    packageName?: string;
+    iconSvg?: string;
+  } = {},
 ) {
-  const pkg = structuredClone(fixturePackage);
+  const pkg = {
+    ...structuredClone(fixturePackage),
+    fn: {
+      ...structuredClone(fixturePackage.fn),
+      ...(options.iconSvg !== undefined ? { iconSvg: "dist/icon.svg" as const } : {}),
+    },
+  };
   pkg.fn.id = options.id ?? "translate";
   pkg.version = options.version ?? "0.1.0";
   pkg.name = options.packageName ?? "test-plugin";
@@ -35,6 +47,7 @@ export async function fixture(
     "export default function Fixture() { return null; }",
   );
   await Bun.write(join(root, "dist/client.css"), "");
+  if (options.iconSvg !== undefined) await Bun.write(join(root, "dist/icon.svg"), options.iconSvg);
   await Bun.write(
     join(root, "dist/backend.js"),
     options.backend ??

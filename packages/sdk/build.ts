@@ -7,6 +7,8 @@ import { resolve } from "node:path";
 import { mkdir, rename, rm } from "node:fs/promises";
 import { buildPluginStyles } from "./styles";
 import { uiExports, sharedModules } from "./src/shared-modules";
+import { safeFile } from "./src/style-check";
+import { iconSvgSchema, MAX_ICON_SVG_BYTES, manifestSchema } from "./src/manifest";
 const names: Record<string, readonly string[]> = Object.fromEntries([
   ["react", Object.keys(React)],
   ["react/jsx-runtime", Object.keys(JSX)],
@@ -23,6 +25,17 @@ export async function buildPlugin(directory: string) {
   await rm(dist, { recursive: true, force: true });
   await mkdir(temporary);
   try {
+    const manifest = manifestSchema.parse(
+      (await Bun.file(resolve(root, "package.json")).json()).fn,
+    );
+    if (manifest.iconSvg) {
+      const file = Bun.file(await safeFile(root, "src/icon.svg"));
+      if (file.size > MAX_ICON_SVG_BYTES) throw new Error("SVG 图标不能超过 8 KiB");
+      const svg = iconSvgSchema.parse(
+        new TextDecoder("utf-8", { fatal: true }).decode(await file.bytes()),
+      );
+      await Bun.write(resolve(temporary, "icon.svg"), svg);
+    }
     for (const source of ["client.tsx", "backend.ts"]) {
       if (!(await Bun.file(resolve(root, "src", source)).exists())) continue;
       const result = await Bun.build({
@@ -83,7 +96,6 @@ export async function buildPlugin(directory: string) {
     // The manifest always has a CSS entry, including plugins with no business rules.
     if (!(await Bun.file(resolve(temporary, "client.css")).exists()))
       await Bun.write(resolve(temporary, "client.css"), "/* No page styles. */\n");
-    const manifest = (await Bun.file(resolve(root, "package.json")).json()).fn;
     const cssPath = resolve(temporary, "client.css");
     await Bun.write(
       cssPath,

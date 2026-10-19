@@ -1,4 +1,5 @@
 import { z } from "@semicoder/fia/api";
+import { iconSvgSchema } from "@semicoder/fn-sdk/manifest";
 
 export const httpsURL = z
   .string()
@@ -29,6 +30,7 @@ export const marketEntry = z.strictObject({
   name: z.string().trim().min(1).max(100),
   description: z.string().max(1000),
   icon: z.string().min(1).max(16),
+  iconSvg: iconSvgSchema.optional(),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   version: stableVersion,
   sdkVersion: z.string().max(20),

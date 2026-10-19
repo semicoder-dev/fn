@@ -3,7 +3,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { createRequire } from "node:module";
 import { buildPlugin } from "./build";
-import { manifestSchema } from "./src/manifest";
+import { iconSvgSchema, MAX_ICON_SVG_BYTES, manifestSchema } from "./src/manifest";
 import { checkStyles, safeFile } from "./src/style-check";
 import { createPlugin, help } from "./create";
 export { createPlugin } from "./create";
@@ -25,6 +25,7 @@ export async function checkPlugin(directory: string) {
     throw new Error("package name/version 无效");
   if (pkg.fn?.sdkVersion !== "0.3") throw new Error("插件需要 SDK 0.3，请更新清单并重新构建");
   const manifest = manifestSchema.parse(pkg.fn);
+  if (manifest.iconSvg) await checkIcon(root, "src/icon.svg");
   await safeFile(root, "src/client.tsx");
   const backendExists = await Bun.file(join(root, "src/backend.ts")).exists();
   if (Boolean(manifest.backend) !== backendExists)
@@ -104,6 +105,7 @@ export async function buildCheckedPlugin(directory: string) {
   }
 }
 async function verifyDist(root: string, manifest: ReturnType<typeof manifestSchema.parse>) {
+  if (manifest.iconSvg) await checkIcon(root, manifest.iconSvg);
   for (const name of [
     manifest.frontend,
     manifest.styles,
@@ -113,6 +115,12 @@ async function verifyDist(root: string, manifest: ReturnType<typeof manifestSche
   const css = await Bun.file(join(root, manifest.styles)).text();
   for (const match of css.matchAll(/url\(\s*["']?([^\s"')]+)["']?\s*\)/g))
     if (!match[1]!.startsWith("data:")) await safeFile(root, join("dist", match[1]!));
+}
+
+async function checkIcon(root: string, name: string) {
+  const file = Bun.file(await safeFile(root, name));
+  if (file.size > MAX_ICON_SVG_BYTES) throw new Error("SVG 图标不能超过 8 KiB");
+  iconSvgSchema.parse(new TextDecoder("utf-8", { fatal: true }).decode(await file.bytes()));
 }
 export async function packPlugin(directory: string) {
   const { root, pkg, manifest } = await buildCheckedPlugin(directory);
