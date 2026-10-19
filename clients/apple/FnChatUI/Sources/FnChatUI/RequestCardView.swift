@@ -44,7 +44,7 @@ struct RequestCardView: View {
         if !card.summary.isEmpty { Text(card.summary).font(.subheadline) }
         ForEach(Array(card.blocks.enumerated()), id: \.offset) { _, block in
           switch block.type {
-          case "text": Text(block.text ?? "").textSelection(.enabled)
+          case "text": ChatMarkdown(text: block.text ?? "").equatable()
           case "divider": Divider()
           case "fields":
             ForEach(Array((block.fields ?? []).enumerated()), id: \.offset) { _, f in

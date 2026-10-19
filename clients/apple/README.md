@@ -1,6 +1,6 @@
 # fn Chat 开发指南
 
-iOS 17+ 和 macOS 14+ 的原生聊天客户端，使用同一套 `FnChatCore` / `FnChatUI`。源码位于 `codex/ios-communication`；公开 fn 0.4.5、SDK 0.3.5 和历史 TestFlight 0.1.0 (1) 均不含聊天 v2。用户追加授权的 iOS 0.2.0（2）内部测试状态见 [TestFlight](TESTFLIGHT.md)，Mac/SDK 公开版本未变化，不可用相同版本字符串判断源码内容。
+iOS 17+ 和 macOS 14+ 的原生聊天客户端，使用同一套 `FnChatCore` / `FnChatUI`。聊天 v2 起始于 `codex/ios-communication`，Markdown 更新位于 `codex/chat-markdown`；公开 fn 0.4.5、SDK 0.3.5 和历史 TestFlight 0.1.0 (1) 均不含聊天 v2。用户追加授权的 iOS 0.2.0（2）内部测试状态见 [TestFlight](TESTFLIGHT.md)，Mac/SDK 公开版本未变化，不可用相同版本字符串判断源码内容。
 
 ## 工程
 
@@ -11,6 +11,20 @@ iOS 17+ 和 macOS 14+ 的原生聊天客户端，使用同一套 `FnChatCore` / 
 - `../../ios`：历史 CloudKit 探针和宿主签名辅助工程，不再包含聊天业务实现。
 
 聊天设备仅登记 `FnChatClient`，fn 插件宿主登记 `FnChatHost`。同一系统 iCloud 账号下，服务端选择是本设备偏好，所有服务器仍后台同步；聊天历史、已读和归档在聊天设备间共享。每个宿主＋插件只有一个固定会话。失效插件保留目录/历史并禁用输入。没有附件、历史删除、会话分支或逐字流式输出。
+
+## Markdown（2026-10-19，手机内测更新）
+
+两端共用 `FnChatUI/ChatMarkdown.swift`：用户和机器人文字消息、请求卡片的 `text` 块支持标题、粗体/斜体/删除线、嵌套列表/任务列表、引用、链接、行内代码、围栏代码块、表格和分隔线。保留普通消息换行；代码与宽表格横向滚动，代码可复制，消息菜单可复制 Markdown 原文。卡片标题、摘要、字段和操作按钮继续按纯文字展示。
+
+采用原生 SwiftUI [MarkdownUI 2.4.1](https://github.com/gonzalezreal/swift-markdown-ui/releases/tag/2.4.1)，精确版本和 `FnChatUI/Package.resolved` 固定依赖；该库已进入维护模式，本次使用其稳定 GFM 能力。链接仅允许 HTTP(S) 和 mailto，原始 HTML 不执行。独立图片显示“查看图片”链接，行内图片显示占位，不在消息展示时自动下载；不新增附件、公式、Mermaid 或代码语法高亮。
+
+历史仍存原字符串，CloudKit schema、SDK 记录格式和宿主无需更新。既有 TestFlight 0.2.0（2）不含本次改动。手机 0.2.1（3）已完成 Apple 处理并加入既有本人内部测试组，状态“正在测试”，证据见 [TestFlight](TESTFLIGHT.md)；Mac 聊天端仍需本地构建。
+
+```sh
+swift test --package-path clients/apple/FnChatUI
+```
+
+布局回归覆盖 280/560pt 明暗两种模式、长链接、长代码和未闭合 Markdown。设置 `FN_MARKDOWN_SNAPSHOTS` 为已存在目录可导出 macOS 离屏原生视图截图，无需 iCloud 或模型调用。
 
 ## 开发签名与运行
 

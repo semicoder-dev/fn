@@ -259,7 +259,7 @@ private struct MessageBubble: View {
         }
       }
     } else {
-      Text(message.text ?? "").textSelection(.enabled)
+      ChatMarkdown(text: message.text ?? "").equatable()
     }
   }
   private func display(_ value: JSONValue) -> String {

@@ -1,5 +1,11 @@
 # 待发布改动
 
+## fn Chat Markdown（2026-10-19，手机内测已分发，Mac 未发布）
+
+来源：`codex/chat-markdown`，基线 `8c44331` 加工作树。iOS/Mac 共用 `ChatMarkdown`，用户/机器人正文与卡片文字块支持 GFM；保留换行、代码复制、原文复制及宽内容横向滚动。固定 MarkdownUI 2.4.1 与 SwiftPM 锁文件。网页/邮件链接受协议限制，图片不自动下载；无 HTML 执行、语法高亮、公式或 Mermaid。
+
+仅客户端渲染改变，既有历史与 CloudKit/SDK 契约不变；既有 TestFlight 0.2.0（2）不含此更新。用户随后明确要求 TestFlight 新版本，手机 0.2.1（3）已完成 Apple 处理并加入原内部测试组，状态“正在测试”，状态见 [TestFlight](../../clients/apple/TESTFLIGHT.md)。Mac/SDK 仍未发布，版本不变；官网安装与后端聊天指南随内测结果同步。验证结果见 workspace `docs/agent/sessions/2026-10-19-fn-chat-markdown.md`。
+
 ## 插件 SVG 图标（2026-10-18，本地未发布）
 
 来源：codex/plugin-svg-icons，fn 基线 2e315eb；官方插件基线 0f00988，官网基线 6b84c0a。作者通过 src/icon.svg 和可选 iconSvg: dist/icon.svg 提供单色图标（8 KiB）；SDK 检查/构建/验包，模板和三个官方插件联动。PluginInfo 增加可空 iconURL；停用/后端错误仅放行声明图标。市场可选 iconSvg 携带内容，统一图片/CSS mask 跟随前景色，保留文字回退及 fn Chat 文字。
