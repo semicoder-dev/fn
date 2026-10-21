@@ -163,8 +163,11 @@ const maxArchiveBytes = 64 * 1024 * 1024;
 const maxExpandedBytes = 256 * 1024 * 1024;
 const packageId = /^[a-z][a-z0-9-]{0,99}$/;
 const generationId = /^[a-z0-9-]{1,100}$/;
+/** Browser modules supplied by the host must remain singletons in every generation too. */
+export const sharedFrontendPackages: readonly string[] = ["react", "react-dom"];
 const sharedPackage = (name: string) =>
-  name.startsWith("@deepseek-ai/") || name === "@semicoder/fn-sdk" || name === "@semicoder/fn-runtime";
+  name.startsWith("@deepseek-ai/") || name === "@semicoder/fn-sdk" || name === "@semicoder/fn-runtime"
+    || sharedFrontendPackages.includes(name);
 
 function digest(bytes: Uint8Array | string): string {
   return createHash("sha256").update(bytes).digest("hex");

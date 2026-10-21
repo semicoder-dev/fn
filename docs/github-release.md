@@ -2,6 +2,8 @@
 
 fn **0.5.0 / build 10** 已公开；官网为 `https://semicoder.dev/fn`，安装页为其 `/docs/installation`，更新源为 `https://semicoder-dev.github.io/fn/updates/latest.json`。公开标签及附件不移动、不覆盖。
 
+已知问题（2026-10-21 发行后发现）：三个官方 Cordis 应用在市场被误判“核心版本不兼容”，原因是 seed 的 React/React DOM 版本未登记。此前底层归档安装检查漏过了市场门禁；签名、公证和产物一致性证据仍有效。修复已归集到 0.5.1/build 11 候选；不覆盖 0.5.0 附件或既有插件归档，新版本需完整 DMG。详见 [待发布清单](../release/notes/unreleased.md)。
+
 ## 0.5.0 Cordis 联合发行（2026-10-21）
 
 `v0.5.0` 固定 `4f37222c23c5acc5cdcd139df971be0f4847ebc3`。[正式工作流 39533452898](https://github.com/semicoder-dev/fn/actions/runs/39533452898)、候选 39532302857 和同提交主干 CI 39532302656 均成功。fn check、259 项应用测试/2131 断言、build、SDK 独立消费和 FIA 独立源码/归档/应用消费通过；FIA 88 JS/48 Swift 测试通过。

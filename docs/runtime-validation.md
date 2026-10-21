@@ -2,7 +2,21 @@
 
 日期：2026-10-20 起；2026-10-21 联合发行验收。此记录描述新 Cordis runtime，不能作为 fn 0.4.5 或旧插件接口的能力声明。上游锁定 dsh `0.2.1-rc.2`、Cordis `4.0.5`、Pi `1.1.0`；归档与来源见 `vendor/dsh/README.md`、`upstream.lock.json`。
 
-## 2026-10-21 发行验证补充
+## 2026-10-21 发行后验收更正
+
+发行后纠正：0.5.0 的三个官方应用在真实市场入口均被误判不兼容。下述公开归档安装验证直接调用底层 GenerationManager，未覆盖 RuntimeProduct.resolve，不能代表市场入口通过。签名、公证、摘要与部署证据不受此问题影响。
+
+## 2026-10-21 市场核心版本修复（0.5.1 候选）
+
+`codex/market-core-versions` 在 seed 中从宿主精确依赖登记 React/React DOM，校验实际包、根链接、锁文件 override 与唯一实例；地址安装和市场保持严格 peer/版本校验。0.5.0 原来虽然携带 19.2.7，却没有在 coreVersions 登记，导致市场缺失值比较失败。SDK、官方插件归档和市场无需改写；此固定 seed 改变运行时身份，未来发行需要完整 DMG。
+
+新增 `runtime-market-seed.test.ts` 使用固定的正式 schema 2 索引与三个原始公开 0.1.0 归档，修复前准确复现三个 incompatible；修复后从实际 seed 构建/压缩/解包，经市场 refresh/resolve、摘要与身份校验、安装、忙时等待、空闲切换、重启到 installed 和离线 frozen lock 均通过。没有从宿主版本表生成同源测试市场。另验证错误前端 peer、自带副本、重复实例被拒，以及已有旧代不改写、重放现有应用后空闲升级。
+
+完整 `bun run check`、262 项应用测试/2157 断言和 `bun run build` 通过；check 包含 FIA 88 JS/48 Swift。首轮新测试 mock 的 typeof fetch 缺少 Bun preconnect 类型声明，改为与现有夹具一致的显式类型桥后完整复验通过。未改 FIA、SDK API 或手机端，不重复模型/CloudKit 业务验收。官网常见问题与来源说明仅本地更新，33 篇内容/链接和改动格式检查通过；上述为修复开发阶段验证；用户随后授权发布，应用现准备为 0.5.1/build 11，正式签名产物与官网部署另验。未替换用户已安装应用。
+
+完整本地应用包独立验收通过：从 `dist/fn.app` 解包并校验实际 seed，React/React DOM 根包和 coreVersions 均为 19.2.7，三个固定官方条目均为 available；临时空目录启动、前后端 ready、正常退出和进程组清理通过，后台只启动一次。seed `3b97ff3a17342246c0f514d5`，runtime ID `f4a04379d4fedb91257f9d0a5eda4f792560ac928dcc7cc1c43e2d627f0306e1`，与公开 0.5.0 不同；这是未发布本地构建，未验证新正式签名/公证。
+
+## 2026-10-21 原发行验证补充
 
 SDK 0.4.0、三个 Cordis 0.1.0 官方应用和新市场已公开。公开 SDK 与候选/正式 CI 归档一致，干净 registry 消费与桌面内嵌 55 文件比对通过；公开插件真实 generation 安装、共享内核、空闲切换、加载、卸载和 KV 重启恢复通过。iPhone 0.3.0（4）已在原内部 TestFlight 组分发，生产新增 9 个 Session 类型、两环境四类订阅实际成功；真机交互和通知仍未验。
 

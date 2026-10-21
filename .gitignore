@@ -12,4 +12,6 @@ resources/runtime-seed/
 resources/runtime-seed.json
 *.tgz
 !vendor/agent-webtool-dev.tgz
+# Immutable public release archives used by the market integration regression.
+!tests/fixtures/cordis-market-0.1.0/*.tgz
 resources/runtime-seed.*.partial/

@@ -15,22 +15,28 @@ async function writeJSON(filename: string, value: unknown) {
   await writeFile(filename, JSON.stringify(value));
 }
 
-async function fixture() {
+async function fixture(withFrontend = false) {
   const directory = await mkdtemp(join(tmpdir(), "fn-generation-test-"));
   temporary.push(directory);
   const seedDirectory = join(directory, "seed");
-  const versions = { "@semicoder/fn-runtime": "0.0.0", "@semicoder/fn-sdk": "0.3.5", "@deepseek-ai/cordis": "4.0.5" };
+  const versions: Record<string, string> = { "@semicoder/fn-runtime": "0.0.0", "@semicoder/fn-sdk": "0.3.5", "@deepseek-ai/cordis": "4.0.5" };
   const packages = [
     { name: "@semicoder/fn-runtime", version: "0.0.0", directory: "packages/runtime" },
     { name: "@semicoder/fn-sdk", version: "0.3.5", directory: "packages/sdk" },
     { name: "@deepseek-ai/cordis", version: "4.0.5", directory: "node_modules/.store/cordis" },
   ];
+  if (withFrontend) for (const name of ["react", "react-dom"]) {
+    versions[name] = "19.2.7";
+    packages.push({ name, version: "19.2.7", directory: `node_modules/.store/${name}` });
+  }
   for (const pkg of packages) {
     const target = join(seedDirectory, pkg.directory);
     await mkdir(target, { recursive: true });
     await writeJSON(join(target, "package.json"), {
       name: pkg.name, version: pkg.version, type: "module", exports: "./index.ts",
-      ...(pkg.name === "@semicoder/fn-sdk" ? { peerDependencies: { "@deepseek-ai/cordis": "4.0.5" } } : {}),
+      ...(pkg.name === "@semicoder/fn-sdk" ? { peerDependencies: {
+        "@deepseek-ai/cordis": "4.0.5", ...(withFrontend ? { react: ">=19 <20", "react-dom": ">=19 <20" } : {}),
+      } } : {}),
     });
     await writeFile(join(target, "index.ts"), pkg.name === "@deepseek-ai/cordis"
       ? "export class Context {}\n" : "export const ready: boolean = true;\n");
@@ -68,7 +74,7 @@ async function fixture() {
 }
 
 async function application(directory: string, id: string, options: {
-  iconSvg?: string; peer?: string; body?: string; symlink?: boolean; dependencies?: Record<string, string>; version?: string;
+  iconSvg?: string; peer?: string; body?: string; symlink?: boolean; dependencies?: Record<string, string>; version?: string; peers?: Record<string, string>;
 } = {}) {
   const root = join(directory, `source-${id}-${Math.random()}`);
   const pkg = join(root, "package");
@@ -77,7 +83,7 @@ async function application(directory: string, id: string, options: {
     name: `@test/${id}`, version: options.version ?? "1.0.0", type: "module",
     fn: { schemaVersion: 1, id, name: `Test ${id}`, ...(options.iconSvg !== undefined ? { icon: "记", iconSvg: "dist/icon.svg" } : {}) },
     exports: { ".": { import: "./server.ts" }, "./client": "./client.js" },
-    peerDependencies: { "@semicoder/fn-sdk": "0.3.5", "@deepseek-ai/cordis": options.peer ?? "4.0.5" },
+    peerDependencies: { "@semicoder/fn-sdk": "0.3.5", "@deepseek-ai/cordis": options.peer ?? "4.0.5", ...options.peers },
     ...(options.dependencies ? { dependencies: options.dependencies } : {}),
     scripts: { postinstall: "touch DO_NOT_RUN" },
   });
@@ -177,6 +183,53 @@ describe("immutable runtime generations", () => {
     await writeJSON(join(duplicate, "package.json"), { name: "@deepseek-ai/cordis", version: "4.0.5" });
     await expect(verifyGenerationDependencies(current.directory, f.versions, ["@semicoder/fn-sdk"]))
       .rejects.toThrow("Duplicate shared runtime");
+  });
+
+  test("frontend peers reject wrong versions, bundled copies and duplicate instances", async () => {
+    const f = await fixture(true);
+    const current = await f.manager.initialize();
+    for (const name of ["react", "react-dom"]) {
+      await expect(f.manager.stageInstall(await application(f.directory, `wrong-${name}`, { peers: { [name]: "18.3.1" } })))
+        .rejects.toThrow(`Application requires ${name}@18.3.1`);
+      await expect(f.manager.stageInstall(await application(f.directory, `bundled-${name}`, { dependencies: { [name]: "19.2.7" } })))
+        .rejects.toThrow("exact peer");
+      const duplicate = join(current.directory, "packages/sdk/node_modules", name);
+      await writeJSON(join(duplicate, "package.json"), { name, version: "19.2.7" });
+      await expect(verifyGenerationDependencies(current.directory, f.versions, ["@semicoder/fn-sdk"]))
+        .rejects.toThrow("Duplicate shared runtime");
+      await rm(duplicate, { recursive: true });
+    }
+    expect((await f.manager.current())?.id).toBe(current.id);
+    expect(await f.manager.activateWhenIdle()).toEqual({ activated: false, pending: false });
+  });
+
+  test("upgrades a ready generation without frontend version metadata only after idle", async () => {
+    const previous = await fixture();
+    await previous.manager.initialize();
+    await previous.manager.stageInstall(await application(previous.directory, "existing"));
+    await previous.manager.activateWhenIdle();
+    const old = await new GenerationManager(previous.options).initialize();
+    await previous.manager.confirmActivation();
+    const next = await fixture(true);
+    const seed = JSON.parse(await readFile(join(next.seedDirectory, "seed.json"), "utf8"));
+    seed.id = "frontend-core-seed";
+    await writeJSON(join(next.seedDirectory, "seed.json"), seed);
+    const options = { ...previous.options, seedDirectory: next.seedDirectory };
+    const upgraded = new GenerationManager(options);
+    expect((await upgraded.initialize()).id).toBe(old.id);
+    const candidate = await upgraded.stageSeed();
+    expect(candidate.manifest.coreVersions.react).toBe("19.2.7");
+    expect(candidate.applications.map(app => app.id)).toEqual(["existing"]);
+    previous.setBusy(true);
+    expect((await upgraded.activateWhenIdle()).pending).toBe(true);
+    expect((await upgraded.current())?.id).toBe(old.id);
+    previous.setBusy(false);
+    await upgraded.activateWhenIdle();
+    const active = await new GenerationManager(options).initialize();
+    await upgraded.confirmActivation();
+    expect(active.id).toBe(candidate.id);
+    expect(active.manifest.coreVersions["react-dom"]).toBe("19.2.7");
+    expect(JSON.parse(await readFile(join(old.directory, "generation.json"), "utf8")).coreVersions.react).toBeUndefined();
   });
 
   test("stages removal without changing the active generation", async () => {

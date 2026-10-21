@@ -4,6 +4,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   findPackageDirectory,
+  sharedFrontendPackages,
   verifyGenerationDependencies,
   type SeedManifest,
   type SeedArchiveMetadata,
@@ -79,6 +80,18 @@ export async function buildRuntimeSeed(output = join(root, "resources/runtime-se
   const coreVersions = Object.fromEntries(upstream.packages.map((pkg) => [pkg.name, pkg.version]));
   coreVersions[runtime.manifest.name] = runtime.manifest.version;
   coreVersions[sdk.manifest.name] = sdk.manifest.version;
+  const host = await readManifest(root);
+  for (const name of sharedFrontendPackages) {
+    // Use the host's exact pin, not the SDK's broad peer range. The graph audit
+    // below also proves the SDK and the host resolve the same installed version.
+    const version = host.dependencies?.[name];
+    if (!version || !/^\d+\.\d+\.\d+(?:-[\w.-]+)?(?:\+[\w.-]+)?$/.test(version))
+      throw new Error(`Host must pin shared frontend package: ${name}`);
+    const directory = await findPackageDirectory(name, root);
+    if (!directory) throw new Error(`Host shared frontend package is missing: ${name}`);
+    await visit(directory);
+    coreVersions[name] = version;
+  }
   const core = new Map<string, PackageNode>();
   for (const node of nodes.values()) {
     if (!(node.manifest.name in coreVersions)) continue;
@@ -109,7 +122,8 @@ export async function buildRuntimeSeed(output = join(root, "resources/runtime-se
     for (const [name, node] of core) await link(staging, name, join(staging, node.destination));
     const dependencies = Object.fromEntries(Object.entries(coreVersions)
       .map(([name, version]) => [name, name.startsWith("@semicoder/") ? "workspace:*" : version]));
-    const overrides = Object.fromEntries(Object.entries(coreVersions).filter(([name]) => name.startsWith("@deepseek-ai/")));
+    const overrides = Object.fromEntries(Object.entries(coreVersions)
+      .filter(([name]) => name.startsWith("@deepseek-ai/") || sharedFrontendPackages.includes(name)));
     const rootPackage = {
       name: "fn-runtime-generation", private: true, type: "module",
       workspaces: ["packages/runtime", "packages/sdk", "applications/*"],

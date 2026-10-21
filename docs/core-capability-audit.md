@@ -1,5 +1,7 @@
 # fn 0.5 产品能力与验收边界（2026-10-21）
 
+发行后修正：公开 0.5.0 的 `coreVersions` 漏登记 React/React DOM，三个官方应用经过市场门禁均被误判不兼容。此前公开归档的底层安装通过，不能代表“官方市场点击安装”完整入口通过。`codex/market-core-versions` 已补齐版本/单例登记和真实市场回归；修复已归集到 0.5.1/build 11 候选，正式产物待验，见 [运行验证](runtime-validation.md)与[待发布清单](../release/notes/unreleased.md)。
+
 对照旧活动入口 `frontend/App.tsx`、`Settings.tsx`、`PluginManager.tsx`、`backend/plugins.ts`、SDK UI/图标构建器及 Apple Chat v2；旧数据、旧 SDK 和旧协议不兼容，产品能力仍需单独核对。
 
 | 原能力 | 新实现与验收 | 边界 |

@@ -1,6 +1,6 @@
-# Cordis 应用运行栈（开发分支，未发布）
+# Cordis 应用运行栈
 
-2026-10-20，`codex/dsh-runtime`。公开 fn 0.4.5 / SDK 0.3.5 不含本页契约；同版本开发归档不能当作公开 npm 包。应用版本与 build 未改变。
+本页契约随 fn 0.5.0 / SDK 0.4.0 发布，公开产物见 [发行记录](github-release.md)。2026-10-21 追加的市场核心版本修复已归集到 0.5.1/build 11 候选，待正式产物验收；同版本开发归档不能当作公开产物。
 
 ## 运行与职责
 
@@ -11,6 +11,10 @@ FIA 启动一个固定 Bun 1.4.3 进程。`backend/runtime.ts` 只装配产品 A
 `fia.config.ts` 指向 `shared/runtime-api.ts`、`backend/runtime.ts`、`frontend/RuntimeApp.tsx`。旧实现保留为历史源码，不是活动入口。运行数据全部写入 FIA 数据目录下的 `cordis-v1/`，不读取、迁移或删除旧 `platform.json`、凭证、插件与 Chat 数据。
 
 ## 插件
+
+共享依赖必须精确匹配运行目录的 `coreVersions`。0.5.1 修复将 React 和 React DOM 与 dsh、fn runtime、SDK 一起登记；版本取宿主 package.json 的精确依赖并校验实际依赖闭包、根链接与唯一实例。插件不能把它们作为普通依赖打包，必须声明精确 peer；SDK 自身的宽 peer 范围不作为宿主发行版本。市场和地址安装均保留版本、实例与完整性检查。
+
+公开 0.5.0 的 seed 虽包含 React/React DOM 19.2.7，但漏登记这两项，导致三个官方应用被市场误判不兼容。此修复改变固定 seed 及 runtime ID，0.5.1 需要完整 DMG；原应用归档和公开市场无需改写。旧的可用代次仍先启动，新 seed 在后台重放应用、等待空闲切换，不修改已有代次或用户数据。
 
 普通 npm 包的 `exports["."]` 指向 Cordis `apply/inject/Config` 插件，可以直接使用 ESM TypeScript。可选 `exports["./client"]` 指向浏览器产物；后端无页面也合法。`fn` 元数据只有 `schemaVersion: 1`、`id`、`name`、可选 `description`、文字 `icon` 及 `iconSvg: "dist/icon.svg"`（8 KiB SVG，SDK 从 src 构建）。
 
@@ -26,7 +30,7 @@ FIA 启动一个固定 Bun 1.4.3 进程。`backend/runtime.ts` 只装配产品 A
 
 应用中心提供市场/已安装页、搜索、来源管理、地址安装、打开、更新、停用和卸载。地址支持 HTTPS 归档、本地 `.tgz`、npm 包规格与 Git HTTPS/GitHub 来源；npm 安装校验 registry 的 SHA-512，市场安装额外校验声明的 SHA-256、包身份及核心版本。更新固定原来源，拒绝身份变化和降级；后台任务空闲后切换运行目录。
 
-新市场使用 `schemaVersion: 2`，与旧插件索引明确分离。索引结构为 `{schemaVersion:2,name,applications:[{id,packageName,name,description,version,url,sha256,core}]}`；`core` 精确匹配宿主共享包版本，必须声明 `@semicoder/fn-sdk`。默认 `marketplace-cordis.json` 尚未发布，界面明确报告，不展示旧包为可安装的新应用。开发示例仍从独立归档安装。
+新市场使用 `schemaVersion: 2`，与旧插件索引明确分离。索引结构为 `{schemaVersion:2,name,applications:[{id,packageName,name,description,version,url,sha256,core}]}`；`core` 精确匹配宿主共享包版本，必须声明 `@semicoder/fn-sdk`。默认 `marketplace-cordis.json` 和三个官方 Cordis 0.1.0 应用已公开；0.5.0 的核心版本误判由上述 0.5.1 候选修复。
 
 应用自身更新继续使用 FIA 的检查、下载、完整安装包提示和忙时延后流程。正式构建启动时及每 24 小时自动检查；Dev/Preview 默认关闭正式更新，避免覆盖开发构建。插件更新与应用更新使用不同入口，前者只重启后台，后者遵循 FIA 发行清单。
 
