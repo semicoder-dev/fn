@@ -20,7 +20,7 @@
     "npm:check": "bun scripts/npm/check.ts",
     "npm:pack": "bun run sdk:styles && bun scripts/npm/pack.ts",
     "release:check": "bun scripts/release/check.ts",
-    "check": "bun run framework:check && bun run styles:check && bun run sdk:snapshot && fia check",
+    "check": "bun run framework:check && bun run styles:check && bun run sdk:snapshot && bun run runtime:seed && fia check",
     "test": "bun test ./tests packages/runtime/tests packages/sdk/tests backend/chat-next",
     "sdk:snapshot": "bun run sdk:styles && bun scripts/sdk-snapshot.ts",
     "styles:check": "bun scripts/check-styles.ts",
