@@ -1,6 +1,12 @@
 # 新 runtime 验证记录
 
-日期：2026-10-20。此记录描述尚未发布的新 Cordis runtime，不能作为公开 fn 0.4.5 或旧插件接口的能力声明。上游锁定 dsh `0.2.1-rc.2`、Cordis `4.0.5`、Pi `1.1.0`；归档与来源见 `vendor/dsh/README.md`、`upstream.lock.json`。
+日期：2026-10-20 起；2026-10-21 联合发行验收。此记录描述新 Cordis runtime，不能作为 fn 0.4.5 或旧插件接口的能力声明。上游锁定 dsh `0.2.1-rc.2`、Cordis `4.0.5`、Pi `1.1.0`；归档与来源见 `vendor/dsh/README.md`、`upstream.lock.json`。
+
+## 2026-10-21 发行验证补充
+
+SDK 0.4.0、三个 Cordis 0.1.0 官方应用和新市场已公开。公开 SDK 与候选/正式 CI 归档一致，干净 registry 消费与桌面内嵌 55 文件比对通过；公开插件真实 generation 安装、共享内核、空闲切换、加载、卸载和 KV 重启恢复通过。iPhone 0.3.0（4）已在原内部 TestFlight 组分发，生产新增 9 个 Session 类型、两环境四类订阅实际成功；真机交互和通知仍未验。
+
+FIA 增加公证最终状态检查、归档前原生代码签名及有界后台初始化期限；88 项 JS/48 项 Swift、fn 完整 check/build 与框架独立消费通过。正式 `v0.5.0` 固定 `4f37222`，工作流 39533452898 成功；公开 DMG SHA-256 `c4dbd5fe51c30f8318476eef3ad1ee3c3301aaed5e3df7e6db96924f431e3a02`，签名、公证、Gatekeeper、生产权限、内嵌 SDK、32 个签名更新文件独立验收全部通过。首次启动至退出 14,795 ms，只有一次后台启动；旧更新历史保留。完整证据见 [应用发行](github-release.md)。下方未发布描述属于当时阶段。
 
 ## 2026-10-21 Session 自定义卡片与手机模型筛选
 

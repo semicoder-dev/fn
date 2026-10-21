@@ -1,6 +1,18 @@
 # fn 应用发布
 
-fn 0.4.5 / build 9 已公开，签名公证、公开产物及更新源独立验收通过；不重复发布或移动旧标签。仓库已更名为 `semicoder-dev/fn`，官网为 `https://semicoder.dev/fn`，安装页为其 `/docs/installation`，更新源为 `https://semicoder-dev.github.io/fn/updates/latest.json`；官网按同批公开产物同步，部署单独验收。
+fn **0.5.0 / build 10** 已公开；官网为 `https://semicoder.dev/fn`，安装页为其 `/docs/installation`，更新源为 `https://semicoder-dev.github.io/fn/updates/latest.json`。公开标签及附件不移动、不覆盖。
+
+## 0.5.0 Cordis 联合发行（2026-10-21）
+
+`v0.5.0` 固定 `4f37222c23c5acc5cdcd139df971be0f4847ebc3`。[正式工作流 39533452898](https://github.com/semicoder-dev/fn/actions/runs/39533452898)、候选 39532302857 和同提交主干 CI 39532302656 均成功。fn check、259 项应用测试/2131 断言、build、SDK 独立消费和 FIA 独立源码/归档/应用消费通过；FIA 88 JS/48 Swift 测试通过。
+
+- [公开 DMG](https://github.com/semicoder-dev/fn/releases/download/v0.5.0/fn-0.5.0-10-mac-arm64.dmg)：66,055,111 字节，SHA-256 `c4dbd5fe51c30f8318476eef3ad1ee3c3301aaed5e3df7e6db96924f431e3a02`。五附件匿名下载摘要、Developer ID、Apple 公证票据、Gatekeeper、生产 CloudKit/profile 均通过独立验收。
+- runtime ID `db4ec1b5ff56e6b244e223ec9f8405ffa8b7107641005af79468c32c4a23b244`；公开更新清单 Ed25519 签名和全部 32 文件大小/哈希通过，与镜像内代码逐文件相同；旧 build 9 历史抽检保留。原生运行时已改变，须完整 DMG。
+- 内嵌 SDK 0.4.0 的 55 文件与公开 npm 一致；两项 seed 原生依赖在压缩前签名，Developer ID 与 timestamp 严格验证通过。空数据启动至退出 14,795 ms，仅一次后台启动，进程组正常清理。
+- SDK 0.4.0、agent-webtool 0.8.2、三个官方 Cordis 应用 0.1.0 与新市场先行公开并验收。手机 0.3.0（4）已进入既有内部 TestFlight 组，Chat v3 生产 schema/两环境订阅已部署；详见 [TestFlight](../clients/apple/TESTFLIGHT.md)。
+- 首轮发行候选暴露 seed 原生签名与初始化期限问题；修复 Apple 最终状态判定、归档前签名及有界 startupTimeoutMs 后重新完整验收。公开标签固定最终通过的提交，未跳过公证或启动检查。
+
+旧 SDK、插件、Chat v2 与数据不兼容；新目录 `Backend/cordis-v1/` 不读取、迁移或删除旧数据，需重新配置连接及应用。手机新卡片/模型跨设备交互与通知点击、新 OAuth 登录/过期刷新/第二真实账号尚未实测；不将发布成功等同于这些场景通过。官网按此公开产物同步并独立部署，FIA 独立 npm 继续暂停。
 
 ## 0.4.5 网络工具发行（2026-10-16）
 
@@ -40,7 +52,7 @@ fn 0.4.5 / build 9 已公开，签名公证、公开产物及更新源独立验�
 
 发布大小按内容判断，不按代码量、提交数量或是否需要完整 DMG 判断。涉及插件兼容或数据迁移时，发布前列出影响，由用户确认版本归类。公开发布 0.x 安装包仍处于 1.0 之前；本文的“正式发行”指公开签名安装包，不代表产品已进入 1.0。
 
-已有 `0.4.0` 和历史标签保留，后续按此规则演进。当前公开版本为 `0.4.5 / build 9`；下一次普通发行可采用 0.4.6 候选，只有明确授权时才准备版本，日常开发不提前修改。应用、SDK、插件与 FIA 独立管理版本；应用发行不自动带动其他包升版。FIA 共仓期继续暂停独立 npm 发布。
+已有 `0.4.0` 和历史标签保留，后续按此规则演进。当前公开版本为 `0.5.0 / build 10`；下一次普通发行可采用 0.5.1 候选，只有明确授权时才准备版本，日常开发不提前修改。应用、SDK、插件与 FIA 独立管理版本；应用发行不自动带动其他包升版。FIA 共仓期继续暂停独立 npm 发布。
 
 ## 日常开发与待发布清单
 

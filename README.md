@@ -2,7 +2,7 @@
 
 fn 是基于 FIA 的本地插件应用平台。Bun 直接执行 TypeScript 后端，原版 dsh / Cordis 提供 Agent、模型适配、工具和 Session；FIA 负责原生窗口、系统交互和进程生命周期。
 
-本次发行候选为 **fn 0.5.0 / build 10、SDK 0.4.0、iPhone 内测 0.3.0（4）**。实际公开状态分别见[应用发行](docs/github-release.md)、[SDK 发行](docs/npm-release.md)和[TestFlight](clients/apple/TESTFLIGHT.md)。统一[下载入口](https://semicoder.dev/fn/docs/installation)。
+当前发行版本为 **fn 0.5.0 / build 10、SDK 0.4.0、iPhone 内测 0.3.0（4）**。实际公开状态分别见[应用发行](docs/github-release.md)、[SDK 发行](docs/npm-release.md)和[TestFlight](clients/apple/TESTFLIGHT.md)。统一[下载入口](https://semicoder.dev/fn/docs/installation)。
 
 ## 使用
 
