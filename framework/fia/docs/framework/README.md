@@ -76,7 +76,7 @@ WebView 默认关闭页面视口横向、纵向的边缘拉伸回弹，保留正
 
 文件路径和实际复制快照的 SHA-256 纳入 `runtimeId`；任一文件变化都要求重新分发完整安装包。`buildCode`/`release --update` 不复制这些文件，普通代码更新的原生文件、符号链接、数量和大小限制保持不变。未声明 `runtime.assets` 的应用保留原有身份计算。这是当前共仓新增能力，公开 npm 0.18.0 尚不包含它。
 
-`fia release` 输出 `.dmg`、`.dmg.sha256` 和 `.dmg.report.json`。DMG 包含应用与指向 `/Applications` 的快捷方式，用户打开后拖入安装。应用和镜像均使用 Developer ID Application 签名，仅提交最外层 DMG 公证并 staple，随后验证 Gatekeeper、挂载镜像并检查其中应用的启动和正常退出；任何一步失败都停止发布。`fia build --dmg` 使用相同镜像布局和挂载检查生成测试包，跳过正式签名公证，不用于公开分发。`fia build` 仍只生成 `.app`。代码更新不改动已签名 `.app`。应用运行不依赖系统安装的 Bun。
+`fia release` 输出 `.dmg`、`.dmg.sha256` 和 `.dmg.report.json`。DMG 包含应用与指向 `/Applications` 的快捷方式，用户打开后拖入安装。应用和镜像均使用 Developer ID Application 签名，仅提交最外层 DMG 公证并 staple，随后验证 Gatekeeper、挂载镜像并检查其中应用的启动和正常退出；任何一步失败都停止发布。公证必须返回 `Accepted`，不能仅凭 notarytool 进程退出码判断；拒绝时读取 Apple issue 日志并停止票据装订。隔离启动失败会输出最后就绪状态与应用日志用于诊断。`fia build --dmg` 使用相同镜像布局和挂载检查生成测试包，跳过正式签名公证，不用于公开分发。`fia build` 仍只生成 `.app`。代码更新不改动已签名 `.app`。应用运行不依赖系统安装的 Bun。
 
 打包依据：[Apple Mac 软件分发](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution)。DMG 使用 Developer ID Application；Developer ID Installer 用于 `.pkg`。
 

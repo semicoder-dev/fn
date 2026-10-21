@@ -442,7 +442,7 @@ export async function packageDiskImage(
         image,
       ]);
       // Sign nested code first; notarize and staple only the outermost container.
-      await run([
+      const notarization = await run([
         "/usr/bin/xcrun",
         "notarytool",
         "submit",
@@ -450,7 +450,22 @@ export async function packageDiskImage(
         "--keychain-profile",
         profile!,
         "--wait",
+        "--output-format",
+        "json",
       ]);
+      // notarytool can exit successfully even when Apple rejects the submission.
+      const submission = JSON.parse(notarization.stdout) as { id?: string; status?: string };
+      if (submission.status !== "Accepted") {
+        let details = notarization.stdout;
+        if (typeof submission.id === "string" && /^[a-f0-9-]{36}$/i.test(submission.id)) {
+          const log = await runner(
+            ["/usr/bin/xcrun", "notarytool", "log", submission.id, "--keychain-profile", profile!],
+            { cwd: root },
+          );
+          details += "\n" + (log.stdout || log.stderr);
+        }
+        throw new Error("Apple notarization rejected the installer: " + details);
+      }
       await run(["/usr/bin/xcrun", "stapler", "staple", image]);
       await run(["/usr/bin/xcrun", "stapler", "validate", image]);
       await run(["/usr/bin/codesign", "--verify", "--strict", image]);

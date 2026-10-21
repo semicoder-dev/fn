@@ -6,7 +6,7 @@ import { packageDiskImage, type ApplicationProcessRunner } from "../src/applicat
 import { sha256 } from "../src/artifacts.ts";
 import { validateConfig } from "../src/project-config.ts";
 
-for (const failure of ["none", "notarytool", "stapler", "smoke"] as const) {
+for (const failure of ["none", "notarytool", "invalid", "stapler", "smoke"] as const) {
   test(`DMG release preserves previous artifacts and cleans up on ${failure}`, async () => {
     const root = await mkdtemp(resolve(tmpdir(), "fia-dmg-test-"));
     const commands: string[][] = [];
@@ -27,6 +27,15 @@ for (const failure of ["none", "notarytool", "stapler", "smoke"] as const) {
     const runner: ApplicationProcessRunner = async (command) => {
       commands.push([...command]);
       if (command.includes(failure)) return { exitCode: 1, stdout: "", stderr: "rejected" };
+      if (command.includes("notarytool"))
+        return {
+          exitCode: 0,
+          stderr: "",
+          stdout: JSON.stringify({
+            id: "00000000-0000-0000-0000-000000000000",
+            status: failure === "invalid" ? "Invalid" : "Accepted",
+          }),
+        };
       if (command[0] === "/usr/bin/ditto") await cp(command[1]!, command[2]!, { recursive: true });
       if (command[0] === "/usr/bin/hdiutil" && command[1] === "create")
         await writeFile(command.at(-1)!, "disk image contents");
@@ -73,6 +82,10 @@ for (const failure of ["none", "notarytool", "stapler", "smoke"] as const) {
         expect(await Bun.file(dmg + ".report.json").exists()).toBe(false);
       }
       expect(smokeCalled).toBe(failure === "none" || failure === "smoke");
+      if (failure === "invalid") {
+        expect(commands.some((c) => c.includes("log"))).toBe(true);
+        expect(commands.some((c) => c.includes("stapler"))).toBe(false);
+      }
       const attached = commands.some((c) => c[1] === "attach");
       expect(commands.some((c) => c[1] === "detach")).toBe(attached);
       expect((await readdir(resolve(root, "dist"))).some((name) => name.startsWith(".dmg-"))).toBe(

@@ -1,6 +1,8 @@
 # fn SDK npm 发布
 
-`@semicoder/fn-sdk@0.3.5` 已公开，manifest 保持 0.3。仓库为 `semicoder-dev/fn`，源码在 `packages/sdk`；应用与 SDK 独立发版。
+2026-10-21：SDK **0.4.0** 已通过 [OIDC 39527538926](https://github.com/semicoder-dev/fn/actions/runs/39527538926) 正式公开，`sdk-v0.4.0` 固定 `ba159de`。npm latest 为 0.4.0；公开归档、候选与正式 CI 产物逐字节一致，SHA-256 `791f3e1910fdd241f171cc22312362ef55d1106899c3ee9833ef8c41e5296022`。干净目录从 registry 安装，Cordis 后端 TypeScript、前端单例共享、分页、卡片、类型与应用构建/打包通过。0.4 为新契约，需要 fn 0.5，不兼容旧运行时。
+
+以下为旧 `@semicoder/fn-sdk@0.3.5` 及更早发行的历史证据，旧 manifest 为 0.3。仓库为 `semicoder-dev/fn`，源码在 `packages/sdk`；应用与 SDK 独立发版。
 
 ## 0.3.5 网络工具发行（2026-10-16）
 

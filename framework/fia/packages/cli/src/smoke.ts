@@ -123,6 +123,12 @@ export async function smokeApplication(
       desktopInteraction: "not-tested",
       logs: log,
     };
+  } catch (error) {
+    const inspection = await readInspection(directory).catch(() => undefined);
+    throw new Error(
+      `${error instanceof Error ? error.message : String(error)}\nLast inspection: ${JSON.stringify(inspection)}\nPackaged application logs:\n${log}`,
+      { cause: error },
+    );
   } finally {
     if (child.exitCode === null) {
       await writeFile(resolve(directory, "quit"), "").catch(() => {});

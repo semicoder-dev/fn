@@ -1,5 +1,17 @@
 # fn Chat TestFlight
 
+## 2026-10-21 Chat v3：0.3.0（4）
+
+用户明确将新版手机内测纳入本次主干发布。构建 **0.3.0（4）** 于 2026-10-21 09:09（北京时间）上传成功，Apple 已处理完成并加入原“fn 内部测试”组（1 名测试员），中文测试说明已保存。构建 ID 为 `1f885f57-275a-4ab4-9066-c6e136c7c78c`。配套桌面需要 fn 0.5.0；旧 Chat v2 数据保留，新客户端只使用 `fn-chat-production-v3`。
+
+实际 IPA 为 1,797,847 字节，SHA-256 `6d33a6c5ca81bd2495906d6ef60d84b510b88f9cbbb0f5a8120d910a4f67539d`；生产 CloudKit、推送、禁用调试、签名、版本及 `session-contracts.json`（含 `FnSessionCard`）验证通过。此哈希不代表 Apple 重签后的分发包。源代码为 fn `f67b51d` 的手机文件；辅助源码和签名材料分别位于 `tools/BootstrapSessionSubscriptions.swift` 与忽略目录 `.fia/testflight/chat-v3-0.3.0-4/`。
+
+目标容器 `iCloud.com.semicoder.fn.production` 的原 18 个类型逐字节保留，新增 9 个 `FnSession*` 类型；Apple Validation Passed 与 Changes Deployed 均已确认。Development 与 Production 均已实际创建 v3 zone、宿主/手机静默订阅、回复/卡片提醒订阅。正式桌面 App ID 为 `com.semicoder.fn`，独立 profile 与 CI release secrets 已配置；不再要求用户运行 Beta 身份宿主。
+
+本地 FnChatCore、FnChatUI、两种宽度/主题卡片测试及签名归档验证通过。TestFlight 真机安装、新卡片跨设备交互、锁屏通知点击仍需用户手机实测，不能由上传或生产订阅成功代替。
+
+下方为旧版本历史证据，不代表新客户端使用 v2。
+
 ## 2026-10-19 Markdown 更新：0.2.1（3）
 
 用户明确要求发布新的 TestFlight。`FnPhoneTestFlight` 独立升级至 **0.2.1（3）**，沿用 `com.semicoder.fn.ios`、生产 CloudKit 容器和原本人内部组。仅客户端增加 Markdown；生产 schema、SDK、Mac 宿主和历史存储不变。生产签名归档、导出 IPA 验证通过；2026-10-19 22:24:45 上传成功，Apple 已完成处理，已加入原“fn 内部测试”组（1 个内部组、1 名测试员），最终状态“正在测试”。中文 Markdown 测试说明已保存。构建 ID `ce11fa13-3ce2-4289-b05c-913e72fcd3c8`；用户于 2026-10-19 确认收到 Apple 解决问题的邮件后，现已能正常通过 TestFlight 安装；手机 Markdown 交互与生产业务/通知仍待实测。
