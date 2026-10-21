@@ -1,8 +1,17 @@
 # fn 应用发布
 
-fn **0.5.0 / build 10** 已公开；官网为 `https://semicoder.dev/fn`，安装页为其 `/docs/installation`，更新源为 `https://semicoder-dev.github.io/fn/updates/latest.json`。公开标签及附件不移动、不覆盖。
+fn **0.5.1 / build 11** 已公开；官网为 `https://semicoder.dev/fn`，安装页为其 `/docs/installation`，更新源为 `https://semicoder-dev.github.io/fn/updates/latest.json`。公开标签及附件不移动、不覆盖。
 
-已知问题（2026-10-21 发行后发现）：三个官方 Cordis 应用在市场被误判“核心版本不兼容”，原因是 seed 的 React/React DOM 版本未登记。此前底层归档安装检查漏过了市场门禁；签名、公证和产物一致性证据仍有效。修复已归集到 0.5.1/build 11 候选；不覆盖 0.5.0 附件或既有插件归档，新版本需完整 DMG。详见 [待发布清单](../release/notes/unreleased.md)。
+## 0.5.1 官方市场修复（2026-10-21）
+
+`v0.5.1` 固定 `9825765af9cdf61e5dc3393c9f30675c29238508`。[正式工作流 39612788964](https://github.com/semicoder-dev/fn/actions/runs/39612788964) 与[主干 CI 39612373554](https://github.com/semicoder-dev/fn/actions/runs/39612373554) 均成功。完整 check、262 项应用测试/2157 断言、build、SDK 与 FIA 独立消费通过；FIA 88 JS/48 Swift。仅 github-pages 增加精确 v0.5.1 标签许可，其他保护保留。
+
+- [公开 DMG](https://github.com/semicoder-dev/fn/releases/download/v0.5.1/fn-0.5.1-11-mac-arm64.dmg)：66,111,761 字节，SHA-256 `9e7d5f803119376919f21af5735448b5525f4bbf5354c687d4618ba416524340`。五附件匿名下载与 digest 一致；Developer ID、Apple 公证票据、Gatekeeper、生产 CloudKit/profile、2 个原生依赖签名与内嵌 SDK 55 文件通过独立核验。
+- seed `69a91926d31e7939fb88a8fe`，runtime ID `d758ae9094ea855539ce8727e6cc436b368360ef2f33686205284b82f7b3d362`。公开更新清单签名、32 文件大小/哈希、镜像内代码比对通过；旧 build 10 两文件抽检保留。新运行时身份要求完整 DMG。
+- 正式 DMG seed 在临时空目录经过真实官方市场 refresh/resolve 后下载并安装三个原始 Cordis 0.1.0 归档，摘要、共享实例、忙时等待、空闲重启、三应用 active/installed、卸载释放与 KV 恢复通过。
+- 从实际 0.5.0 归档建立旧运行目录，安装随手记并保存测试笔记，再切到正式新 seed，验证应用/KV 保留、旧代不变、忙时等待和市场恢复；不读取用户数据。新包启动到退出 16,486 ms，仅一次后台启动，进程组清理通过。
+
+0.5.0 的 seed 漏登记 React/React DOM，导致三个官方应用经过市场门禁被误判不兼容。此前底层归档安装验证漏过这个入口；修复保留严格版本检查，不覆盖旧附件或修改官方插件。SDK 0.4.0、插件 0.1.0、手机 0.3.0（4）及 agent-webtool 0.8.2 均不变。0.5.0 数据保留；从 0.4.x 升级仍遵循独立数据目录规则，见[版本说明](../release/notes/0.5.1.md)。官网安装与修复说明来源为 Semicoder `e1abcba4e5e54304046a54e29d5f0b5fff38bdbb`；[官网工作流 39615386873](https://github.com/semicoder-dev/semicoder/actions/runs/39615386873) 独立管理两环境部署，状态与最终线上验收另记于 workspace 的本次发行记录，不以应用 Release 代替官网完成。
 
 ## 0.5.0 Cordis 联合发行（2026-10-21）
 

@@ -1,6 +1,6 @@
 # Cordis 应用运行栈
 
-本页契约随 fn 0.5.0 / SDK 0.4.0 发布，公开产物见 [发行记录](github-release.md)。2026-10-21 追加的市场核心版本修复已归集到 0.5.1/build 11 候选，待正式产物验收；同版本开发归档不能当作公开产物。
+本页契约随 fn 0.5.0 / SDK 0.4.0 发布，公开产物见 [发行记录](github-release.md)。2026-10-21 追加的市场核心版本修复已随 0.5.1/build 11 正式发布，公开 DMG 与真实市场安装已独立验收。
 
 ## 运行与职责
 
@@ -30,7 +30,7 @@ FIA 启动一个固定 Bun 1.4.3 进程。`backend/runtime.ts` 只装配产品 A
 
 应用中心提供市场/已安装页、搜索、来源管理、地址安装、打开、更新、停用和卸载。地址支持 HTTPS 归档、本地 `.tgz`、npm 包规格与 Git HTTPS/GitHub 来源；npm 安装校验 registry 的 SHA-512，市场安装额外校验声明的 SHA-256、包身份及核心版本。更新固定原来源，拒绝身份变化和降级；后台任务空闲后切换运行目录。
 
-新市场使用 `schemaVersion: 2`，与旧插件索引明确分离。索引结构为 `{schemaVersion:2,name,applications:[{id,packageName,name,description,version,url,sha256,core}]}`；`core` 精确匹配宿主共享包版本，必须声明 `@semicoder/fn-sdk`。默认 `marketplace-cordis.json` 和三个官方 Cordis 0.1.0 应用已公开；0.5.0 的核心版本误判由上述 0.5.1 候选修复。
+新市场使用 `schemaVersion: 2`，与旧插件索引明确分离。索引结构为 `{schemaVersion:2,name,applications:[{id,packageName,name,description,version,url,sha256,core}]}`；`core` 精确匹配宿主共享包版本，必须声明 `@semicoder/fn-sdk`。默认 `marketplace-cordis.json` 和三个官方 Cordis 0.1.0 应用已公开；0.5.0 的核心版本误判由 0.5.1 修复。
 
 应用自身更新继续使用 FIA 的检查、下载、完整安装包提示和忙时延后流程。正式构建启动时及每 24 小时自动检查；Dev/Preview 默认关闭正式更新，避免覆盖开发构建。插件更新与应用更新使用不同入口，前者只重启后台，后者遵循 FIA 发行清单。
 
