@@ -3,7 +3,7 @@ import { startAgentServer } from "./agent-server.ts";
 import type { APIImplementation, APIContract, APIEmitter } from "./business-api.ts";
 export { implementAPI } from "./business-api.ts";
 import { createGateway } from "./gateway.ts";
-import { resolve } from "node:path";
+import { appDirectories } from "./app-context.ts";
 import { createNativeAPI } from "./api.ts";
 import { FIA_BACKEND_PROTOCOL_VERSION } from "./metadata.ts";
 import {
@@ -35,6 +35,8 @@ export interface AppContext {
   readonly dataDirectory: string;
   /** Read-only code and configured business assets; never store user data here. */
   readonly codeDirectory: string;
+  /** Immutable full-application assets; never part of a replaceable code release. */
+  readonly runtimeDirectory: string;
 }
 
 export interface BackendRouteContext<C extends APIContract = APIContract> extends APIEmitter<C> {
@@ -86,6 +88,9 @@ export interface BackendContext<
 > extends BackendRouteContext<C> {
   readonly server: BackendServer<WebSocketData>;
   url(path?: string): URL;
+  /** Schedule outside an API invocation. Gates new calls, runs beforeUpdate and
+   * requests a supervised process restart while preserving native windows. */
+  restart(): Promise<void>;
 }
 
 export interface BackendDefinition<
@@ -455,9 +460,7 @@ export async function runBackend<Data, Paths extends string>(
     ...initialize.app,
     mode: initialize.app.mode ?? (initialize.development ? "development" : "production"),
     dataDirectory: initialize.applicationSupport,
-    codeDirectory: initialize.development
-      ? process.cwd()
-      : resolve(initialize.webRoot, "../backend"),
+    ...appDirectories(initialize),
   };
   const api = new APIServer(
     definition.api ?? { contract: { methods: {}, events: {} }, handlers: {} },
@@ -500,6 +503,17 @@ export async function runBackend<Data, Paths extends string>(
     ...api.context,
     server,
     url: (path = "/") => new URL(path, origin),
+    restart: async () => {
+      await api.prepare(async () => definition.beforeUpdate?.(context));
+      try {
+        await current.agent?.publish();
+        await native.call("runtime.restartBackend", {});
+      } catch (error) {
+        api.updating = false;
+        await current.agent?.publish();
+        throw error;
+      }
+    },
   };
   current.context = context;
   // Listening and business readiness are distinct; start hooks may configure native windows.

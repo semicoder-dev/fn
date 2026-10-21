@@ -6,7 +6,7 @@ import UserNotifications
 
 @main struct FnPhoneApp: App {
   @UIApplicationDelegateAdaptor(PhoneDelegate.self) private var delegate
-  var body: some Scene { WindowGroup { ChatRootView() } }
+  var body: some Scene { WindowGroup { SessionRootView() } }
 }
 @MainActor
 final class PhoneDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
@@ -20,16 +20,16 @@ final class PhoneDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCe
   }
   func application(
     _ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken token: Data
-  ) { ChatModel.shared.pushStatus = "APNs 注册成功" }
+  ) { SessionModel.shared.pushStatus = "APNs 注册成功" }
   func application(
     _ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error
-  ) { ChatModel.shared.pushStatus = error.localizedDescription }
+  ) { SessionModel.shared.pushStatus = error.localizedDescription }
   func application(
     _ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any],
     fetchCompletionHandler completion: @escaping (UIBackgroundFetchResult) -> Void
   ) {
     Task {
-      await ChatModel.shared.resume()
+      await SessionModel.shared.resume()
       completion(.newData)
     }
   }
@@ -43,7 +43,7 @@ final class PhoneDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCe
     let id = ChatNotification.messageID(from: response.notification.request.content.userInfo)
     Task { @MainActor in
       completionHandler()
-      ChatModel.shared.openNotification(id)
+      SessionModel.shared.openNotification(id)
     }
   }
 }

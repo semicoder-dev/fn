@@ -148,7 +148,7 @@ public final class FIARuntime {
     let configuration = FIABunConfiguration(
       development: development, appName: manifest.app.name, appIdentifier: manifest.app.identifier,
       executable: bundle.bundleURL.appending(path: "Contents/Helpers/bun").path,
-      arguments: ["--no-env-file", entry], sha256: manifest.bunSHA256,
+      arguments: ["--no-env-file", "--no-install", entry], sha256: manifest.bunSHA256,
       sessionSecret: session, bundlePath: bundle.bundleURL.resolvingSymlinksInPath().path, runtimeId: manifest.runtimeId, agentCommand: manifest.agent?.command, updating: trial, webRoot: activeDirectory.appending(path: "web").path,
       resourceDirectory: resources.directory.path,
       developmentOrigin: developmentOrigin?.absoluteString, version: activeRelease.version,
@@ -419,6 +419,38 @@ public final class FIARuntime {
     return report
   }
   private func registerRuntimeMethods() {
+    // runtime.* is inaccessible through the browser/native WebSocket gateway.
+    native.register("runtime.restartBackend", input: FIAEmpty.self, output: FIAEmpty.self) {
+      [weak self] _ in
+      try await MainActor.run {
+        guard let self, self.lifecycle == .running, !self.transitioning else {
+          throw UpdateError("Runtime cannot restart now")
+        }
+        self.transitioning = true
+        Task { @MainActor in
+          // Let the requesting backend receive the acknowledgement before shutdown.
+          try? await Task.sleep(for: .milliseconds(150))
+          defer {
+            self.transitioning = false
+            self.windows.setBrowserAvailable(self.backendReady)
+          }
+          do {
+            self.windows.suspend()
+            try await self.backend?.stop()
+            self.native.cancelActive()
+            self.shortcuts.clear()
+            await self.resources.cleanupAll()
+            guard self.lifecycle == .running else { throw CancellationError() }
+            self.launchBackend()
+            try await self.waitForBackend()
+            self.connectWindows()
+          } catch {
+            self.backendFailure = error.localizedDescription
+          }
+        }
+        return FIAEmpty()
+      }
+    }
     native.register("native.capabilities", input: FIAEmpty.self, output: Capabilities.self) {
       [weak self] _ in
       await MainActor.run {

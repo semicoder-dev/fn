@@ -1,6 +1,6 @@
 {
   "repository": "semicoder-dev/fn",
-  "build": 9,
+  "build": 10,
   "updatesURL": "https://semicoder-dev.github.io/fn/updates/latest.json",
   "publicKey": "wNM+4SLpDEXq3guGbwp6H4LgFdPkW9XDO4pywwFkBQw=",
   "downloadURL": "https://semicoder.dev/fn/docs/installation"

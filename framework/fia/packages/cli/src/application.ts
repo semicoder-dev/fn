@@ -18,11 +18,13 @@ import {
 import { basename, dirname, resolve } from "node:path";
 import {
   assetDirectory,
+  applicationRuntimeAssets,
   releaseFiles,
   runtimeId,
   sha256,
   verifyAssets,
   type CodeRelease,
+  type RuntimeAssetFile,
 } from "./artifacts.ts";
 import { CLI_VERSION } from "./metadata.ts";
 import { loadProjectConfig, type ResolvedFIAConfig } from "./project-config.ts";
@@ -116,6 +118,7 @@ export async function buildCode(
   destination: string,
   runner: ApplicationProcessRunner = defaultRunner,
   development = false,
+  applicationAssets?: RuntimeAssetFile[],
 ): Promise<CodeRelease> {
   const assets = await verifyAssets();
   await generateAgentArtifacts(config, resolve(destination, "agent"));
@@ -161,6 +164,7 @@ export async function buildCode(
   for (const path of development ? [] : config.backend.assets)
     await cp(resolve(config.projectRoot, path), resolve(destination, "backend", path), {
       recursive: true,
+      verbatimSymlinks: true,
       force: false,
       errorOnExist: true,
     });
@@ -169,7 +173,7 @@ export async function buildCode(
     identifier: config.app.identifier,
     version: config.app.version,
     build: config.app.build,
-    runtimeId: await runtimeId(config, assets),
+    runtimeId: await runtimeId(config, assets, applicationAssets),
     baseURL: config.updates
       ? new URL("releases/" + config.app.build + "/", config.updates.url).href
       : "https://invalid.local/",
@@ -219,11 +223,16 @@ export async function buildApplication(
   await mkdir(resolve(contents, "Helpers"));
   await mkdir(resources);
   try {
+    const immutableAssets = await applicationRuntimeAssets(
+      config,
+      options.development ? undefined : resolve(resources, "runtime"),
+    );
     const release = await buildCode(
       config,
       resolve(resources, "code"),
       runner,
       options.development,
+      immutableAssets,
     );
     await cp(resolve(assetDirectory, "FIAHost"), resolve(contents, "MacOS/FIAHost"));
     await cp(resolve(assetDirectory, "bun"), resolve(contents, "Helpers/bun"));

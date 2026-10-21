@@ -1,0 +1,103 @@
+{
+  "measuredAt": "2026-10-20T14:28:19.633Z",
+  "bun": "1.4.3",
+  "platform": "darwin",
+  "arch": "arm64",
+  "osRelease": "25.6.0",
+  "cpu": "Apple M1 Pro",
+  "logicalCpus": 10,
+  "memoryGiB": 32,
+  "seedId": "6a72abef3e92a9108daeb692",
+  "samples": 7,
+  "methodology": "Fresh Bun process and empty state databases per sample; already materialized generation; OS filesystem cache uncontrolled; worker timing starts before dynamic runtime import; mock localhost SSE, one assistant response, SQLite flush included; idle RSS mean at 250/500/750 ms; no forced GC.",
+  "summary": {
+    "moduleImportMs": {
+      "min": 61.75212499999999,
+      "median": 62.6125,
+      "p95": 66.430083,
+      "max": 66.430083
+    },
+    "runtimeOpenMs": {
+      "min": 14.149875000000009,
+      "median": 15.537124999999989,
+      "p95": 31.647374999999997,
+      "max": 31.647374999999997
+    },
+    "workerReadyMs": {
+      "min": 75.902,
+      "median": 77.673125,
+      "p95": 98.077458,
+      "max": 98.077458
+    },
+    "firstMockTurnDurableMs": {
+      "min": 36.741292,
+      "median": 37.328582999999995,
+      "p95": 41.660124999999994,
+      "max": 41.660124999999994
+    },
+    "idleRssMiB": {
+      "min": 44.156982421875,
+      "median": 44.500709533691406,
+      "p95": 44.844482421875,
+      "max": 44.844482421875
+    }
+  },
+  "results": [
+    {
+      "moduleImportMs": 66.430083,
+      "runtimeOpenMs": 31.647374999999997,
+      "workerReadyMs": 98.077458,
+      "firstMockTurnDurableMs": 41.660124999999994,
+      "idleRssMiB": 44.844482421875,
+      "requests": 1
+    },
+    {
+      "moduleImportMs": 61.910291,
+      "runtimeOpenMs": 15.592500000000001,
+      "workerReadyMs": 77.502791,
+      "firstMockTurnDurableMs": 39.39774999999999,
+      "idleRssMiB": 44.188255310058594,
+      "requests": 1
+    },
+    {
+      "moduleImportMs": 63.31937500000001,
+      "runtimeOpenMs": 15.537124999999989,
+      "workerReadyMs": 78.8565,
+      "firstMockTurnDurableMs": 37.328582999999995,
+      "idleRssMiB": 44.500709533691406,
+      "requests": 1
+    },
+    {
+      "moduleImportMs": 62.6125,
+      "runtimeOpenMs": 15.060625000000002,
+      "workerReadyMs": 77.673125,
+      "firstMockTurnDurableMs": 36.972875,
+      "idleRssMiB": 44.646565755208336,
+      "requests": 1
+    },
+    {
+      "moduleImportMs": 62.70458300000001,
+      "runtimeOpenMs": 15.987583999999998,
+      "workerReadyMs": 78.692167,
+      "firstMockTurnDurableMs": 39.286417,
+      "idleRssMiB": 44.63617197672526,
+      "requests": 1
+    },
+    {
+      "moduleImportMs": 61.898916,
+      "runtimeOpenMs": 15.327875000000006,
+      "workerReadyMs": 77.226791,
+      "firstMockTurnDurableMs": 37.219333000000006,
+      "idleRssMiB": 44.156982421875,
+      "requests": 1
+    },
+    {
+      "moduleImportMs": 61.75212499999999,
+      "runtimeOpenMs": 14.149875000000009,
+      "workerReadyMs": 75.902,
+      "firstMockTurnDurableMs": 36.741292,
+      "idleRssMiB": 44.214274088541664,
+      "requests": 1
+    }
+  ]
+}

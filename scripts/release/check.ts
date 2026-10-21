@@ -10,6 +10,7 @@ if (process.env.GITHUB_ACTIONS) {
 }
 if (process.argv.includes("--signed")) {
   assert(process.env.FN_SIGNING_IDENTITY?.startsWith("Developer ID Application:"), "Set APPLE_SIGNING_IDENTITY repository variable");
+  assert(process.env.FN_CLOUDKIT_PRODUCTION_PROFILE && process.env.FN_CLOUDKIT_PRODUCTION_ENTITLEMENTS, "Production CloudKit signing assets are missing");
   assert(process.env.FIA_UPDATE_PRIVATE_KEY_FILE, "Update signing key is missing");
 }
 if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `version=${pkg.version}\nbuild=${config.build}\ntag=v${pkg.version}\n`);

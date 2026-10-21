@@ -1,0 +1,1347 @@
+{
+  "FnSessionCard": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "protocolVersion": {
+        "type": "number",
+        "const": 3
+      },
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "hostId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "sessionId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "card": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "createdAt": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "expiresAt": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "completed",
+              "failed",
+              "cancelled",
+              "expired",
+              "interrupted"
+            ]
+          },
+          "card": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "number",
+                "const": 1
+              },
+              "template": {
+                "type": "string",
+                "enum": [
+                  "approval",
+                  "choice",
+                  "form"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "summary": {
+                "type": "string",
+                "maxLength": 512
+              },
+              "blocks": {
+                "maxItems": 30,
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "text"
+                        },
+                        "text": {
+                          "type": "string",
+                          "maxLength": 16000
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "text"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "fields"
+                        },
+                        "fields": {
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "label": {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              "value": {
+                                "type": "string",
+                                "maxLength": 2000
+                              }
+                            },
+                            "required": [
+                              "label",
+                              "value"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "fields"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "divider"
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "inputs": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100,
+                      "pattern": "^[A-Za-z0-9_.-]+$"
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "number",
+                        "boolean",
+                        "select",
+                        "multiSelect"
+                      ]
+                    },
+                    "required": {
+                      "type": "boolean"
+                    },
+                    "options": {
+                      "minItems": 1,
+                      "maxItems": 50,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100,
+                            "pattern": "^[A-Za-z0-9_.-]+$"
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "label"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "maxLength": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 16000
+                    },
+                    "minimum": {
+                      "type": "number"
+                    },
+                    "maximum": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "label",
+                    "type",
+                    "required"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "actions": {
+                "minItems": 1,
+                "maxItems": 10,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100,
+                      "pattern": "^[A-Za-z0-9_.-]+$"
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "style": {
+                      "type": "string",
+                      "enum": [
+                        "normal",
+                        "primary",
+                        "danger"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "label"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "version",
+              "template",
+              "title",
+              "summary",
+              "blocks",
+              "inputs",
+              "actions"
+            ],
+            "additionalProperties": false
+          },
+          "answer": {
+            "type": "object",
+            "properties": {
+              "actionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100,
+                "pattern": "^[A-Za-z0-9_.-]+$"
+              },
+              "values": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100,
+                  "pattern": "^[A-Za-z0-9_.-]+$"
+                },
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 16000
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "maxItems": 50,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "maxLength": 200
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "required": [
+              "actionId",
+              "values"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": "string",
+            "maxLength": 1024
+          }
+        },
+        "required": [
+          "id",
+          "sessionId",
+          "createdAt",
+          "expiresAt",
+          "state",
+          "card"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "protocolVersion",
+      "id",
+      "hostId",
+      "sessionId",
+      "card"
+    ],
+    "additionalProperties": false
+  },
+  "FnSessionHost": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "protocolVersion": {
+        "type": "number",
+        "const": 3
+      },
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "hostId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "name": {
+        "type": "string",
+        "maxLength": 80
+      },
+      "updatedAt": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "protocolVersion",
+      "id",
+      "hostId",
+      "name",
+      "updatedAt"
+    ],
+    "additionalProperties": false
+  },
+  "FnSessionEndpoint": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "protocolVersion": {
+        "type": "number",
+        "const": 3
+      },
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "hostId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "appId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "endpointId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "name": {
+        "type": "string",
+        "maxLength": 200
+      },
+      "enabled": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "protocolVersion",
+      "id",
+      "hostId",
+      "appId",
+      "endpointId",
+      "name",
+      "enabled"
+    ],
+    "additionalProperties": false
+  },
+  "FnSessionConnection": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "protocolVersion": {
+        "type": "number",
+        "const": 3
+      },
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "hostId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "name": {
+        "type": "string",
+        "maxLength": 100
+      },
+      "enabled": {
+        "type": "boolean"
+      },
+      "models": {
+        "maxItems": 2000,
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 512
+            }
+          },
+          "required": [
+            "id",
+            "name"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "protocolVersion",
+      "id",
+      "hostId",
+      "name",
+      "enabled",
+      "models"
+    ],
+    "additionalProperties": false
+  },
+  "FnSessionSummary": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "protocolVersion": {
+        "type": "number",
+        "const": 3
+      },
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "hostId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "session": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "appId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "connectionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "modelId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "updatedAt": {
+            "type": "number"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "policy": {
+            "type": "string",
+            "enum": [
+              "controlled",
+              "automatic"
+            ]
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "endpointId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "idle",
+              "running",
+              "unloaded"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "appId",
+          "connectionId",
+          "modelId",
+          "title",
+          "createdAt",
+          "updatedAt",
+          "archived",
+          "policy",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "asOfSeq": {
+        "type": "integer",
+        "minimum": -1,
+        "maximum": 9007199254740991
+      },
+      "readSeq": {
+        "type": "integer",
+        "minimum": -1,
+        "maximum": 9007199254740991
+      },
+      "approvals": {
+        "maxItems": 100,
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "toolName": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 32768
+            }
+          },
+          "required": [
+            "id",
+            "toolName"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "protocolVersion",
+      "id",
+      "hostId",
+      "session",
+      "asOfSeq",
+      "approvals"
+    ],
+    "additionalProperties": false
+  },
+  "FnSessionItem": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "protocolVersion": {
+        "type": "number",
+        "const": 3
+      },
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "hostId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "sessionId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "item": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant",
+              "tool",
+              "notice"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 32768
+          },
+          "reasoning": {
+            "type": "string",
+            "maxLength": 32768
+          },
+          "toolName": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "callId": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "running",
+              "completed",
+              "failed",
+              "interrupted"
+            ]
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "seq",
+          "createdAt",
+          "kind",
+          "text",
+          "truncated"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "protocolVersion",
+      "id",
+      "hostId",
+      "sessionId",
+      "item"
+    ],
+    "additionalProperties": false
+  },
+  "FnSessionReply": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "protocolVersion": {
+        "type": "number",
+        "const": 3
+      },
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "hostId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "sessionId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "item": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant",
+              "tool",
+              "notice"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 32768
+          },
+          "reasoning": {
+            "type": "string",
+            "maxLength": 32768
+          },
+          "toolName": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "callId": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "running",
+              "completed",
+              "failed",
+              "interrupted"
+            ]
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "seq",
+          "createdAt",
+          "kind",
+          "text",
+          "truncated"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "protocolVersion",
+      "id",
+      "hostId",
+      "sessionId",
+      "item"
+    ],
+    "additionalProperties": false
+  },
+  "FnSessionCommand": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "number",
+            "const": 3
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "hostId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "deviceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "action": {
+            "type": "string",
+            "const": "create"
+          },
+          "appId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "endpointId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "connectionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "modelId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "hostId",
+          "deviceId",
+          "createdAt",
+          "action",
+          "appId",
+          "endpointId",
+          "connectionId",
+          "modelId"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "number",
+            "const": 3
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "hostId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "deviceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "action": {
+            "type": "string",
+            "const": "card"
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "cardId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "actionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "values": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "pattern": "^[A-Za-z0-9_.-]+$"
+            },
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 16000
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "maxItems": 50,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "hostId",
+          "deviceId",
+          "createdAt",
+          "action",
+          "sessionId",
+          "cardId",
+          "actionId",
+          "values"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "number",
+            "const": 3
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "hostId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "deviceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "action": {
+            "type": "string",
+            "const": "send"
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32768
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "hostId",
+          "deviceId",
+          "createdAt",
+          "action",
+          "sessionId",
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "number",
+            "const": 3
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "hostId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "deviceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "action": {
+            "type": "string",
+            "const": "read"
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "hostId",
+          "deviceId",
+          "createdAt",
+          "action",
+          "sessionId",
+          "seq"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "number",
+            "const": 3
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "hostId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "deviceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "action": {
+            "type": "string",
+            "const": "cancel"
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "hostId",
+          "deviceId",
+          "createdAt",
+          "action",
+          "sessionId"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "number",
+            "const": 3
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "hostId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "deviceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "action": {
+            "type": "string",
+            "const": "model"
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "modelId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "hostId",
+          "deviceId",
+          "createdAt",
+          "action",
+          "sessionId",
+          "modelId"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "number",
+            "const": 3
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "hostId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "deviceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "action": {
+            "type": "string",
+            "const": "archive"
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "archived": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "hostId",
+          "deviceId",
+          "createdAt",
+          "action",
+          "sessionId",
+          "archived"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "number",
+            "const": 3
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "hostId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "deviceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "createdAt": {
+            "type": "number"
+          },
+          "action": {
+            "type": "string",
+            "const": "approval"
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "approvalId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "allow": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "id",
+          "hostId",
+          "deviceId",
+          "createdAt",
+          "action",
+          "sessionId",
+          "approvalId",
+          "allow"
+        ],
+        "additionalProperties": false
+      }
+    ]
+  },
+  "FnSessionResult": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "protocolVersion": {
+        "type": "number",
+        "const": 3
+      },
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "hostId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "completed",
+          "failed",
+          "interrupted"
+        ]
+      },
+      "sessionId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      },
+      "error": {
+        "type": "string",
+        "maxLength": 4096
+      },
+      "updatedAt": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "protocolVersion",
+      "id",
+      "hostId",
+      "status",
+      "updatedAt"
+    ],
+    "additionalProperties": false
+  }
+}

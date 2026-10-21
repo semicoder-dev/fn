@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
-import { readFile, lstat, readdir, realpath } from "node:fs/promises";
-import { resolve, relative, sep } from "node:path";
+import { readFile, lstat, readdir, realpath, mkdir, writeFile } from "node:fs/promises";
+import { resolve, relative, sep, dirname } from "node:path";
 import { CLI_VERSION, BUNDLED_BUN_VERSION, FIA_BACKEND_PROTOCOL_VERSION } from "./metadata.ts";
-import { safeRelative, type ResolvedFIAConfig } from "./project-config.ts";
+import { safeRelative, runtimeAssetSources, type ResolvedFIAConfig } from "./project-config.ts";
 
 export const assetDirectory = resolve(import.meta.dir, "../assets/darwin-arm64");
 export const hash = (data: string | Uint8Array) => createHash("sha256").update(data).digest("hex");
@@ -46,7 +46,34 @@ export async function verifyAssets(directory = assetDirectory): Promise<RuntimeA
   }
   return value;
 }
-export async function runtimeId(config: ResolvedFIAConfig, assets: RuntimeAssets): Promise<string> {
+export interface RuntimeAssetFile {
+  path: string;
+  size: number;
+  sha256: string;
+}
+/** Read an immutable input snapshot; optional destination is outside the code release tree. */
+export async function applicationRuntimeAssets(
+  config: ResolvedFIAConfig,
+  destination?: string,
+): Promise<RuntimeAssetFile[]> {
+  const files: RuntimeAssetFile[] = [];
+  for (const { path, source } of await runtimeAssetSources(config)) {
+    const data = await readFile(source);
+    if (destination) {
+      const target = resolve(destination, path);
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, data, { flag: "wx", mode: 0o644 });
+    }
+    files.push({ path, size: data.length, sha256: hash(data) });
+  }
+  return files;
+}
+export async function runtimeId(
+  config: ResolvedFIAConfig,
+  assets: RuntimeAssets,
+  applicationAssets?: readonly RuntimeAssetFile[],
+): Promise<string> {
+  const fixedAssets = applicationAssets ?? (await applicationRuntimeAssets(config));
   return hash(
     JSON.stringify({
       framework: assets.frameworkVersion,
@@ -71,6 +98,12 @@ export async function runtimeId(config: ResolvedFIAConfig, assets: RuntimeAssets
           }
         : null,
       signing: config.signing?.releaseIdentity ?? null,
+      // Keep the legacy identity byte-for-byte when no immutable app assets are declared.
+      ...(fixedAssets.length
+        ? {
+            assets: fixedAssets.map(({ path, sha256 }) => ({ path, sha256 })),
+          }
+        : {}),
     }),
   );
 }

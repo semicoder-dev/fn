@@ -1,0 +1,290 @@
+{
+  "schemaVersion": 1,
+  "measuredAt": "2026-10-20T15:31:27.625Z",
+  "application": "dist/fn.app",
+  "appVersion": "0.4.5",
+  "appBuild": 9,
+  "runtimeId": "dd11e07fe5c1878ddc11d18675910185307f37ddc00b2eea572e41346345be0a",
+  "codeManifestSha256": "2a986e77939cc0bb108e809fda14e5a70dec9d46a5fa7d2ed64f3f54af5ed2f8",
+  "seedId": "a2f2bcbf7be0597aa4e72095",
+  "seedArchiveSha256": "7479918fbb61a21411fa5bdee18b19ee6ff492737c5f52142912317741843d50",
+  "bundledBun": "1.4.3",
+  "driverBun": "1.4.3",
+  "platform": "darwin",
+  "arch": "arm64",
+  "osRelease": "25.6.0",
+  "cpu": "Apple M1 Pro",
+  "logicalCpus": 10,
+  "memoryGiB": 32,
+  "samples": 3,
+  "methodology": {
+    "startup": "Directly spawn packaged FIAHost. Each fresh sample has an empty isolated data directory and includes seed verification, extraction and generation copying; restart reuses that sample's data and verifies the prior durable reply. Timing begins before spawn and ends at Host inspection reporting backend ready or main frontend ready. Host inspection and driver polling each have 100 ms intervals. OS filesystem cache is uncontrolled; this is process-cold, not disk-cold.",
+    "task": "Private Agent UDS API creates one local mock connection and session before timing. Timed send through the actual Pi adapter/dsh loop to an assistant item read from the persisted SQLite projection. Polling is every 5 ms and projection reads flush the live session. One localhost SSE reply, no real model, internet inference, OAuth or tool execution.",
+    "memory": "Mean of three ps RSS observations about 250/500/750 ms after UI readiness, before task setup. Only the directly spawned FIAHost and its verified Bun child are included. WebKit WebContent/GPU/Networking, other XPC services and the benchmark driver/mock server are excluded. RSS sums may double-count shared pages and are not application physical footprint.",
+    "isolation": "Fresh temporary FIA_CONTROL_DIRECTORY and FIA_DATA_DIRECTORY; no production data or provider credentials inherited; only the launched Host is asked to quit. All owned Bun process groups must exit. Temporary state is removed after verification.",
+    "limitations": "No interactive UI latency or real provider measurement. No Node/old-fn baseline. At small sample counts nearest-rank p95 is simply the maximum. Packaged automatic application update configuration is unchanged."
+  },
+  "summary": {
+    "fresh": {
+      "backendReadyMs": {
+        "min": 13955.348999999998,
+        "median": 14053.731,
+        "max": 16252.987292000002,
+        "p95": 16252.987292000002
+      },
+      "mainUiReadyMs": {
+        "min": 13955.367499999997,
+        "median": 14154.632333000001,
+        "max": 16253.03075,
+        "p95": 16253.03075
+      },
+      "firstMockTurnDurableMs": {
+        "min": 54.4172499999986,
+        "median": 55.72712500000125,
+        "max": 56.67525000000023,
+        "p95": 56.67525000000023
+      },
+      "hostRssMiB": {
+        "min": 100.234375,
+        "median": 100.265625,
+        "max": 100.796875,
+        "p95": 100.796875
+      },
+      "bunRssMiB": {
+        "min": 155.40625,
+        "median": 156.859375,
+        "max": 157.40625,
+        "p95": 157.40625
+      },
+      "hostAndBunRssMiB": {
+        "min": 256.203125,
+        "median": 257.09375,
+        "max": 257.671875,
+        "p95": 257.671875
+      }
+    },
+    "restart": {
+      "backendReadyMs": {
+        "min": 811.9400829999977,
+        "median": 820.9011670000036,
+        "max": 910.6010830000014,
+        "p95": 910.6010830000014
+      },
+      "mainUiReadyMs": {
+        "min": 913.1542919999993,
+        "median": 1011.8318749999962,
+        "max": 1023.1258749999979,
+        "p95": 1023.1258749999979
+      },
+      "firstMockTurnDurableMs": {
+        "min": 52.00995800000237,
+        "median": 52.167084000000614,
+        "max": 54.361791999999696,
+        "p95": 54.361791999999696
+      },
+      "hostRssMiB": {
+        "min": 100.70833333333333,
+        "median": 100.76041666666667,
+        "max": 100.80729166666667,
+        "p95": 100.80729166666667
+      },
+      "bunRssMiB": {
+        "min": 101.46875,
+        "median": 101.59895833333333,
+        "max": 103.171875,
+        "p95": 103.171875
+      },
+      "hostAndBunRssMiB": {
+        "min": 202.17708333333331,
+        "median": 202.359375,
+        "max": 203.97916666666669,
+        "p95": 203.97916666666669
+      }
+    }
+  },
+  "results": [
+    {
+      "sample": 1,
+      "fresh": {
+        "backendReadyMs": 16252.987292000002,
+        "mainUiReadyMs": 16253.03075,
+        "firstMockTurnDurableMs": 55.72712500000125,
+        "projectionReads": 4,
+        "mockRequests": 1,
+        "hostRssMiB": 100.796875,
+        "bunRssMiB": 155.40625,
+        "hostAndBunRssMiB": 256.203125,
+        "memorySamples": [
+          {
+            "elapsedSinceReadyMs": 253.7147079999977,
+            "hostRssMiB": 100.78125,
+            "bunRssMiB": 155.40625
+          },
+          {
+            "elapsedSinceReadyMs": 514.4764999999989,
+            "hostRssMiB": 100.8125,
+            "bunRssMiB": 155.40625
+          },
+          {
+            "elapsedSinceReadyMs": 781.6670829999985,
+            "hostRssMiB": 100.796875,
+            "bunRssMiB": 155.40625
+          }
+        ],
+        "durableSessionRecovered": null,
+        "ordinaryQuitMs": 101.43704199999775
+      },
+      "restart": {
+        "backendReadyMs": 811.9400829999977,
+        "mainUiReadyMs": 913.1542919999993,
+        "firstMockTurnDurableMs": 54.361791999999696,
+        "projectionReads": 4,
+        "mockRequests": 1,
+        "hostRssMiB": 100.70833333333333,
+        "bunRssMiB": 101.46875,
+        "hostAndBunRssMiB": 202.17708333333331,
+        "memorySamples": [
+          {
+            "elapsedSinceReadyMs": 257.3977500000001,
+            "hostRssMiB": 100.5,
+            "bunRssMiB": 101.46875
+          },
+          {
+            "elapsedSinceReadyMs": 517.8560409999991,
+            "hostRssMiB": 100.8125,
+            "bunRssMiB": 101.46875
+          },
+          {
+            "elapsedSinceReadyMs": 779.1400829999984,
+            "hostRssMiB": 100.8125,
+            "bunRssMiB": 101.46875
+          }
+        ],
+        "durableSessionRecovered": true,
+        "ordinaryQuitMs": 100.4484999999986
+      }
+    },
+    {
+      "sample": 2,
+      "fresh": {
+        "backendReadyMs": 13955.348999999998,
+        "mainUiReadyMs": 13955.367499999997,
+        "firstMockTurnDurableMs": 54.4172499999986,
+        "projectionReads": 4,
+        "mockRequests": 1,
+        "hostRssMiB": 100.234375,
+        "bunRssMiB": 156.859375,
+        "hostAndBunRssMiB": 257.09375,
+        "memorySamples": [
+          {
+            "elapsedSinceReadyMs": 252.53783300000214,
+            "hostRssMiB": 100.203125,
+            "bunRssMiB": 156.859375
+          },
+          {
+            "elapsedSinceReadyMs": 515.8213749999995,
+            "hostRssMiB": 100.25,
+            "bunRssMiB": 156.859375
+          },
+          {
+            "elapsedSinceReadyMs": 783.8582500000048,
+            "hostRssMiB": 100.25,
+            "bunRssMiB": 156.859375
+          }
+        ],
+        "durableSessionRecovered": null,
+        "ordinaryQuitMs": 101.33587500000431
+      },
+      "restart": {
+        "backendReadyMs": 910.6010830000014,
+        "mainUiReadyMs": 1011.8318749999962,
+        "firstMockTurnDurableMs": 52.00995800000237,
+        "projectionReads": 4,
+        "mockRequests": 1,
+        "hostRssMiB": 100.76041666666667,
+        "bunRssMiB": 101.59895833333333,
+        "hostAndBunRssMiB": 202.359375,
+        "memorySamples": [
+          {
+            "elapsedSinceReadyMs": 257.3502920000028,
+            "hostRssMiB": 100.71875,
+            "bunRssMiB": 101.59375
+          },
+          {
+            "elapsedSinceReadyMs": 523.5102500000066,
+            "hostRssMiB": 100.734375,
+            "bunRssMiB": 101.59375
+          },
+          {
+            "elapsedSinceReadyMs": 794.2952920000025,
+            "hostRssMiB": 100.828125,
+            "bunRssMiB": 101.609375
+          }
+        ],
+        "durableSessionRecovered": true,
+        "ordinaryQuitMs": 202.34224999999424
+      }
+    },
+    {
+      "sample": 3,
+      "fresh": {
+        "backendReadyMs": 14053.731,
+        "mainUiReadyMs": 14154.632333000001,
+        "firstMockTurnDurableMs": 56.67525000000023,
+        "projectionReads": 4,
+        "mockRequests": 1,
+        "hostRssMiB": 100.265625,
+        "bunRssMiB": 157.40625,
+        "hostAndBunRssMiB": 257.671875,
+        "memorySamples": [
+          {
+            "elapsedSinceReadyMs": 252.421792000001,
+            "hostRssMiB": 100.25,
+            "bunRssMiB": 157.40625
+          },
+          {
+            "elapsedSinceReadyMs": 515.4777499999982,
+            "hostRssMiB": 100.28125,
+            "bunRssMiB": 157.40625
+          },
+          {
+            "elapsedSinceReadyMs": 776.9735000000001,
+            "hostRssMiB": 100.265625,
+            "bunRssMiB": 157.40625
+          }
+        ],
+        "durableSessionRecovered": null,
+        "ordinaryQuitMs": 201.89908300000388
+      },
+      "restart": {
+        "backendReadyMs": 820.9011670000036,
+        "mainUiReadyMs": 1023.1258749999979,
+        "firstMockTurnDurableMs": 52.167084000000614,
+        "projectionReads": 3,
+        "mockRequests": 1,
+        "hostRssMiB": 100.80729166666667,
+        "bunRssMiB": 103.171875,
+        "hostAndBunRssMiB": 203.97916666666669,
+        "memorySamples": [
+          {
+            "elapsedSinceReadyMs": 257.55066700000316,
+            "hostRssMiB": 100.703125,
+            "bunRssMiB": 103.15625
+          },
+          {
+            "elapsedSinceReadyMs": 522.494000000006,
+            "hostRssMiB": 100.71875,
+            "bunRssMiB": 103.171875
+          },
+          {
+            "elapsedSinceReadyMs": 784.7805000000008,
+            "hostRssMiB": 101,
+            "bunRssMiB": 103.1875
+          }
+        ],
+        "durableSessionRecovered": true,
+        "ordinaryQuitMs": 202.37712499999907
+      }
+    }
+  ]
+}

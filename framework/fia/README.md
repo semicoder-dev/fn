@@ -91,6 +91,8 @@ bun run smoke
 
 预编译产物生成在 `packages/cli/assets/darwin-arm64/`，由 npm 包携带，不纳入源码仓库。应用构建找不到匹配产物时直接报错，不自动编译 Swift。
 
+共仓开发新增 `runtime.assets`（未发布）：应用可声明随完整安装包固定的普通文件，通过后端 `context.app.runtimeDirectory` 读取。构建将路径和文件 SHA-256 纳入运行时身份；代码更新不携带它们，文件变更需要完整安装包。目录、符号链接和与 `backend.assets` 重叠的声明会被拒绝。详见[框架契约](docs/framework/README.md#完整运行时资源共仓开发未发布)。
+
 `fia create playground --local` 使用当前包目录的本地依赖；修改框架 TS 后重新构建 CLI，修改 Swift 后重新运行 `runtime:build`。应用侧仍使用预编译产物。
 
 GitHub 自动发布：先执行 `bun run version:npm <version>` 同步版本，提交后推送 `v<version>` 标签；Actions 会构建 Apple Silicon 运行时、执行检查、校验 npm 归档，并用 OIDC 发布 `@semicoder/fia`。正式版本进入 `latest`，预发布版本进入 `next`；手动运行 workflow 只验证和上传归档。首次配置与完整步骤见 [npm 自动发布](docs/npm-release.md)。

@@ -10,6 +10,7 @@ async function run(command: string[], cwd: string) {
 
 // Validate the actual archive, then use it outside the source workspace.
 const release = validatePackage(await Bun.file(join(root, "packages/sdk/package.json")).json());
+const legacy = process.argv.includes("--legacy");
 const output = join(root, "artifacts/npm");
 await mkdir(output, { recursive: true });
 const archive = join(output, release.filename);
@@ -29,6 +30,7 @@ try {
     "README.md",
     "src",
     "build.ts",
+    "build-cordis.ts",
     "plugin.ts",
     "templates",
     "styles.ts",
@@ -42,18 +44,25 @@ try {
     );
   }
   for (const name of [
-    "./types",
-    "./chat",
-    "./agent",
-    "./client",
-    "./ui",
-    "./runtime",
-    "./build",
-    "./theme.css",
-    "./ui.css",
-    "./plugin",
-    "./manifest",
-    "./tailwind.css",
+    ".",
+    "./cordis-client",
+    "./build-cordis",
+    ...(legacy
+      ? [
+          "./types",
+          "./chat",
+          "./agent",
+          "./client",
+          "./ui",
+          "./runtime",
+          "./build",
+          "./theme.css",
+          "./ui.css",
+          "./plugin",
+          "./manifest",
+          "./tailwind.css",
+        ]
+      : []),
   ]) {
     const target = pkg.exports?.[name];
     assert(
@@ -65,7 +74,17 @@ try {
   assert(await Bun.file(join(unpacked, "README.md")).exists(), "SDK README is missing");
   const consumer = join(temporary, "consumer");
   await mkdir(consumer);
+  const digest = new Bun.CryptoHasher("sha256")
+    .update(await Bun.file(archive).arrayBuffer())
+    .digest("hex");
+  const consumerArchive = `fn-sdk-${digest}.tgz`;
+  await cp(archive, join(consumer, consumerArchive));
   const react = await Bun.file(join(root, "node_modules/react/package.json")).json();
+  const developmentDependencies: Record<string, string> = {};
+  for (const name of ["typescript", "@types/bun", "@types/react", "@types/react-dom"])
+    developmentDependencies[name] = (
+      await Bun.file(join(root, "node_modules", name, "package.json")).json()
+    ).version;
   await Bun.write(
     join(consumer, "package.json"),
     JSON.stringify({
@@ -73,14 +92,21 @@ try {
       private: true,
       type: "module",
       dependencies: {
-        [packageName]: `file:${archive}`,
+        ...pkg.peerDependencies,
+        [packageName]: `file:./${consumerArchive}`,
         react: react.version,
         "react-dom": react.version,
       },
+      devDependencies: developmentDependencies,
     }),
   );
   await run([process.execPath, "install", "--ignore-scripts", "--registry", registry], consumer);
-  for (const template of ["notes", "model"]) {
+  await cp(
+    new URL("./cordis-smoke.fixture.ts", import.meta.url),
+    join(consumer, "cordis-smoke.ts"),
+  );
+  await run([process.execPath, "run", "cordis-smoke.ts"], consumer);
+  for (const template of legacy ? ["notes", "model"] : []) {
     const target = join(consumer, template);
     await cp(join(unpacked, "templates", template, "src"), join(target, "src"), {
       recursive: true,
@@ -120,9 +146,11 @@ try {
       }),
     );
   }
-  await cp(new URL("./smoke.fixture.ts", import.meta.url), join(consumer, "smoke.ts"));
-  await run([process.execPath, "run", "smoke.ts"], consumer);
-  console.log(`Verified SDK archive and standalone plugin builds: ${archive}`);
+  if (legacy) {
+    await cp(new URL("./smoke.fixture.ts", import.meta.url), join(consumer, "smoke.ts"));
+    await run([process.execPath, "run", "smoke.ts"], consumer);
+  }
+  console.log(`Verified SDK archive and standalone Cordis application builds: ${archive}`);
 } finally {
   await rm(temporary, { recursive: true, force: true });
 }

@@ -2,6 +2,8 @@ import { cp, mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { validatePackage } from "./npm/check";
+import { generateCordisTypes } from "../packages/sdk/generate-cordis-types";
+await generateCordisTypes();
 const root = resolve(import.meta.dir, ".."),
   output = join(root, "resources/sdk");
 const sourcePackage = await Bun.file(join(root, "packages/sdk/package.json")).json();
@@ -36,6 +38,7 @@ try {
         "README.md",
         "src",
         "build.ts",
+        "build-cordis.ts",
         "plugin.ts",
         "templates",
         "styles.ts",

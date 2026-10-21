@@ -27,10 +27,13 @@ test("skill generation uses only the contract and produces standalone checked ty
     await writeFile(
       resolve(root, "shared/api.ts"),
       `import { defineAPI, z } from ${JSON.stringify(resolve(import.meta.dir, "../src/business-api.ts"))};
+const json = z.json().refine(value => JSON.stringify(value).length <= 1024);
 export default defineAPI({ methods: {
   "counter.get": {description: "Read", input: z.strictObject({}).meta({title: "SharedName"}), output: z.number().meta({title: "SharedName"})},
   "counter.add": {description: "Add", input: z.strictObject({by: z.number()}), output: z.number()},
-}, events: {changed: {description: "Changed", payload: z.number()}} });`,
+  "json.echo": {description: "Echo recursive JSON", input: json, output: json},
+  "json.page": {description: "Repeated nested JSON", input: z.strictObject({}), output: z.object({items: z.array(z.object({value: json})), metadata: json})},
+}, events: {changed: {description: "Changed", payload: z.number()}, "json.changed": {description: "Recursive JSON event", payload: json}} });`,
     );
     const config = validateConfig(
       {
@@ -69,6 +72,16 @@ export default defineAPI({ methods: {
       `import "./artifacts/skill-test/agent";
 const result: Promise<number> = app.call("counter.get", {});
 app.on("changed", n => { const value: number = n; });
+type JSONValue = null | string | number | boolean | JSONValue[] | { [key: string]: JSONValue };
+const echo: Promise<JSONValue> = app.call("json.echo", { nested: [null, { value: true }] });
+app.on("json.changed", value => { const json: JSONValue = value; });
+app.call("json.page", {}).then(page => { const json: JSONValue = page.items[0].value; });
+// @ts-expect-error recursive JSON must not degrade to any
+const stringOnly: Promise<string> = app.call("json.echo", null);
+// @ts-expect-error functions are not JSON values, including in nested arrays
+app.call("json.echo", { nested: [() => null] });
+// @ts-expect-error event payload remains recursive JSON
+app.on("json.changed", (value: number) => {});
 // @ts-expect-error invalid method
 app.call("private.internal", {});
 // @ts-expect-error invalid input

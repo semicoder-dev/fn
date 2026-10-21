@@ -254,7 +254,7 @@ public enum Contract {
       if let min = f.minimum, let max = f.maximum, min > max { throw ChatError.invalidMessage }
     }
   }
-  private static func validate(_ value: JSONValue, schema: JSONValue, root: JSONValue) throws {
+  static func validate(_ value: JSONValue, schema: JSONValue, root: JSONValue) throws {
     guard let s = schema.object else {
       if schema == .bool(false) { throw ChatError.invalidMessage }
       return

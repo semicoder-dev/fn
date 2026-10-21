@@ -70,8 +70,8 @@ targets:
       - package: FnChatUI
     settings:
       base:
-        MARKETING_VERSION: "0.2.1"
-        CURRENT_PROJECT_VERSION: "3"
+        MARKETING_VERSION: "0.3.0"
+        CURRENT_PROJECT_VERSION: "4"
         PRODUCT_BUNDLE_IDENTIFIER: com.semicoder.fn.ios
         CODE_SIGN_ENTITLEMENTS: Config/iOSProduction.entitlements
         TARGETED_DEVICE_FAMILY: "1"

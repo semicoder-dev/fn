@@ -120,6 +120,7 @@ else { console.log(JSON.stringify({args:process.argv.slice(2),cwd:process.cwd(),
         identifier: "test.app",
         dataDirectory: resolve(supportPath, "Backend"),
         codeDirectory: root,
+        runtimeDirectory: root,
       },
       native: {
         call: async () => ({ ok: true }),

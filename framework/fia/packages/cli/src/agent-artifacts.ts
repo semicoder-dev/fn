@@ -4,6 +4,19 @@ import { compile } from "json-schema-to-typescript";
 import { describeAPI, type APIContract } from "./business-api.ts";
 import type { ResolvedFIAConfig } from "./project-config.ts";
 
+function compileAgentType(schema: Record<string, unknown>, name: string) {
+  const input: Record<string, unknown> = { ...schema, title: name };
+  // The resolver used by json-schema-to-typescript can leave a root $ref
+  // unresolved when its target is recursive (including Zod's JSON value).
+  // An allOf reference has the same meaning without replacing the root object,
+  // preserving recursive identity, sibling constraints and the original $defs.
+  if (typeof input.$ref === "string") {
+    input.allOf = [{ $ref: input.$ref }, ...((input.allOf as unknown[] | undefined) ?? [])];
+    delete input.$ref;
+  }
+  return compile(input as Parameters<typeof compile>[0], name, { bannerComment: "" });
+}
+
 export async function generateAgentArtifacts(config: ResolvedFIAConfig, destination: string) {
   const result = await Bun.build({
     entrypoints: [resolve(config.projectRoot, config.api.entry)],
@@ -87,24 +100,12 @@ export async function generateAgentArtifacts(config: ResolvedFIAConfig, destinat
     const id = "Method" + index++;
     types.push(
       `export namespace ${id}InputTypes {\n` +
-        (await compile(
-          { ...method.input, title: id + "Input" } as Parameters<typeof compile>[0],
-          id + "Input",
-          {
-            bannerComment: "",
-          },
-        )) +
+        (await compileAgentType(method.input, id + "Input")) +
         "\n}",
     );
     types.push(
       `export namespace ${id}OutputTypes {\n` +
-        (await compile(
-          { ...method.output, title: id + "Output" } as Parameters<typeof compile>[0],
-          id + "Output",
-          {
-            bannerComment: "",
-          },
-        )) +
+        (await compileAgentType(method.output, id + "Output")) +
         "\n}",
     );
     methods.push(
@@ -114,11 +115,7 @@ export async function generateAgentArtifacts(config: ResolvedFIAConfig, destinat
   for (const [name, event] of Object.entries(schema.events)) {
     const id = "Event" + index++;
     types.push(
-      `export namespace ${id}Types {\n` +
-        (await compile({ ...event.payload, title: id } as Parameters<typeof compile>[0], id, {
-          bannerComment: "",
-        })) +
-        "\n}",
+      `export namespace ${id}Types {\n` + (await compileAgentType(event.payload, id)) + "\n}",
     );
     events.push(
       `on(event: ${JSON.stringify(name)}, listener: (payload: ${id}Types.${id}) => void, options?: {match?: Readonly<Record<string, string | number | boolean | null>>}): () => void;`,

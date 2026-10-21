@@ -8,7 +8,7 @@ import UserNotifications
 @main struct FnChatApp: App {
   @NSApplicationDelegateAdaptor(MacDelegate.self) private var delegate
   var body: some Scene {
-    WindowGroup { ChatRootView() }.defaultSize(width: 960, height: 720)
+    WindowGroup { SessionRootView() }.defaultSize(width: 960, height: 720)
   }
 }
 @MainActor
@@ -20,13 +20,13 @@ final class MacDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     poll = Task {
       while !Task.isCancelled {
         do { try await Task.sleep(for: .seconds(60)) } catch { return }
-        await ChatModel.shared.resume()
+        await SessionModel.shared.resume()
       }
     }
     NSWorkspace.shared.notificationCenter.addObserver(
       self, selector: #selector(wake), name: NSWorkspace.didWakeNotification, object: nil)
   }
-  @objc private func wake() { Task { await ChatModel.shared.resume() } }
+  @objc private func wake() { Task { await SessionModel.shared.resume() } }
   func applicationWillTerminate(_ notification: Notification) {
     poll?.cancel()
     NotificationCenter.default.removeObserver(self)
@@ -34,13 +34,13 @@ final class MacDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
   }
   func application(
     _ application: NSApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
-  ) { ChatModel.shared.pushStatus = "APNs 注册成功" }
+  ) { SessionModel.shared.pushStatus = "APNs 注册成功" }
   func application(
     _ application: NSApplication, didFailToRegisterForRemoteNotificationsWithError error: Error
-  ) { ChatModel.shared.pushStatus = error.localizedDescription }
+  ) { SessionModel.shared.pushStatus = error.localizedDescription }
   func application(
     _ application: NSApplication, didReceiveRemoteNotification userInfo: [String: Any]
-  ) { Task { await ChatModel.shared.resume() } }
+  ) { Task { await SessionModel.shared.resume() } }
   nonisolated func userNotificationCenter(
     _ center: UNUserNotificationCenter, willPresent notification: UNNotification
   ) async -> UNNotificationPresentationOptions { [.banner, .list, .sound] }
@@ -52,7 +52,7 @@ final class MacDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     Task { @MainActor in
       completionHandler()
       NSApplication.shared.activate(ignoringOtherApps: true)
-      ChatModel.shared.openNotification(id)
+      SessionModel.shared.openNotification(id)
     }
   }
 }

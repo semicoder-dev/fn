@@ -44,6 +44,8 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           FIA_UPDATE_PRIVATE_KEY: ${{ secrets.FIA_UPDATE_PRIVATE_KEY }}
+          FN_CLOUDKIT_PRODUCTION_PROFILE_BASE64: ${{ secrets.FN_CLOUDKIT_PRODUCTION_PROFILE_BASE64 }}
+          FN_CLOUDKIT_PRODUCTION_ENTITLEMENTS_BASE64: ${{ secrets.FN_CLOUDKIT_PRODUCTION_ENTITLEMENTS_BASE64 }}
         run: bun scripts/release/signing.ts
       - name: Sign, notarize and smoke-test installer
         run: bun scripts/release/check.ts --signed && bun run release

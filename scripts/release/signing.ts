@@ -21,7 +21,7 @@ if (process.argv[2] === "cleanup") {
   await run(["security", "delete-keychain", keychain], "Delete temporary keychain").catch(() => {});
   await rm(directory, { recursive: true, force: true });
 } else {
-  const required = ["APPLE_CERTIFICATE_P12", "APPLE_CERTIFICATE_PASSWORD", "APPLE_ID", "APPLE_TEAM_ID", "APPLE_APP_SPECIFIC_PASSWORD", "FIA_UPDATE_PRIVATE_KEY", "FN_SIGNING_IDENTITY"];
+  const required = ["APPLE_CERTIFICATE_P12", "APPLE_CERTIFICATE_PASSWORD", "APPLE_ID", "APPLE_TEAM_ID", "APPLE_APP_SPECIFIC_PASSWORD", "FIA_UPDATE_PRIVATE_KEY", "FN_SIGNING_IDENTITY", "FN_CLOUDKIT_PRODUCTION_PROFILE_BASE64", "FN_CLOUDKIT_PRODUCTION_ENTITLEMENTS_BASE64"];
   for (const name of required) assert(process.env[name], "Missing GitHub signing configuration: " + name);
   const privateKey = createPrivateKey(process.env.FIA_UPDATE_PRIVATE_KEY!);
   assert(privateKey.asymmetricKeyType === "ed25519" && createPublicKey(privateKey).export({ type: "spki", format: "der" }).subarray(-32).toString("base64") === config.publicKey, "Update private key does not match the committed public key");
@@ -45,6 +45,11 @@ if (process.argv[2] === "cleanup") {
   await run(["xcrun", "notarytool", "store-credentials", "fn-notary", "--apple-id", process.env.APPLE_ID!, "--team-id", process.env.APPLE_TEAM_ID!, "--password", process.env.APPLE_APP_SPECIFIC_PASSWORD!, "--keychain", keychain], "Validate notarization credentials");
   assert(process.env.GITHUB_ENV, "Missing GitHub environment file");
   await appendFile(process.env.GITHUB_ENV, `FIA_UPDATE_PRIVATE_KEY_FILE=${updateKey}\n`);
+  for (const [name, filename] of [["PROFILE", "fn.provisionprofile"], ["ENTITLEMENTS", "fn.entitlements"]]) {
+    const path = join(directory, filename!);
+    await writeFile(path, Buffer.from(process.env[`FN_CLOUDKIT_PRODUCTION_${name}_BASE64`]!, "base64"), { mode: 0o600 });
+    await appendFile(process.env.GITHUB_ENV, `FN_CLOUDKIT_PRODUCTION_${name}=${path}\n`);
+  }
   await rm(certificate);
   console.log("Signing credentials prepared in an ephemeral keychain.");
 }

@@ -1,5 +1,26 @@
 # fn Chat 开发指南
 
+当前开发入口已切换为未发布的 Session Chat v3：iOS/macOS 均使用 `SessionRootView`，独立 `fn-chat-<environment>-v3` zone 和 `chat-v3` 本地目录。v2 文件保留供历史构建参考，当前入口不消费 v2 数据。下方 v2/TestFlight 说明是已发布历史，不能作为当前开发版的协议说明。
+
+v3 通过应用 Chat endpoint 创建多会话，每个会话固定一个模型连接，可在同连接内换模型；支持消息、停止、归档/恢复及工具批准一次/拒绝。宿主复用 dsh Agent loop，但 CloudKit 和客户端只传输 fn 展示 DTO，不包含 dsh 事件、provider replay 或凭证。仅当前 iCloud 账号创建并绑定的会话会同步；普通桌面会话不会自动上传。命令持久去重，宿主重启时未确认完成的操作标记中断，不自动重放；客户端离线命令保留到联网重试。
+
+v3 增加跨设备已读游标和未读计数；只标记当前前台会话中已收到的内容，离线已读命令持久重试，宿主单调合并并限制在持久历史范围。v3 自定义卡片采用新的 Session 接口（不消费旧卡片协议），支持确认、选择、表单及五类输入，离线回复、并发去重、过期与处理状态。手机只展示宿主已添加且仍可用的模型，空连接隐藏；离线新建/切换时宿主再次校验。当前不包含附件和逐字流式输出。UI 显示已落盘的完整助手消息与工具结果，旧业务数据不迁移。新 CloudKit 类型和生产 schema 尚未部署，真实 iCloud/APNs、iPhone 与多设备链路尚待验证；本次没有发版或 TestFlight 上传。
+
+```sh
+bun backend/chat-next/generate-schema.ts --check
+bun test backend/chat-next/chat.test.ts packages/runtime/tests/cards.test.ts packages/runtime/tests/chat-integration.test.ts
+swift test --package-path clients/apple/FnChatCore
+swift build --package-path clients/apple/FnChatUI
+```
+
+v3 schema 由 `backend/chat-next/protocol.ts` 生成到 `SessionContract` 使用的 `Resources/session-contracts.json`；宿主装配 `SessionChatService`，继续使用 FIA CloudKit transport。当前 BFF 把 `context.app.dataDirectory/cordis-v1` 传给服务，配置文件位于其中的 `communication-config.json`；新的 carrier SQLite 保存在同目录的 `chat-v3/<account hash>/chat.sqlite`。可见推送订阅 `FnSessionReply` 和 `FnSessionCard` 的创建；卡片回复/状态变化仅触发 zone 补拉，工具、用户消息和状态更新不产生可见推送。卡片通知定位到所属 Session。
+
+宿主首次点击“连接 iCloud”时，会在新目录写入默认配置：production 使用 `iCloud.com.semicoder.fn.production`，development/preview 使用 `iCloud.com.semicoder.fn.development`，名称默认为系统 hostname。无需手写配置，也不读取旧目录配置。若新目录已有手动 `communication-config.json`，服务保留并使用它；container 后缀必须匹配当前环境。缺少当前环境的 CloudKit 签名、entitlement 或 iCloud 登录仍会明确报告连接错误，写入默认配置不代表原生或远端授权已经完成。
+
+`backend/chat-next/cloudkit-schema.ckdb` 是 v3 新类型参考，只用于新的 private zone；此次仅生成本地文件，没有部署生产 schema。首次开发同步尚未产生回复类型时，客户端继续同步目录和命令，稍后重试可见通知订阅。
+
+## v2 发行历史
+
 iOS 17+ 和 macOS 14+ 的原生聊天客户端，使用同一套 `FnChatCore` / `FnChatUI`。聊天 v2 起始于 `codex/ios-communication`，Markdown 更新位于 `codex/chat-markdown`；公开 fn 0.4.5、SDK 0.3.5 和历史 TestFlight 0.1.0 (1) 均不含聊天 v2。用户追加授权的 iOS 0.2.0（2）内部测试状态见 [TestFlight](TESTFLIGHT.md)，Mac/SDK 公开版本未变化，不可用相同版本字符串判断源码内容。
 
 ## 工程

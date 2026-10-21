@@ -7,6 +7,10 @@ const betaEntitlements = process.env.FN_BETA_ENTITLEMENTS;
 const betaProfile = process.env.FN_BETA_PROFILE;
 if (beta && (!identity || !betaEntitlements || !betaProfile))
   throw new Error("fn Beta 需要独立 Developer ID 签名、entitlements 和 profile");
+const productionEntitlements = process.env.FN_CLOUDKIT_PRODUCTION_ENTITLEMENTS;
+const productionProfile = process.env.FN_CLOUDKIT_PRODUCTION_PROFILE;
+if (Boolean(productionEntitlements) !== Boolean(productionProfile))
+  throw new Error("CloudKit 正式签名需要同时配置 entitlements 和 profile");
 const cloudIdentity = process.env.FN_CLOUDKIT_DEVELOPMENT_IDENTITY;
 const cloudEntitlements = process.env.FN_CLOUDKIT_DEVELOPMENT_ENTITLEMENTS;
 const cloudProfile = process.env.FN_CLOUDKIT_DEVELOPMENT_PROFILE;
@@ -25,18 +29,21 @@ export default defineConfig({
   },
   agent: {
     command: beta ? "fn-beta" : "fn",
-    description: "Manage fn plugins and models, invoke plugin methods, and follow model runs.",
+    description: "Manage fn applications, model connections and durable agent sessions.",
     instructions: "agent/instructions.md",
     commands: {
-      plugin: {
-        description: "Create, check, build and pack SDK 0.3 plugins",
-        entry: "commands/plugin.ts",
+      application: {
+        description: "Create, check, build and pack Cordis applications",
+        entry: "commands/application.ts",
       },
     },
   },
   backend: {
+    entry: "backend/runtime.ts",
     assets: ["resources/sdk"],
   },
+  runtime: { assets: ["resources/runtime-seed.tgz", "resources/runtime-seed.json"] },
+  api: { entry: "shared/runtime-api.ts" },
   statusItem: { symbol: "square.stack.3d.up", tooltip: "fn" },
   ...(beta || process.env.FN_DISABLE_UPDATES === "1"
     ? {}
@@ -51,22 +58,20 @@ export default defineConfig({
     ? {
         signing: {
           ...(identity ? { releaseIdentity: identity, notarizationProfile: "fn-notary" } : {}),
-          ...(beta ? { application: { production: {
-            entitlements: betaEntitlements!, provisioningProfile: betaProfile!,
-            cloudKitContainers: ["iCloud.com.semicoder.fn.production"],
-          } } } : {}),
-          ...(cloudIdentity && !beta
-            ? {
-                developmentIdentity: cloudIdentity,
-                application: {
-                  development: {
-                    entitlements: cloudEntitlements!,
-                    provisioningProfile: cloudProfile!,
-                    cloudKitContainers: ["iCloud.com.semicoder.fn.development"],
-                  },
-                },
-              }
-            : {}),
+          application: {
+            ...(beta ? { production: {
+              entitlements: betaEntitlements!, provisioningProfile: betaProfile!,
+              cloudKitContainers: ["iCloud.com.semicoder.fn.production"],
+            } } : productionProfile ? { production: {
+              entitlements: productionEntitlements!, provisioningProfile: productionProfile,
+              cloudKitContainers: ["iCloud.com.semicoder.fn.production"],
+            } } : {}),
+            ...(cloudIdentity && !beta ? { development: {
+              entitlements: cloudEntitlements!, provisioningProfile: cloudProfile!,
+              cloudKitContainers: ["iCloud.com.semicoder.fn.development"],
+            } } : {}),
+          },
+          ...(cloudIdentity && !beta ? { developmentIdentity: cloudIdentity } : {}),
         },
       }
     : {}),

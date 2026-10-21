@@ -7,7 +7,7 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@semicoder/fn-sdk/ui";
-import { app } from "../bridge";
+import { runtimeClient as app } from "../runtime-bridge";
 import { ThemeProvider, useTheme } from "../ThemeProvider";
 import AppearanceSettings from "../AppearanceSettings";
 import {

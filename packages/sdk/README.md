@@ -1,5 +1,127 @@
 # fn SDK
 
+## Cordis 契约（SDK 0.4.0 / fn 0.5.0）
+
+2026-10-21 产品接口补充：页面用 `ctx.clientApp.list("models.saved")` 读取用户已添加的模型，按 `connectionId` 筛选后使用 `{connectionId,modelId: item.id}` 创建会话。账号完整目录仍通过 `connections.models` 获取。模型服务、外观和应用中心由宿主管理，插件无需重复实现账号管理。
+
+SDK 0.4.0 使用全新 Cordis 插件规范，要求 fn 0.5.0。SDK 0.3.5 与 fn 0.4.5 不包含此契约。应用通过 peer dependencies 精确声明共享核心，开发 CLI 也可使用宿主随附的固定 SDK 归档。旧插件、会话和凭证不在此接口的兼容范围内。
+
+应用是普通 npm 包：后端导出标准 Cordis 插件，由 Bun 直接执行 TypeScript。`fn` 只保存产品身份；页面、方法和 Chat 入口由插件运行时贡献。纯服务插件可以不提供 `./client`。
+
+```json
+{
+  "name": "@example/my-app",
+  "version": "0.0.0",
+  "type": "module",
+  "files": ["src", "dist"],
+  "exports": { ".": "./src/index.ts", "./client": "./dist/client.js" },
+  "fn": { "schemaVersion": 1, "id": "my-app", "name": "我的应用", "description": "用途说明" },
+  "peerDependencies": { "@deepseek-ai/cordis": "4.0.5", "@semicoder/fn-sdk": "0.4.0", "react": "19.2.7", "react-dom": "19.2.7" }
+}
+```
+
+SDK 根入口只导出 fn 类型；Cordis、Agent、Session、LLM、Tools 类型从对应 `@deepseek-ai/*` 公开包导入，不由 SDK 包装。`src/cordis-types.ts` 从 `packages/runtime/src/types.ts` 生成，合同测试校验两者一致；公开归档不会依赖私有 `@semicoder/fn-runtime`。
+
+```ts
+// src/index.ts
+import type { Context } from "@deepseek-ai/cordis";
+import type {} from "@semicoder/fn-sdk";
+
+export const inject = ["app"];
+export function apply(ctx: Context) {
+  ctx.app.method("echo", input => input);
+  ctx.app.chat({ id: "assistant", name: "助手", systemPrompt: "帮助用户完成任务。" });
+  ctx.app.useTools(["web_search", "web_fetch"]);
+}
+```
+
+`ctx.app` 提供 `info`、同步 JSON `kv.get/set/delete/list`、`method(name, handler)`、`chat(endpoint)`、`useTools(names)`、`createSession(selection)`、`send(sessionId, text, requestId?)`、`agent(sessionId)`。`createSession` 必须显式指定 `connectionId/modelId`，可指定 `endpointId/policy/cwd/title`。每个 Session 固定一个连接；换账号创建新 Session。同连接切模型遵循上游行为。
+
+`send` 返回已持久化接收的会话状态，模型结果继续由上游 Agent 异步生成。长任务应及时返回 Session ID；不要等待完整生成再结束 RPC。读取显示结果使用宿主 `sessions.projection`，上游原始 replay 数据不作为页面接口。`method` 参数和结果必须为 JSON，插件负责校验业务输入。
+
+前端也是标准 Cordis 插件；服务名为 `clientApp`，与后端 `app` 分开：
+
+```tsx
+// src/client.tsx
+import type { Context } from "@deepseek-ai/cordis";
+import type {} from "@semicoder/fn-sdk/cordis-client";
+export const inject = ["clientApp"];
+export function apply(ctx: Context) {
+  const api = ctx.clientApp;
+  api.page({
+    id: "main", title: "我的应用",
+    component: () => <button onClick={() => void api.kv.set("draft", "hello")}>保存</button>,
+  });
+}
+```
+
+`clientApp.context.appId` 是当前应用 ID。`call<T>(method, params)` 调用宿主 RPC；`invoke(name, args)` 固定映射到 `apps.invoke({appId,name,args})`。异步 `kv.get/set/delete/list` 固定带当前 `appId`；不存在的键返回 `null`。KV 单值上限为序列化后 **256 KiB UTF-8 JSON**（含 JSON 引号/转义），后端直接写入遵守相同上限；较大内容使用应用自行管理的文件。
+
+`apps.kv.list`、`sessions.list`、`connections.list`、`connections.models` 的 RPC 参数包含 `offset`（默认 0）和 `limit`（默认 50，最多 100），返回 `{items,nextOffset,hasMore}`；单页 JSON 最多 512 KiB，可能少于请求条数。`clientApp.list<T>(method, params)` 自动读取全部页面，例如 `api.list<SessionInfo>("sessions.list", {appId: api.context.appId})`；`api.kv.list()` 已自动翻页，仍返回完整数组。页面失败会拒绝整个读取，不把半份列表当作完整结果。
+
+页面可设置 `keepAlive: true`，在当前窗口切页时保留 React 状态；默认关闭，首次访问才挂载。隐藏页面的共享浮层停用，插件停用或后台代次变化会销毁页面；跨重启数据使用 KV。页面注册随其 Cordis 插件自动释放；React effect 仍须清理定时器和订阅。插件与宿主处于同一受信任进程/页面，这些作用域不是安全沙箱。
+
+浏览器构建从 `src/client.tsx` 输出 `dist/client.js`，通过宿主模块表共享 React、JSX runtime、React DOM、Cordis 和 `@semicoder/fn-sdk/ui`，不能打包第二份框架。可直接从 `@semicoder/fn-sdk/ui` 导入 Button、Dialog 等宿主组件并继承主题；SDK 不自动注入独立 CSS 文件。宿主在导入客户端包之前调用 `createBrowserHost({call,onPagesChanged})`，再 `host.load(appId, plugin)`；`host.unload` 和 `dispose` 清理贡献。
+
+```sh
+fn-dev application create ./my-app --name 我的应用
+cd my-app
+bun install --ignore-scripts
+fn-dev application check
+fn-dev application build
+fn-dev application pack
+```
+
+以上使用已安装 CLI 的开发宿主；源码项目也可运行 `bun run agent application …`，预览版使用 `fn-preview application …`。新命令名为 `application`，不保留旧 `plugin` 别名。`create --service` 生成无前端的服务包。创建命令复制宿主 SDK 归档到 `vendor/fn-sdk.tgz`，不会安装依赖或发布。项目 `tools.ts` 使用 `@semicoder/fn-sdk/build-cordis` 的 `runCordisTool`；也可直接调用 `checkCordisApplication`、`buildCordisApplication`、`packCordisApplication`。CLI build/pack 先执行项目类型检查；pack 使用普通 npm 打包规则并核对导出入口。构建失败保留前一次完整 dist。开发者 Bun 固定使用 1.4.3。
+
+应用更新先安装到候选 generation，空闲后重启 Bun 切换；不尝试卸载 JavaScript 模块缓存。纯服务插件按 Cordis 生命周期管理资源，使用 `ctx.effect` 注册清理。安装插件代表信任其代码；不执行第三方包安装脚本。
+
+应用可声明 `fn.icon`（1–4 个字符）及 `fn.iconSvg: "dist/icon.svg"`。构建器从 `src/icon.svg` 读取不超过 8 KiB 的 SVG，连同客户端一次性替换 dist；服务插件也可携带图标。宿主验包后读取图标，以图片/CSS mask 展示，使用文字作为回退，不将 SVG 插入页面 DOM。
+
+手动安装接受 npm、HTTPS `.tgz`、本地归档以及 `github:owner/repo#ref`、`git+https://…#ref`、HTTPS `.git#ref`。Git 安装只归档指定提交的文件，不执行构建脚本；需提交浏览器产物。更新重新读取原来源，因此可变分支会随更新变化，固定 SHA 可复现。
+
+### Session 自定义卡片（开发契约）
+
+应用在后端注册持久处理入口，再向自己拥有的 Session 创建卡片。桌面和 Apple Chat 使用同一条卡片记录；手机只接收当前 iCloud 账号拥有的 Chat Session。卡片是 fn 的交互状态，不写入或替代 dsh 的 Agent 消息历史。
+
+```ts
+import type { Context } from "@deepseek-ai/cordis";
+import type {} from "@semicoder/fn-sdk";
+export const inject = ["app"];
+export function apply(ctx: Context) {
+  ctx.app.chat({ id: "main", name: "笔记" });
+  ctx.app.cards.action("save-note", ({ cardId, values }) => {
+    ctx.app.kv.set(`note:${cardId}`, { text: values.text });
+  });
+  ctx.app.method("request-note", (input) => {
+    if (typeof input !== "string") throw new Error("需要 Session ID");
+    return ctx.app.cards.create(input, {
+      key: "first-note", handler: "save-note",
+      card: {
+        version: 1, template: "form", title: "保存笔记", summary: "确认后保存到此应用",
+        blocks: [{ type: "text", text: "填写需要保留的内容。" }],
+        inputs: [{ id: "text", label: "内容", type: "text", required: true, maxLength: 2000 }],
+        actions: [{ id: "save", label: "保存", style: "primary" }],
+      },
+    });
+  });
+}
+```
+
+`ctx.app.cards.action(name, handler)` 返回注销函数，并跟随调用它的 Cordis scope 自动清理。处理函数收到 `{sessionId,cardId,actionId,values}`。应用重载时必须再次注册同名 handler，才能继续处理待答卡片；页面卸载不撤销它。应快速完成持久业务写入，或交给应用管理的任务后返回；处理期间宿主视为忙，更新和退出会等待它，接口没有强制中断任意插件代码的能力。
+
+`create(sessionId,{key,handler,card,expiresAt?})` 返回 `SessionCard`。key 在该 Session 内幂等，同 key/定义返回原记录，不能换内容覆盖已发布卡片；新问题使用新 key。`cancel(cardId)` 只取消本应用仍待答的卡片。默认一天过期，最长 30 天；定义最多 64 KiB，回复最多 32 KiB。模板支持 approval/choice/form，输入支持文字、数字、布尔、单选、多选，可声明必填、长度及数值范围；块支持文字、字段列表和分隔线。原生客户端文字块支持 Markdown，桌面当前按纯文字显示。
+
+宿主先持久认领回复，再调用 handler。多设备竞争只有首个成功认领的回复有效；无效输入不会消耗卡片，过期、取消、应用停用或 handler 已销毁均拒绝调用。完成状态和接受的输入用于重连恢复；handler 失败标为 failed，进程重启前已认领但未完成的记录标为 interrupted，均不自动重放副作用。外部副作用不具有 exactly-once 保证，应用应以 cardId 保存自己的业务检查点。
+
+前端可从 `@semicoder/fn-sdk/cards` 导入 `ChatCard`、`SessionCard`、`CardValues` 与 `validateResponse`，该模块由宿主共享。`cards.list({sessionId,offset,limit})` 返回分页记录；`cards.respond({sessionId,cardId,actionId,values})` 提交回复。远端使用 v3 `FnSessionCard` 与 card 命令，离线回复重试沿用同一命令 ID；收到传输确认后继续锁定操作，直至宿主结果返回。此契约不兼容旧 `./chat` 卡片接口。
+
+手机模型选择只展示桌面“已添加模型”与当前连接目录的交集。没有选中模型的连接不展示；离线排队的新建/切换命令会在宿主重新校验选择。移除模型不改写既有会话绑定，也不会把会话转到其他账号。
+
+## 旧版 0.3 契约（仅供已发布版本参考）
+
+以下内容描述原插件运行时，不适用于上面的 fn 0.5 Cordis 宿主。
+
 包名为 `@semicoder/fn-sdk`，manifest `sdkVersion` 为 `0.3`。仅适用于 fn 宿主，不支持旧包名、清单字段或运行时全局标识。使用 Base UI 1.9 + Tailwind CSS 4.3；CLI 随应用携带固定 SDK 归档，创建的项目可独立开发。
 
 应用、SDK 和官网分别发布；npm 包版本见当前 package.json。开发时也可使用经过校验的 SDK 归档，宿主安装与版本状态见[官网安装页](https://semicoder.dev/fn/docs/installation)。

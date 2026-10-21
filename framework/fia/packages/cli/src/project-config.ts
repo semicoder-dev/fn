@@ -9,6 +9,7 @@ export interface ResolvedFIAConfig extends FIAConfig {
   configPath: string;
   api: { entry: string };
   backend: { entry: string; assets: readonly string[] };
+  runtime: { assets: readonly string[] };
   web: { root: string; dist: string };
   permissions: Readonly<Record<string, string>>;
 }
@@ -52,7 +53,18 @@ export function validateConfig(input: unknown, root: string): ResolvedFIAConfig 
   const value = object(input, "config");
   keys(
     value,
-    ["app", "api", "agent", "backend", "web", "permissions", "statusItem", "updates", "signing"],
+    [
+      "app",
+      "api",
+      "agent",
+      "backend",
+      "runtime",
+      "web",
+      "permissions",
+      "statusItem",
+      "updates",
+      "signing",
+    ],
     "config",
   );
   const app = object(value.app, "app");
@@ -100,14 +112,18 @@ export function validateConfig(input: unknown, root: string): ResolvedFIAConfig 
   keys(api, ["entry"], "api");
   const apiEntry = api.entry ?? "shared/api.ts";
   const backend = object(value.backend ?? {}, "backend");
+  const runtime = object(value.runtime ?? {}, "runtime");
   const web = object(value.web ?? {}, "web");
   keys(backend, ["entry", "assets"], "backend");
+  keys(runtime, ["assets"], "runtime");
   keys(web, ["root", "dist"], "web");
   const entry = backend.entry ?? "backend/index.ts";
   const webRoot = web.root ?? "frontend";
   const dist = web.dist ?? "frontend/dist";
   const assets = backend.assets ?? [];
+  const runtimeAssets = runtime.assets ?? [];
   if (!Array.isArray(assets)) fail("backend.assets must be an array of relative paths");
+  if (!Array.isArray(runtimeAssets)) fail("runtime.assets must be an array of relative file paths");
   for (const path of [
     entry,
     apiEntry,
@@ -116,12 +132,24 @@ export function validateConfig(input: unknown, root: string): ResolvedFIAConfig 
     webRoot,
     dist,
     ...(assets as unknown[]),
+    ...(runtimeAssets as unknown[]),
     ...(app.icon === undefined ? [] : [app.icon]),
   ]) {
     if (typeof path !== "string" || !safeRelative(path))
       fail("Project paths must be safe relative paths");
     if ([".git", "node_modules", ".fia"].includes((path as string).split("/")[0]!))
       fail("Project path is reserved: " + path);
+  }
+  const runtimeNames = (runtimeAssets as string[]).map((path) => path.toLowerCase());
+  if (new Set(runtimeNames).size !== runtimeNames.length)
+    fail("runtime.assets contains duplicate or case-insensitive paths");
+  for (const path of runtimeNames) {
+    if (
+      (assets as string[]).some(
+        (asset) => path === asset.toLowerCase() || path.startsWith(asset.toLowerCase() + "/"),
+      )
+    )
+      fail("runtime.assets must not be included in backend.assets");
   }
   const permissions = object(value.permissions ?? {}, "permissions");
   for (const [key, description] of Object.entries(permissions)) {
@@ -196,6 +224,7 @@ export function validateConfig(input: unknown, root: string): ResolvedFIAConfig 
     configPath: resolve(root, "fia.config.ts"),
     api: { entry: apiEntry as string },
     backend: { entry: entry as string, assets: assets as string[] },
+    runtime: { assets: runtimeAssets as string[] },
     web: { root: webRoot as string, dist: dist as string },
     permissions: permissions as Record<string, string>,
   };
@@ -248,5 +277,33 @@ export async function loadProjectConfig(root: string): Promise<ResolvedFIAConfig
       fail("Project path escapes project: " + entry);
     await lstat(actual);
   }
+  await runtimeAssetSources(config);
   return config;
+}
+
+/** Rechecked at build time as well as config load; directories and symlinks are never runtime files. */
+export async function runtimeAssetSources(
+  config: ResolvedFIAConfig,
+): Promise<{ path: string; source: string }[]> {
+  if (!config.runtime.assets.length) return [];
+  const root = await realpath(config.projectRoot);
+  const files: { path: string; source: string }[] = [];
+  for (const path of [...config.runtime.assets].sort()) {
+    if (!safeRelative(path)) fail("Runtime assets must be safe relative file paths");
+    let source = root;
+    const parts = path.split("/");
+    for (const [index, part] of parts.entries()) {
+      source = resolve(source, part);
+      const info = await lstat(source);
+      if (info.isSymbolicLink()) fail("Runtime asset path cannot contain a symlink: " + path);
+      if (index < parts.length - 1 ? !info.isDirectory() : !info.isFile())
+        fail("Runtime assets must be regular files: " + path);
+    }
+    const actual = await realpath(source);
+    const rel = relative(root, actual);
+    if (rel === ".." || rel.startsWith(".." + sep) || isAbsolute(rel))
+      fail("Runtime asset escapes project: " + path);
+    files.push({ path, source: actual });
+  }
+  return files;
 }

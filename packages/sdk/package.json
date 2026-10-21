@@ -1,6 +1,6 @@
 {
   "name": "@semicoder/fn-sdk",
-  "version": "0.3.5",
+  "version": "0.4.0",
   "description": "Model, storage, UI and plugin build SDK for fn",
   "homepage": "https://semicoder.dev/fn",
   "bugs": {
@@ -19,10 +19,12 @@
     "templates",
     "styles.ts",
     "create.ts",
-    "dist"
+    "dist",
+    "build-cordis.ts"
   ],
   "type": "module",
   "exports": {
+    ".": "./src/cordis.ts",
     "./types": "./src/types.ts",
     "./client": "./src/client.ts",
     "./ui": "./src/ui.tsx",
@@ -34,7 +36,10 @@
     "./manifest": "./src/manifest.ts",
     "./tailwind.css": "./src/tailwind.css",
     "./chat": "./src/chat.ts",
-    "./agent": "./src/agent.ts"
+    "./agent": "./src/agent.ts",
+    "./cordis-client": "./src/cordis-client.tsx",
+    "./build-cordis": "./build-cordis.ts",
+    "./cards": "./src/card-contract.ts"
   },
   "publishConfig": {
     "access": "public",
@@ -52,7 +57,10 @@
   },
   "peerDependencies": {
     "react": ">=19 <20",
-    "react-dom": ">=19 <20"
+    "react-dom": ">=19 <20",
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/dsh-agent": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-session": "0.2.1-rc.2"
   },
   "engines": {
     "bun": ">=1.4.2"

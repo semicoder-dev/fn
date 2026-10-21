@@ -16,7 +16,7 @@ import {
   type ColorTheme,
   type ThemeMode,
 } from "../shared/theme";
-import { app } from "./bridge";
+import { runtimeClient as app } from "./runtime-bridge";
 
 type ThemeState = AppearanceConfig & {
   resolved: ColorMode;

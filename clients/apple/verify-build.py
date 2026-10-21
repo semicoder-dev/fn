@@ -16,7 +16,7 @@ for argument in sys.argv[1:]:
     environment = identities[values["CFBundleIdentifier"]]
     assert values.get("FNCommunicationEnvironment") == environment, "Missing/wrong chat environment"
     assert values.get("FNCloudKitContainer") == "iCloud.com.semicoder.fn." + environment, "Missing/wrong CloudKit container"
-    assert any(bundle.rglob("contracts.json")), "Missing shared protocol validation resource"
+    assert any(bundle.rglob("session-contracts.json")), "Missing Chat v3 protocol validation resource"
     print(f"Verified {bundle.name}: {environment} chat configuration and protocol resource")
 if len(sys.argv) < 2:
     raise SystemExit("Usage: python3 clients/apple/verify-build.py <built.app> [...]")

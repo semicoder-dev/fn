@@ -111,7 +111,15 @@ async function fixture(development = false) {
   });
   const gateway = createGateway(
     backend,
-    { native, app: { ...init.app, dataDirectory: directory, codeDirectory: directory } },
+    {
+      native,
+      app: {
+        ...init.app,
+        dataDirectory: directory,
+        codeDirectory: directory,
+        runtimeDirectory: directory,
+      },
+    },
     init,
   );
   gateway.ready = true;
@@ -259,7 +267,12 @@ test("external callbacks are exact GET routes without granting an application se
         defineBackend({ http: { callbacks: { [path]: () => new Response("no") } } }),
         {
           native: { on: () => () => {} } as unknown as BackendNativeClient,
-          app: { ...f.init.app, dataDirectory: f.directory, codeDirectory: f.directory },
+          app: {
+            ...f.init.app,
+            dataDirectory: f.directory,
+            codeDirectory: f.directory,
+            runtimeDirectory: f.directory,
+          },
         },
         f.init,
       ),

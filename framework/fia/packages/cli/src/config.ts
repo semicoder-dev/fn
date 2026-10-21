@@ -24,6 +24,8 @@ export interface FIAConfig {
     commands?: Readonly<Record<string, { description: string; entry: string }>>;
   };
   backend?: { entry?: string; assets?: readonly string[] };
+  /** Immutable regular files shipped only with a full application, never a code update. */
+  runtime?: { assets?: readonly string[] };
   web?: { root?: string; dist?: string };
   permissions?: Readonly<Record<string, string>>;
   statusItem?: { symbol: string; tooltip?: string };

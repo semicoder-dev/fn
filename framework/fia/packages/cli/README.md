@@ -60,6 +60,8 @@ The minimal config needs `app` and `agent.command/description`. The shared API d
 
 Paths in `backend.assets` are relative to `context.app.codeDirectory`: the project root in development, and the packaged code directory in production. For example, `assets: ["assets/model.wasm"]` can be read with `Bun.file(context.app.codeDirectory + "/assets/model.wasm")`. Store writable user data in `context.app.dataDirectory`.
 
+Unpublished co-development capability: `runtime: { assets: ["resources/runtime.tgz"] }` declares immutable files shipped only in a full application. Entries must be regular project files, with no symlink components, escaping paths, case collisions, or overlap with `backend.assets`. Read them relative to `context.app.runtimeDirectory`: the project root in development, or `Contents/Resources/runtime` in preview/production. Paths and the copied file contents contribute to `runtimeId`; changes require a full installation package. Code updates never copy these files and retain their existing restrictions. Applications without runtime assets keep the previous identity calculation.
+
 ## Publishing
 
 Generate keys with `fia update keygen --output /secure/path/my-app-keys`, copy the public key into config, and create the first full installer with `fia release`. Configure the same update key before distributing that installer.

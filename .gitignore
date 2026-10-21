@@ -8,5 +8,8 @@ frontend/dist/
 resources/plugins/*.tgz
 artifacts/
 resources/sdk/
+resources/runtime-seed/
+resources/runtime-seed.json
 *.tgz
 !vendor/agent-webtool-dev.tgz
+resources/runtime-seed.*.partial/

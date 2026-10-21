@@ -37,7 +37,13 @@ function fixture(budget = API_MAX_BYTES) {
     }),
     {
       native: {} as BackendNativeClient,
-      app: { name: "test", identifier: "test", codeDirectory: "/tmp", dataDirectory: "/tmp" },
+      app: {
+        name: "test",
+        identifier: "test",
+        codeDirectory: "/tmp",
+        runtimeDirectory: "/tmp",
+        dataDirectory: "/tmp",
+      },
     },
     { eventBufferBytes: budget },
   );
