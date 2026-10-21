@@ -12,7 +12,8 @@ struct BackendSupervisorTests {
             executable: "/bin/sh",
             arguments: ["-c", #"IFS= read -r initialize; printf '%s\n' '{"v":5,"type":"request","id":1,"method":"keychain.get","params":{}}'; IFS= read -r response; printf '%s\n' '{"v":5,"type":"ready","port":45683,"origin":"http://127.0.0.1:45683"}'; IFS= read -r shutdown"#],
             sha256: String(repeating: "0", count: 64), sessionSecret: String(repeating: "n", count: 64),
-            webRoot: "/tmp/web", resourceDirectory: "/tmp/resources", version: "1.0.0", build: 1, automaticallyRestart: false
+            webRoot: "/tmp/web", resourceDirectory: "/tmp/resources", version: "1.0.0", build: 1, automaticallyRestart: false,
+            startupTimeoutMs: 2_000
         )
         var states: [BackendSupervisor.State] = []
         let nativeResponse = AsyncStream<Void>.makeStream()
@@ -26,7 +27,6 @@ struct BackendSupervisorTests {
                 return nil
             }, onState: { states.append($0) }
         )
-        supervisor.readinessTimeout = .seconds(2)
         supervisor.start()
         let nativeDeadline = ContinuousClock.now + .seconds(5)
         while !supervisor.waitingOnNative, ContinuousClock.now < nativeDeadline { try await Task.sleep(for: .milliseconds(20)) }
@@ -52,7 +52,8 @@ struct BackendSupervisorTests {
             development: true, appName: "Stalled", appIdentifier: "com.example.stalled.\(UUID().uuidString)",
             executable: "/bin/sh", arguments: ["-c", script],
             sha256: String(repeating: "0", count: 64), sessionSecret: String(repeating: "n", count: 64),
-            webRoot: "/tmp/web", resourceDirectory: "/tmp/resources", version: "1.0.0", build: 1, automaticallyRestart: false
+            webRoot: "/tmp/web", resourceDirectory: "/tmp/resources", version: "1.0.0", build: 1, automaticallyRestart: false,
+            startupTimeoutMs: 2_000
         )
         var failed = false
         var finishedNative = false
@@ -67,7 +68,6 @@ struct BackendSupervisorTests {
                 return nil
             }, onState: { if case .failed = $0 { failed = true } }
         )
-        supervisor.readinessTimeout = .seconds(2)
         supervisor.start()
         let nativeDeadline = ContinuousClock.now + .seconds(5)
         while !supervisor.waitingOnNative, ContinuousClock.now < nativeDeadline { try await Task.sleep(for: .milliseconds(20)) }

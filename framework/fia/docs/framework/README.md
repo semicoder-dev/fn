@@ -8,7 +8,7 @@ Host 是 `.app` 的入口，负责 NSApplication、窗口、原生服务、Bun �
 
 后端启动时保留 Host 的 `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY`（含小写）及 `NO_PROXY` 配置；若未显式设置代理变量，则读取 macOS 手动 HTTP / HTTPS 系统代理及例外列表，供 Bun 的网络请求使用。生产进程仍不继承其他任意环境变量或凭证。两种模式都为 `NO_PROXY` 补上 localhost / 127.0.0.1 / ::1，避免本地框架通信经过代理。配置在每次后端启动时读取，系统代理变更后需重启应用；暂不转换 PAC、SOCKS 或 `<local>` 例外规则，也不读取代理应用私有配置。显式设置空代理变量可停用系统代理回退。
 
-Host 与 Bun 使用 stdio protocol 5，JSON Lines，stdout 只能输出协议；框架入口将 console 日志重定向到 stderr。初始化携带会话、进程代次、应用数据目录和代码目录。`listening` 表示 HTTP 已监听；业务 `start` 完成后才报告 `ready`。请求支持 ID、事件、取消、超时和 128 个并发上限，帧大小上限 1 MiB。进程代次隔离，退出回收整个受管进程组。
+Host 与 Bun 使用 stdio protocol 5，JSON Lines，stdout 只能输出协议；框架入口将 console 日志重定向到 stderr。初始化携带会话、进程代次、应用数据目录和代码目录。`listening` 表示 HTTP 已监听；业务 `start` 完成后才报告 `ready`。请求支持 ID、事件、取消、超时和 128 个并发上限，帧大小上限 1 MiB。进程代次隔离，退出回收整个受管进程组。后台启动期限默认为 15 秒；有首次资源物化等初始化的应用可在构建配置中设置 `backend.startupTimeoutMs`（1000–120000 毫秒），它进入完整运行时身份。等待原生交互期间仍暂停该期限。打包冒烟沿用配置并额外留 15 秒前端就绪时间，仍有明确上限和失败诊断。
 
 前端与 Bun 的 Native SDK 使用 WebSocket protocol 1。系统 API 的实现仍在 Swift，Bun 只转发。Native WebSocket 与业务 WebSocket 共用一个 Bun 服务。`/_fia` 是保留路径，业务路由相对 `/api` 声明。HTTP/SSE 直接返回标准 Response，不缓冲完整响应。
 

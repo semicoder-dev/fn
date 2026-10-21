@@ -64,6 +64,19 @@ test("runtime assets reject unsafe paths, ambiguous names and overlap with code 
   expect(validateConfig(base, root).runtime.assets).toEqual([]);
 });
 
+test("startup budgets are bounded and require a matching full runtime", async () => {
+  const { root, base } = await fixture();
+  const normal = validateConfig(base, root);
+  expect(normal.backend.startupTimeoutMs).toBe(15_000);
+  for (const timeout of [0, -1, 999, 120_001, 1.5, Infinity, "60000"])
+    expect(() => validateConfig({ ...base, backend: { startupTimeoutMs: timeout } }, root)).toThrow(
+      "startupTimeoutMs",
+    );
+  const extended = validateConfig({ ...base, backend: { startupTimeoutMs: 60_000 } }, root);
+  const assets = await verifyAssets();
+  expect(await runtimeId(extended, assets)).not.toBe(await runtimeId(normal, assets));
+});
+
 test("runtime asset validation rejects files and parent directories that are symlinks", async () => {
   const { root, base } = await fixture();
   const outside = await mkdtemp(resolve(tmpdir(), "fia-outside-assets-"));
@@ -152,6 +165,10 @@ test("full application assembly copies a fixed runtime snapshot while code relea
     return { exitCode: 0, stdout: "", stderr: "" };
   };
   const result = await buildApplication(config, { runner });
+  const manifest = await Bun.file(
+    resolve(result.app, "Contents/Resources/fia.runtime.json"),
+  ).json();
+  expect(manifest.backendStartupTimeoutMs).toBe(config.backend.startupTimeoutMs);
   const copied = resolve(result.app, "Contents/Resources/runtime/resources/seed.tgz");
   expect(await readFile(copied, "utf8")).toBe("first seed");
   expect(result.release.files.some((file) => file.path.includes("seed"))).toBe(false);

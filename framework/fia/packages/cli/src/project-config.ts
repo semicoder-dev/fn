@@ -8,7 +8,7 @@ export interface ResolvedFIAConfig extends FIAConfig {
   projectRoot: string;
   configPath: string;
   api: { entry: string };
-  backend: { entry: string; assets: readonly string[] };
+  backend: { entry: string; assets: readonly string[]; startupTimeoutMs: number };
   runtime: { assets: readonly string[] };
   web: { root: string; dist: string };
   permissions: Readonly<Record<string, string>>;
@@ -114,10 +114,17 @@ export function validateConfig(input: unknown, root: string): ResolvedFIAConfig 
   const backend = object(value.backend ?? {}, "backend");
   const runtime = object(value.runtime ?? {}, "runtime");
   const web = object(value.web ?? {}, "web");
-  keys(backend, ["entry", "assets"], "backend");
+  keys(backend, ["entry", "assets", "startupTimeoutMs"], "backend");
   keys(runtime, ["assets"], "runtime");
   keys(web, ["root", "dist"], "web");
   const entry = backend.entry ?? "backend/index.ts";
+  const startupTimeoutMs = backend.startupTimeoutMs ?? 15_000;
+  if (
+    !Number.isSafeInteger(startupTimeoutMs) ||
+    Number(startupTimeoutMs) < 1_000 ||
+    Number(startupTimeoutMs) > 120_000
+  )
+    fail("backend.startupTimeoutMs must be an integer between 1000 and 120000");
   const webRoot = web.root ?? "frontend";
   const dist = web.dist ?? "frontend/dist";
   const assets = backend.assets ?? [];
@@ -223,7 +230,11 @@ export function validateConfig(input: unknown, root: string): ResolvedFIAConfig 
     projectRoot: resolve(root),
     configPath: resolve(root, "fia.config.ts"),
     api: { entry: apiEntry as string },
-    backend: { entry: entry as string, assets: assets as string[] },
+    backend: {
+      entry: entry as string,
+      assets: assets as string[],
+      startupTimeoutMs: startupTimeoutMs as number,
+    },
     runtime: { assets: runtimeAssets as string[] },
     web: { root: webRoot as string, dist: dist as string },
     permissions: permissions as Record<string, string>,

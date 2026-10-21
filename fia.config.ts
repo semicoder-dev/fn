@@ -40,6 +40,8 @@ export default defineConfig({
   },
   backend: {
     entry: "backend/runtime.ts",
+    // A first launch verifies and materializes the complete immutable dependency graph.
+    startupTimeoutMs: 60_000,
     assets: ["resources/sdk"],
   },
   runtime: { assets: ["resources/runtime-seed.tgz", "resources/runtime-seed.json"] },

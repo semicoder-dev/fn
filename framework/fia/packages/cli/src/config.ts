@@ -23,7 +23,7 @@ export interface FIAConfig {
     instructions?: string;
     commands?: Readonly<Record<string, { description: string; entry: string }>>;
   };
-  backend?: { entry?: string; assets?: readonly string[] };
+  backend?: { entry?: string; assets?: readonly string[]; startupTimeoutMs?: number };
   /** Immutable regular files shipped only with a full application, never a code update. */
   runtime?: { assets?: readonly string[] };
   web?: { root?: string; dist?: string };

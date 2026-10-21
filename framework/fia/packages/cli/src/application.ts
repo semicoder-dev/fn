@@ -338,6 +338,7 @@ export async function buildApplication(
             : {}),
           runtimeId: release.runtimeId,
           bunSHA256: await sha256(resolve(contents, "Helpers/bun")),
+          backendStartupTimeoutMs: config.backend.startupTimeoutMs,
           ...(options.development
             ? {
                 developmentEntry: resolve(resources, "code/backend/index.js").replace(

@@ -54,6 +54,7 @@ export async function smokeApplication(
       TMPDIR: directory,
       FIA_CONTROL_DIRECTORY: directory,
       FIA_DATA_DIRECTORY: resolve(directory, "data"),
+      FIA_INTERNAL_DIAGNOSTICS: "1",
     },
     stdin: "ignore",
     stdout: "pipe",
@@ -78,7 +79,7 @@ export async function smokeApplication(
           ? status
           : undefined;
       },
-      30000,
+      Math.max(30_000, (config.backend?.startupTimeoutMs ?? 15_000) + 15_000),
       "Packaged application readiness",
     );
     await writeFile(resolve(directory, "quit"), "");

@@ -23,13 +23,14 @@ public struct FIABunConfiguration: Sendable {
     public let preferredPort: Int
     public let automaticallyRestart: Bool
     public let applicationMode: String
+    public let startupTimeoutMs: Int
 
     public init(development: Bool, appName: String, appIdentifier: String, executable: String,
                 arguments: [String] = [], sha256: String, sessionSecret: String,
                 bundlePath: String? = nil, runtimeId: String? = nil, agentCommand: String? = nil, updating: Bool = false,
                 webRoot: String, resourceDirectory: String, developmentOrigin: String? = nil,
                 version: String, build: Int, preferredPort: Int = 0, automaticallyRestart: Bool = true,
-                applicationMode: String = "production") {
+                applicationMode: String = "production", startupTimeoutMs: Int = 15_000) {
         self.development = development; self.appName = appName; self.appIdentifier = appIdentifier
         self.executable = executable; self.arguments = arguments; self.sha256 = sha256
         self.bundlePath = bundlePath; self.runtimeId = runtimeId; self.agentCommand = agentCommand; self.updating = updating
@@ -37,6 +38,7 @@ public struct FIABunConfiguration: Sendable {
         self.developmentOrigin = developmentOrigin; self.version = version; self.build = build
         self.preferredPort = preferredPort; self.automaticallyRestart = automaticallyRestart
         self.applicationMode = applicationMode
+        self.startupTimeoutMs = startupTimeoutMs
     }
 }
 
@@ -89,6 +91,7 @@ public final class BackendSupervisor {
         onState: @escaping (State) -> Void
     ) throws {
         self.configuration = configuration
+        readinessTimeout = .milliseconds(configuration.startupTimeoutMs)
         preferredPort = configuration.preferredPort
         allowsAutomaticRestart = configuration.automaticallyRestart
         self.onRequest = onRequest

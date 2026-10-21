@@ -98,6 +98,9 @@ export async function runtimeId(
           }
         : null,
       signing: config.signing?.releaseIdentity ?? null,
+      ...(config.backend.startupTimeoutMs !== 15_000
+        ? { backendStartupTimeoutMs: config.backend.startupTimeoutMs }
+        : {}),
       // Keep the legacy identity byte-for-byte when no immutable app assets are declared.
       ...(fixedAssets.length
         ? {

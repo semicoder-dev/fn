@@ -153,12 +153,18 @@ public final class FIARuntime {
       resourceDirectory: resources.directory.path,
       developmentOrigin: developmentOrigin?.absoluteString, version: activeRelease.version,
       build: activeRelease.build, preferredPort: port, automaticallyRestart: !trial,
-      applicationMode: manifest.localProfile?.mode ?? (development ? "development" : "production"))
+      applicationMode: manifest.localProfile?.mode ?? (development ? "development" : "production"),
+      startupTimeoutMs: manifest.backendStartupTimeoutMs ?? 15_000)
     do {
       let backend = try BackendSupervisor(
         configuration: configuration, applicationSupportDirectory: supportDirectory
       ) { [weak self] method, params in
         guard let self else { throw CancellationError() }
+        let diagnostics = ProcessInfo.processInfo.environment["FIA_INTERNAL_DIAGNOSTICS"] == "1"
+        if diagnostics { try? FileHandle.standardError.write(contentsOf: Data("FIA native begin: \(method)\n".utf8)) }
+        defer {
+          if diagnostics { try? FileHandle.standardError.write(contentsOf: Data("FIA native end: \(method)\n".utf8)) }
+        }
         let input = try JSONSerialization.data(withJSONObject: params, options: .fragmentsAllowed)
         switch await self.native.dispatch(method: method, params: input) {
         case .success(let data):
@@ -709,6 +715,7 @@ struct RuntimeManifest: Codable, Sendable {
   let statusItem: StatusItem?
   let updates: UpdateConfiguration?
   var localProfile: LocalProfile? = nil
+  var backendStartupTimeoutMs: Int? = nil
   func supportRoot(environment: [String: String] = ProcessInfo.processInfo.environment) throws -> URL {
     if let path = environment["FIA_DATA_DIRECTORY"] ?? localProfile?.dataRoot {
       return URL(fileURLWithPath: path, isDirectory: true)
@@ -722,6 +729,9 @@ struct RuntimeManifest: Codable, Sendable {
     let value = try JSONDecoder().decode(Self.self, from: Data(contentsOf: path))
     guard value.schema == 4, value.agent != nil, value.frameworkVersion == FIAVersion.current else {
       throw UpdateError("Incompatible FIA runtime manifest")
+    }
+    if let timeout = value.backendStartupTimeoutMs, !(1_000...120_000).contains(timeout) {
+      throw UpdateError("Invalid backend startup timeout")
     }
     return value
   }
