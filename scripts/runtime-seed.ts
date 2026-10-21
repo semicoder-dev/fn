@@ -10,6 +10,7 @@ import {
 } from "../packages/runtime/src/generations.ts";
 import { verifyUpstream } from "./upstream/verify.ts";
 import type { UpstreamLock } from "./upstream/lib.ts";
+import { signNativeCodeTree } from "../framework/fia/packages/cli/src/native-signing.ts";
 
 interface Manifest {
   name: string;
@@ -45,7 +46,7 @@ async function link(directory: string, name: string, target: string): Promise<vo
 }
 
 /** Copy exactly the installed dependency graph, with every link relative to the seed. */
-export async function buildRuntimeSeed(output = join(root, "resources/runtime-seed")): Promise<SeedManifest> {
+export async function buildRuntimeSeed(output = join(root, "resources/runtime-seed"), signingIdentity?: string): Promise<SeedManifest> {
   await verifyUpstream();
   const upstream = JSON.parse(await readFile(join(root, "upstream.lock.json"), "utf8")) as UpstreamLock;
   const nodes = new Map<string, PackageNode>();
@@ -147,7 +148,11 @@ export async function buildRuntimeSeed(output = join(root, "resources/runtime-se
     ]);
     if (code !== 0) throw new Error(`Seed lock normalization failed: ${stderr || stdout}`);
     await verifyGenerationDependencies(staging, coreVersions, [runtime.manifest.name, sdk.manifest.name]);
-    // Include all application source and package bytes in the seed identity.
+    if (signingIdentity) {
+      const signed = await signNativeCodeTree(staging, signingIdentity);
+      console.log(`Signed ${signed.length} native runtime dependencies before archiving`);
+    }
+    // Include all application source, signatures and package bytes in the seed identity.
     const hash = createHash("sha256").update(`${Bun.version}:${process.platform}:${process.arch}`);
     const hashDirectory = async (base: string) => {
       for (const entry of (await readdir(base, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
@@ -204,4 +209,12 @@ async function archiveRuntimeSeed(directory: string, seed: SeedManifest): Promis
   } finally { await rm(temporary, { force: true }); }
 }
 
-if (import.meta.main) await buildRuntimeSeed(process.argv[2] ? resolve(process.argv[2]) : undefined);
+if (import.meta.main) {
+  const args = process.argv.slice(2);
+  const distribution = args.includes("--distribution");
+  const paths = args.filter(arg => arg !== "--distribution");
+  if (paths.length > 1 || paths.some(arg => arg.startsWith("-"))) throw new Error("runtime-seed.ts [output] [--distribution]");
+  const identity = distribution ? process.env.FN_SIGNING_IDENTITY : undefined;
+  if (distribution && !identity) throw new Error("FN_SIGNING_IDENTITY is required for the distribution seed");
+  await buildRuntimeSeed(paths[0] ? resolve(paths[0]) : undefined, identity);
+}

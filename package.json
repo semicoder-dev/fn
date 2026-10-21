@@ -13,7 +13,7 @@
     "agent": "fia agent",
     "run": "bun run sdk:snapshot && bun run runtime:seed && bun framework/fia/tools/application-command.ts run",
     "build": "bun run sdk:snapshot && bun run runtime:seed && bun framework/fia/tools/application-command.ts build",
-    "release": "bun run sdk:snapshot && bun run runtime:seed && bun framework/fia/tools/application-command.ts release",
+    "release": "bun run sdk:snapshot && bun run runtime:seed --distribution && bun framework/fia/tools/application-command.ts release",
     "release:update": "bun framework/fia/tools/application-command.ts release --update",
     "version:app": "bun scripts/release/version.ts",
     "version:sdk": "bun scripts/npm/version.ts",

@@ -82,3 +82,7 @@ bun run framework:verify
 升级先获取同版本 dsh 家族，更新锁定组合、在独立目录验证模型/认证、Session、生命周期、插件解析和客户端合同，再正常发版。未发行修复必须固定 SHA、独立构建归档并记录来源；不能替换同版本已固定 tarball。
 
 测试与性能结果见 [验证记录](runtime-validation.md)。真实账号登录、外部模型与 CloudKit 业务验收须与模拟合同测试分别记录。
+
+## 发行资源签名
+
+`runtime-seed.ts --distribution` 要求 `FN_SIGNING_IDENTITY`，在 seed 副本中通过 FIA `signNativeCodeTree` 为 Mach-O 依赖签名和验证，再计算 seed ID、归档与摘要。普通 check/build 不读取签名凭据；发布时先准备临时 keychain，再构建 seed。上游原始归档和安装依赖不被改写。`release:update` 复用同一 seed，避免安装包与更新包的资源身份不同。
