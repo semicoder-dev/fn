@@ -103,4 +103,4 @@ bun run framework:verify
 
 `runtime-seed.ts --distribution` 要求 `FN_SIGNING_IDENTITY`，在 seed 副本中通过 FIA `signNativeCodeTree` 为 Mach-O 依赖签名和验证，再计算 seed ID、归档与摘要。普通 check/build 不读取签名凭据；发布时先准备临时 keychain，再构建 seed。上游原始归档和安装依赖不被改写。`release:update` 复用同一 seed，避免安装包与更新包的资源身份不同。
 
-首次安装需要校验和解包完整 seed；上述开发版直接共享解包内容，外部开发 seed 才需首次复制。fn 将 FIA `backend.startupTimeoutMs` 显式设置为 60000 毫秒；普通启动复用已有 generation。该值随完整运行时身份固定，打包冒烟最多等待 75 秒，超时仍阻止发布并保留后台/原生请求诊断；不改变模型请求、浏览器回归或工具取消的期限。
+首次安装需要校验和解包完整 seed；0.5.2 直接共享解包内容，外部开发 seed 才需首次复制。fn 将 FIA `backend.startupTimeoutMs` 显式设置为 60000 毫秒；普通启动复用已有 generation。该值随完整运行时身份固定，打包冒烟最多等待 75 秒，超时仍阻止发布并保留后台/原生请求诊断；不改变模型请求、浏览器回归或工具取消的期限。

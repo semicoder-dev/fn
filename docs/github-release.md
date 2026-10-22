@@ -11,7 +11,7 @@ fn **0.5.2 / build 12** 已公开；官网为 `https://semicoder.dev/fn`，安�
 - 正式 seed 从真实市场 refresh/resolve 下载、校验并安装三个原始 0.1.0 插件，忙时等待、空闲重启、active/installed、卸载释放及 KV 恢复通过。实际 0.5.1 原版建立的运行代升级后插件/KV 保留，旧代不改写。
 - 空目录启动至正常退出 9,432 ms，后台只启动一次，受管进程组清理通过。该数值是单次 smoke，不能作为冷启动基准。
 
-共享固定内核、独立插件依赖与小型 generation 消除每次安装的全量复制；本地同组准备中位数 5.808 s → 0.189 s，范围见 [测量记录](runtime-validation.md)。旧运行目录保留回退，历史目录暂不自动回收。0.5.x 数据保留，0.4.x 仍遵循独立目录规则。SDK、官方插件、手机、agent-webtool 版本不变；官网安装入口和指南对应 Semicoder `54adc7f`，已完成本地质量、51 单元/12 Worker 测试、构建和 39 页面检查；两环境部署及线上验收单独记录于 workspace `docs/agent/sessions/2026-10-22-fn-052-release.md`。
+共享固定内核、独立插件依赖与小型 generation 消除每次安装的全量复制；本地同组准备中位数 5.808 s → 0.189 s，范围见 [测量记录](runtime-validation.md)。旧运行目录保留回退，历史目录暂不自动回收。0.5.x 数据保留，0.4.x 仍遵循独立目录规则。SDK、官方插件、手机、agent-webtool 版本不变；官网安装入口和指南对应 Semicoder `54adc7f`，已完成本地质量、51 单元/12 Worker 测试、构建和 39 页面检查；[官网工作流 39703291862](https://github.com/semicoder-dev/semicoder/actions/runs/39703291862) 的质量、预发布和生产全部成功，两环境独立全站及九篇关键内容检查通过。最终证据见 workspace `docs/agent/sessions/2026-10-22-fn-052-release.md`。
 
 ## 0.5.1 官方市场修复（2026-10-21）
 
