@@ -1,0 +1,1 @@
+{"description":"Manage fn applications, model connections and durable agent sessions.","commands":{"application":{"description":"Create, check, build and pack Cordis applications","entry":"commands/application.js"}}}
