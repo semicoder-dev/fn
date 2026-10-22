@@ -1,106 +1,36 @@
-# Cordis 应用运行栈
+# 全插件化架构（本地候选，未发布）
 
-本页契约随 fn 0.5.0 / SDK 0.4.0 发布，公开产物见 [发行记录](github-release.md)。2026-10-21 追加的市场核心版本修复已随 0.5.1/build 11 正式发布，公开 DMG 与真实市场安装已独立验收。
+本次替代 0.5.2 的集中 FnRuntime/应用 SDK。基线保持 dsh 0.2.1-rc.2、Cordis 4.0.5、Bun 1.4.3，未修改上游源码。归档与闭包记录于 `upstream.lock.json`。上游客户端 store 的发行包缺少运行时 zustand/immer 声明，宿主明确固定 4.5.7 / 10.2.0，随闭包验证；不依赖本机参考仓库。
 
-## 运行与职责
+## 装配与生命周期
 
-FIA 启动一个固定 Bun 1.4.3 进程。`backend/runtime.ts` 只装配产品 API，通过动态入口从完整运行目录加载 `packages/runtime`。原版 dsh 包不进入 FIA 后端 bundle，应用、SDK 与内核解析到同一份 Cordis 与 dsh 服务。
+`profiles/default.json` 顺序引用 kernel、desktop bundle；每层先叠加 bundle 和插件条目，再调用原版 Include 的 `applyEntryPatches`。包可用 `fn.bundle` 或 `fn.profile` 指向相对 JSON。安装阶段解析为不可变 profile；未匹配 patch、同一 Loader tree 的重复实例 ID、循环 bundle 和不可用包会拒绝。实例 ID 独立于 npm 包名，同包可多实例配置。原版 `cordis:group` 共用所在树的 ID 空间；target 的独立 EntryTree 拥有局部 ID 空间。
 
-根 Context 共享 AgentRegistry、AgentLoop、LlmRuntime、SessionStore、SessionProjection、SystemPrompt、ToolRuntime、UserApproval、checkpoint 和 retry policy。应用持有 scope，Agent 的公开 setup 在发布前绑定父 scope。页面和 Chat 是客户端，关页与断线不取消任务。
+`openHost` 只提供基础 HostEnvironment 并启动原版 Loader。产品插件通过具体 Service、inject 和事件协作。默认 Session 服务全局共享，Chat target 与 Agent 使用原版独立 scope；Agent 的公开 setup 在发布前绑定父作用域。页面是订阅者，后台生命周期不依赖页面。
 
-`fia.config.ts` 指向 `shared/runtime-api.ts`、`backend/runtime.ts`、`frontend/RuntimeApp.tsx`。旧实现保留为历史源码，不是活动入口。运行数据全部写入 FIA 数据目录下的 `cordis-v1/`，不读取、迁移或删除旧 `platform.json`、凭证、插件与 Chat 数据。
+`fn-activity` 汇总任务租约和插件自报忙状态。安装/更新/启停/组合修改使用同一代目录切换；先验证共享依赖与启动入口，空闲后停止接收新任务、flush、销毁、重启 Bun。FIA 保留窗口，客户端按 epoch 重建。后台启动失败回到上一有效组合；根 UI 成功渲染后通过 epoch 确认新代，未确认的布局不会覆盖回退点；布局失败可使用最小故障页或 `host.recover` 恢复。恢复默认组合保留已安装包和业务数据。
 
-## 插件
+## 产品插件
 
-共享依赖必须精确匹配运行目录的 `coreVersions`。0.5.1 修复将 React 和 React DOM 与 dsh、fn runtime、SDK 一起登记；版本取宿主 package.json 的精确依赖并校验实际依赖闭包、根链接与唯一实例。插件不能把它们作为普通依赖打包，必须声明精确 peer；SDK 自身的宽 peer 范围不作为宿主发行版本。市场和地址安装均保留版本、实例与完整性检查。
+- `fn-connections`：独立连接、受控凭证环境、Pi 登录和刷新、原版模型 adapter 注册及路由；连接固定 provider/端点/账号身份。
+- `fn-session-sqlite`、`fn-session-controller`：原版 SessionPersistence、产品会话归属、持久接收去重、投影、模型切换、审批。原版 checkpoint policy 阻止未落盘的模型/工具副作用。
+- `fn-chat`、`fn-chat-cards`、`fn-chat-cloudkit`：可选入口、持久卡片处理及 Chat v4 传输。执行过但未确认完成的副作用不自动重放。
+- `fn-tool-file/process/native`：按 target 显式启用的工具，默认受控执行，取消传播到请求和进程组。
+- `fn-models`、`fn-appearance`、`fn-plugin-manager/market`：各自持久模型选择、外观、组合与市场来源。
+- `fn-ui-*`、`fn-app-update`：具体 UI 和 FIA 更新服务适配；没有宿主固定页面分支。
 
-公开 0.5.0 的 seed 虽包含 React/React DOM 19.2.7，但漏登记这两项，导致三个官方应用被市场误判不兼容。此修复改变固定 seed 及 runtime ID，0.5.1 需要完整 DMG；原应用归档和公开市场无需改写。旧的可用代次仍先启动，新 seed 在后台重放应用、等待空闲切换，不修改已有代次或用户数据。
+## 客户端与插槽
 
-普通 npm 包的 `exports["."]` 指向 Cordis `apply/inject/Config` 插件，可以直接使用 ESM TypeScript。可选 `exports["./client"]` 指向浏览器产物；后端无页面也合法。`fn` 元数据只有 `schemaVersion: 1`、`id`、`name`、可选 `description`、文字 `icon` 及 `iconSvg: "dist/icon.svg"`（8 KiB SVG，SDK 从 src 构建）。
+宿主只挂载 `root`，使用原版 `dsh-client-modules`、`ui-slots` 与 `ui-renderer`。FIA 适配认证资源传输和启动清单；模块索引用包名，`/client` 由上游正规化。React、Cordis 和基础 UI 共享单实例。没有自建 Slot 引擎或 Node HMR。
 
-`ctx.app` 提供 KV、方法、Chat 入口、Session 和官方工具注册；Agent/Session/Tool 类型从上游包导入。浏览器有独立根 Cordis、应用隔离的 `ctx.clientApp` 和 React 页面。SDK 构建将 React/Cordis 和 `@semicoder/fn-sdk/ui` 引用转换到宿主模块注册表。页面可用 `keepAlive: true` 保留本次窗口的切页状态，默认卸载；停用/代次切换仍销毁。
+默认 `fn-ui-layout` 声明 sidebar.top/bottom、main、toolbar、status、overlay。`fn-ui-settings` 声明设置分类和内容；`fn-ui-chat` 声明消息、卡片及输入操作。声明方发布具体的 layoutSlots/settingsSlots/chatSlots 依赖，贡献方 inject，避免异步加载顺序引发未声明插槽。替换布局需提供同样的插槽/服务，或者连同其贡献组合一起替换。样式通过插件 effect 添加和撤销；共享基础样式是 `fn-ui-base`。`fn-ui-session` 为上游 renderer 提供必要的可选 Session scope 适配器；仅传输 Session ID，不将 Agent 对象带入浏览器。
 
-插件是可信本机扩展，可以直接使用 Bun 与文件系统。scope 组织生命周期和可见服务，不提供权限沙箱。官方工具默认对写文件、执行进程和打开外部 URL 请求一次性批准；创建会话时可显式选择自动执行。读取目录检查和进程组回收是工具行为，不等同于 OS 沙箱。
+FIA `APIRegistry` 按命名空间注册 contract/handlers，原子检查重复、实时更新 schema、撤销入口、取消并等待活动调用。`fn-rpc` 将其绑定到 Cordis effect。宿主仅静态声明 host 状态/恢复；前端依赖 `api:<namespace>`，后端撤销对应服务时贡献自动停用。`client(ctx, namespace, contract)` 使用泛型服务接口，没有全局业务 Bridge。
 
-## 桌面产品能力（2026-10-21 补齐）
+## 数据与升级
 
-桌面恢复紧凑应用侧栏，应用入口在上方，Chat、应用中心和设置在底部。设置使用独立二级导航：模型服务、外观、应用更新和聊天同步。明暗模式与原生标题栏同步，配色、预览、取消及跨窗口同步复用现有主题组件，写入新的 `cordis-v1/product.json`。
+新根目录为 `plugins-v1`，Chat 使用独立 v4 zone 与本地目录。Session 是 Agent 历史的唯一来源；连接、卡片、同步队列、选择与主题分别由所属插件保存。无公开 KV，也没有读取旧目录、格式兼容或自动迁移分支。
 
-模型服务展示锁定 Pi 的服务商、认证方式及模型目录，支持同服务多连接、API Key、订阅交互登录和自定义协议/端点。`models.saved` 保存用户选中的 `{connectionId,id,name}`；新会话及官方示例通过此分页接口选择模型。添加模型不发起生成请求，删除列表项不删除历史。动态目录刷新只使用目标连接凭证，已有会话保持账号绑定。Pi OpenAI 当前提供预设目录，不表示账号模型授权；已有订阅真实调用与工具循环已验收，新的交互登录及真实过期 token 刷新仍待验证。
+运行目录回滚不等于数据库回滚；后续升级先用数据副本验证。共享内核与每个插件依赖安装目录不可变，整个依赖图固定版本；profile 和字节均参与 seed 身份。运行时禁止自动安装。上游发行家族整体升级，合同变化集中调整适配插件。历史 Git 标签、已发布附件和生产市场保持原状。
 
-应用中心提供市场/已安装页、搜索、来源管理、地址安装、打开、更新、停用和卸载。地址支持 HTTPS 归档、本地 `.tgz`、npm 包规格与 Git HTTPS/GitHub 来源；npm 安装校验 registry 的 SHA-512，市场安装额外校验声明的 SHA-256、包身份及核心版本。更新固定原来源，拒绝身份变化和降级；后台任务空闲后切换运行目录。
-
-新市场使用 `schemaVersion: 2`，与旧插件索引明确分离。索引结构为 `{schemaVersion:2,name,applications:[{id,packageName,name,description,version,url,sha256,core}]}`；`core` 精确匹配宿主共享包版本，必须声明 `@semicoder/fn-sdk`。默认 `marketplace-cordis.json` 和三个官方 Cordis 0.1.0 应用已公开；0.5.0 的核心版本误判由 0.5.1 修复。
-
-应用自身更新继续使用 FIA 的检查、下载、完整安装包提示和忙时延后流程。正式构建启动时及每 24 小时自动检查；Dev/Preview 默认关闭正式更新，避免覆盖开发构建。插件更新与应用更新使用不同入口，前者只重启后台，后者遵循 FIA 发行清单。
-
-## 内核与扩展分离（0.5.2）
-
-用户在对比 dsh 后确认取消每次安装的全量内核复制。`GenerationManager` 新建 schema 2 清单；正式归档解包到 `runtime/seeds/<seedId>` 后直接共享，外部开发 seed 只在首次接入时物化到 `runtime/cores/<seedId>`。相同 seed ID 不允许用另一归档覆盖已有内容。核心仍由原版 dsh/Cordis 包组成，不修改上游。
-
-每个新插件安装到独立 `runtime/extensions/<id>`，包含原始归档、`package/`、私有依赖与自己的 Bun 锁文件；旧插件安装目录继续引用，更新不改写前一版本。`runtime/generations/<id>` 仅保存清单和受管理的相对链接，引用核心与选中的插件目录。卸载生成新的选择清单，保留旧版本、Session 和 KV。当前不自动回收历史目录，避免误删仍被回退版本引用的文件。
-
-Bun 使用普通真实路径解析，没有 Node loader/HMR。插件私有依赖在独立目录安装；为包管理器提供仅含版本元数据的共享 peer 占位包，冻结锁验证后再连接到固定核心。安装器始终看不到可写的核心链接。实际依赖图逐项检查共享包的 canonical path，拒绝真实重复副本、别名绕过和越界依赖；整个数据目录搬移后相对引用仍可恢复。运行阶段不执行安装器。
-
-无额外依赖的插件只离线生成空锁文件、建立引用并预导入，不再遍历复制内核。已有 schema 1 可正常启动；升级内核或首次修改插件时建立新清单，旧目录不改写，仍可回退。本节优化已随 0.5.2 发布，固定 seed 源码改变要求完整 DMG；0.5.x 现有数据保留。
-
-`runtime.status.generation.phase` 区分 catalog、download、extract、copy、dependencies、verify、preflight；copy 表示准备目录及引用，只有外部 seed 首次接入才复制核心。阶段不代表百分比；完成清空 phase，pending 继续表示等待空闲切换。FIA 保留窗口与重连流程。
-
-## 连接与凭证
-
-模型选择为 `{ connectionId, modelId }`。一个 Session 固定一个连接，空闲时可在该连接内换模型。账号或端点改变需要新连接和新 Session。
-
-`connections.ts` 为每个连接挂载原版 `llm-pi-ai` 和 `credentials-local`，捕获公开 adapter 注册/替换/销毁。根 Router 在 `prepareCall` 固定具体 adapter，保留 canonical provider。目录等无 Agent 操作必须明确 connectionId。
-
-`auth.ts` 使用锁定 Pi 的登录与刷新协议，集中转换 Pi 与 dsh 凭证格式。环境凭证默认不可见；每连接文件、权限、原子写和刷新锁由原版凭证服务管理。登录交互由 `runtime-auth.ts` 承载，窗口关闭后继续；取消或后台退出释放登录及 provider 回调。已绑定历史的连接不允许用另一组 API Key 或重新登录覆盖身份，正常 token 刷新不受影响。
-
-## Session、Chat 与恢复
-
-`persistence.ts` 实现原版 SessionPersistence：Bun SQLite WAL/FULL、单写者、连续 seq、事务提交、失败队列、flush、恢复及分支。模型请求和工具副作用前由原版 checkpoint 持久化。`applications.sqlite` 只保存产品归属、KV 和收件确认；原版 Session 事件是唯一 Agent 历史。
-
-`projection.ts` 用原版 Session 消息解释器派生展示行，隐藏 provider replay 与内部对象。分页按持久日志游标，不按可见行数。单条/整页限制体积。流式文本仅临时展示，重连重新读取持久投影。输入 requestId 去重，崩溃恢复不自动重放工具副作用。
-
-Chat 使用新的 v3 CloudKit zone 和账号隔离存储，独立命令、确认、目录、会话与展示投影。手机与桌面控制同一个 Agent。旧 v2 客户端和数据不参与此协议。手机模型目录只发布“已添加模型”与当前连接目录的交集，新建和切换命令执行前再次校验；不改写已有会话绑定。
-
-应用通过 `ctx.app.cards.action/create/cancel` 贡献 Session 卡片。`applications.sqlite` 单独保存定义、状态及接受的输入；这属于 fn 产品交互状态，Agent 消息仍唯一来自 dsh Session。回复先持久认领再执行，处理中卡片阻止更新；失败或崩溃不重放。handler 随应用/子 scope 清理，重启重新注册同名 handler 后可继续待答卡片。客户端传输 `FnSessionCard` 展示 DTO，不暴露内部 handler 名称。完整契约见 [SDK](../packages/sdk/README.md#session-自定义卡片开发契约)。
-
-## 安装与升级
-
-`scripts/runtime-seed.ts` 产生自包含 seed。`GenerationManager` 以 seed 和应用归档物化完整依赖图，安装阶段忽略 lifecycle scripts、生成并验证 lock，检查单例和精确 peers；运行期 `--no-install`。
-
-候选先通过独立进程预导入。更新排队等待空闲，禁止新请求，flush 和销毁后由 FIA 重启 Bun，原生窗口保留。只有内核与全部应用完成启动才确认代次；失败或未确认崩溃回到上一运行目录。依赖撤销与停用释放 Cordis effects。
-
-seed 变化会先启动已有可用代次，在旧后台仍可工作时重新装配已安装应用并复验；准备完成后等待空闲切换。启动路径不重装插件，避免把安装时间计入 FIA 的后台就绪时限。运行目录回滚不回滚数据库。未来修改 Session 存储格式必须先在副本验证转换并维护读取版本门槛，禁止把新格式数据库直接交给旧内核。
-
-## 源码开发
-
-`bun run dev` 由 `scripts/runtime-dev.ts` 监督。首次先生成 SDK snapshot 和 seed，再启动 FIA Dev；修改 `packages/runtime/` 或 `packages/sdk/` 后重新生成两者。构建中继续编辑会废弃该候选并重新构建，构建失败保留当前后台，等待下一次修改重试。
-
-`backend/`、`shared/` 修改共用空闲重载。监督器先读取 `runtime.status`，再由开发模式专用的 `runtime.reloadSeed` 检查 epoch、seed 和任务状态。后台异步准备并验收完整候选，旧代继续服务；候选就绪且任务空闲时，原子暂停新请求并让 FIA 重启 Bun。已有运行目录的 Dev 启动先恢复上次可用代次，再后台准备新 seed，避免把依赖安装放进后台启动期限。不会因这些源码修改向运行中的任务发送终止信号。浏览器授权随后台重启失效，需要重新打开；前端继续 Vite HMR。
-
-框架、根依赖/锁文件、配置和自定义命令入口继续使用 FIA 原有重启流程，不受该空闲门槛保护，修改前先结束任务。runtime/SDK 自身依赖声明改变会提示显式安装和重启，不在后台自动换依赖。维护脚本修改需显式重启 Dev，测试文件修改不触发应用重载。Dev 监督器报构建失败或等待空闲时，无需手动结束已有任务；可以修复源码或正常等待完成。
-
-`bun run npm:pack` 检查实际 SDK 归档的三个 Cordis 入口，再在独立临时项目安装该归档，验证后端 TypeScript、客户端共享模块与分页、构建和应用归档解包导入。旧模板消费仅在显式 `--legacy` 时追加；默认 CI 检查新契约。
-
-## 上游同步
-
-`upstream.lock.json` 记录 dsh 0.2.1-rc.2、Cordis 4.0.5、Pi 1.1.0、Bun 1.4.3 和实际闭包。`vendor/dsh/` 是精确 npm 发行 tarball，带完整性与来源记录，不修改上游源码。参考审计 commit `687f282e8625c6b8d11ff58211a90524be2e4317` 不冒充 npm 包的 gitHead（registry 未提供）。
-
-```sh
-bun run upstream:verify
-bun scripts/upstream/smoke.ts
-bun run test:runtime
-bun run check
-bun run build
-bun run framework:verify
-```
-
-升级先获取同版本 dsh 家族，更新锁定组合、在独立目录验证模型/认证、Session、生命周期、插件解析和客户端合同，再正常发版。未发行修复必须固定 SHA、独立构建归档并记录来源；不能替换同版本已固定 tarball。
-
-测试与性能结果见 [验证记录](runtime-validation.md)。真实账号登录、外部模型与 CloudKit 业务验收须与模拟合同测试分别记录。
-
-## 发行资源签名
-
-`runtime-seed.ts --distribution` 要求 `FN_SIGNING_IDENTITY`，在 seed 副本中通过 FIA `signNativeCodeTree` 为 Mach-O 依赖签名和验证，再计算 seed ID、归档与摘要。普通 check/build 不读取签名凭据；发布时先准备临时 keychain，再构建 seed。上游原始归档和安装依赖不被改写。`release:update` 复用同一 seed，避免安装包与更新包的资源身份不同。
-
-首次安装需要校验和解包完整 seed；0.5.2 直接共享解包内容，外部开发 seed 才需首次复制。fn 将 FIA `backend.startupTimeoutMs` 显式设置为 60000 毫秒；普通启动复用已有 generation。该值随完整运行时身份固定，打包冒烟最多等待 75 秒，超时仍阻止发布并保留后台/原生请求诊断；不改变模型请求、浏览器回归或工具取消的期限。
+运行 seed 不重复携带 FIA CLI 的 `assets/` 原生二进制；FIAHost 与 Bun 由应用外层原生 runtime 提供，seed 保留 FIA JS 导出。CLI 构建工具在开发环境运行。

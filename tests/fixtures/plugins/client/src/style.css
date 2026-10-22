@@ -1,0 +1,10 @@
+.fixture-client {
+  padding: 16px;
+  border: 2px solid #6686aa;
+  background-image: url("./pixel.png");
+}
+.fixture-client img {
+  width: 16px;
+  height: 16px;
+  image-rendering: pixelated;
+}

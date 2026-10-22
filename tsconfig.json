@@ -8,27 +8,18 @@
     "jsx": "react-jsx",
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "lib": [
-      "ESNext",
-      "DOM"
-    ],
-    "types": [
-      "bun",
-      "vite/client"
-    ]
+    "lib": ["ESNext", "DOM"],
+    "types": ["bun", "vite/client"]
   },
   "include": [
+    "host",
     "frontend",
-    "backend",
-    "shared",
+    "plugins",
     "packages",
     "scripts",
     "tests",
     "fia.config.ts",
     "vite.config.ts",
     "commands"
-  ],
-  "exclude": [
-    "packages/sdk/templates"
   ]
 }

@@ -32,20 +32,20 @@ export default defineConfig({
     description: "Manage fn applications, model connections and durable agent sessions.",
     instructions: "agent/instructions.md",
     commands: {
-      application: {
-        description: "Create, check, build and pack Cordis applications",
-        entry: "commands/application.ts",
+      plugin: {
+        description: "Inspect, build and pack Cordis plugins",
+        entry: "commands/plugin.ts",
       },
     },
   },
   backend: {
-    entry: "backend/runtime.ts",
+    entry: "host/backend.ts",
     // A first launch verifies and materializes the complete immutable dependency graph.
     startupTimeoutMs: 60_000,
-    assets: ["resources/sdk"],
+    assets: [],
   },
   runtime: { assets: ["resources/runtime-seed.tgz", "resources/runtime-seed.json"] },
-  api: { entry: "shared/runtime-api.ts" },
+  api: { entry: "host/api.ts" },
   statusItem: { symbol: "square.stack.3d.up", tooltip: "fn" },
   ...(beta || process.env.FN_DISABLE_UPDATES === "1"
     ? {}
@@ -61,17 +61,32 @@ export default defineConfig({
         signing: {
           ...(identity ? { releaseIdentity: identity, notarizationProfile: "fn-notary" } : {}),
           application: {
-            ...(beta ? { production: {
-              entitlements: betaEntitlements!, provisioningProfile: betaProfile!,
-              cloudKitContainers: ["iCloud.com.semicoder.fn.production"],
-            } } : productionProfile ? { production: {
-              entitlements: productionEntitlements!, provisioningProfile: productionProfile,
-              cloudKitContainers: ["iCloud.com.semicoder.fn.production"],
-            } } : {}),
-            ...(cloudIdentity && !beta ? { development: {
-              entitlements: cloudEntitlements!, provisioningProfile: cloudProfile!,
-              cloudKitContainers: ["iCloud.com.semicoder.fn.development"],
-            } } : {}),
+            ...(beta
+              ? {
+                  production: {
+                    entitlements: betaEntitlements!,
+                    provisioningProfile: betaProfile!,
+                    cloudKitContainers: ["iCloud.com.semicoder.fn.production"],
+                  },
+                }
+              : productionProfile
+                ? {
+                    production: {
+                      entitlements: productionEntitlements!,
+                      provisioningProfile: productionProfile,
+                      cloudKitContainers: ["iCloud.com.semicoder.fn.production"],
+                    },
+                  }
+                : {}),
+            ...(cloudIdentity && !beta
+              ? {
+                  development: {
+                    entitlements: cloudEntitlements!,
+                    provisioningProfile: cloudProfile!,
+                    cloudKitContainers: ["iCloud.com.semicoder.fn.development"],
+                  },
+                }
+              : {}),
           },
           ...(cloudIdentity && !beta ? { developmentIdentity: cloudIdentity } : {}),
         },

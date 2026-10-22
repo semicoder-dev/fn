@@ -1,0 +1,21 @@
+{
+  "name": "@semicoder/fn-test-client",
+  "version": "0.0.0",
+  "private": true,
+  "files": [
+    "src",
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    "./client": "./dist/client.js"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "@semicoder/fia": "0.18.0",
+    "@semicoder/fn-sdk": "0.4.0"
+  },
+  "fn": {
+    "name": "Acceptance client"
+  }
+}

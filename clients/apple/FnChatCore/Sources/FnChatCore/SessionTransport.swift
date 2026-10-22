@@ -12,7 +12,7 @@ import Foundation
       container.hasSuffix(environment == "production" ? ".production" : ".development")
     else { throw SQLiteFailure(message: "聊天容器与环境不匹配") }
     cloud = CloudKitTransport(containerIdentifier: container)
-    zone = .init(zoneName: "fn-chat-" + environment + "-v3")
+    zone = .init(zoneName: "fn-chat-" + environment + "-v4")
   }
   public func currentAccount() async throws -> String { try await cloud.accountKey() }
   public func prepare() async throws -> String {
@@ -74,10 +74,10 @@ import Foundation
   public func subscribe(_ id: String) async throws {
     try await check()
     try await cloud.removeSubscription(id: "fn-messages-" + id)
-    try await cloud.subscribeToZone(id: "fn-chat-v3-sync-" + id + "-" + zone.zoneName, zoneID: zone)
-    try await cloud.subscribeToCreations(id: "fn-chat-v3-cards-" + id + "-" + zone.zoneName, recordType: "FnSessionCard", zoneID: zone, title: "fn Chat", body: "会话有应用卡片，请打开查看。")
+    try await cloud.subscribeToZone(id: "fn-chat-v4-sync-" + id + "-" + zone.zoneName, zoneID: zone)
+    try await cloud.subscribeToCreations(id: "fn-chat-v4-cards-" + id + "-" + zone.zoneName, recordType: "FnSessionCard", zoneID: zone, title: "fn Chat", body: "会话有应用卡片，请打开查看。")
     try await cloud.subscribeToCreations(
-      id: "fn-chat-v3-bots-" + id + "-" + zone.zoneName, recordType: "FnSessionReply",
+      id: "fn-chat-v4-bots-" + id + "-" + zone.zoneName, recordType: "FnSessionReply",
       zoneID: zone, title: "fn Chat", body: "会话有新内容，请打开查看。")
   }
 }

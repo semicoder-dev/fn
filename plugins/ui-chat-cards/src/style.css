@@ -1,0 +1,31 @@
+.runtime-session-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.runtime-session-card fieldset {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 16px 0 0;
+}
+.fn-ui .runtime-session-card input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+.runtime-session-card label:has(> input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+.runtime-session-card dl {
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) 3fr;
+  gap: 6px 16px;
+}
+.runtime-session-card dd {
+  margin: 0;
+}
+.fn-ui button.runtime-danger {
+  color: var(--m-error);
+}

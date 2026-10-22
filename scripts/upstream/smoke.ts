@@ -6,7 +6,7 @@ import { verifyUpstream } from "./verify.ts";
 import type { UpstreamLock } from "./lib.ts";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
-const consumer = join(root, "packages/runtime");
+const consumer = root;
 
 /** Exercise published ESM entries and verify shared package identities in the actual install. */
 export async function smokeUpstream(): Promise<void> {
@@ -22,8 +22,14 @@ export async function smokeUpstream(): Promise<void> {
     await import(pathToFileURL(Bun.resolveSync(pkg.name, consumer)).href);
     for (const dependency of Object.keys({ ...pkg.dependencies, ...pkg.peerDependencies })) {
       if (!expected.has(dependency)) continue;
-      const resolved = await realpath(Bun.resolveSync(`${dependency}/package.json`, dirname(manifestPath)));
-      assert.equal(resolved, expected.get(dependency), `Duplicate shared instance: ${pkg.name} -> ${dependency}`);
+      const resolved = await realpath(
+        Bun.resolveSync(`${dependency}/package.json`, dirname(manifestPath)),
+      );
+      assert.equal(
+        resolved,
+        expected.get(dependency),
+        `Duplicate shared instance: ${pkg.name} -> ${dependency}`,
+      );
     }
   }
   const cordis = await import(pathToFileURL(Bun.resolveSync("@deepseek-ai/cordis", consumer)).href);
@@ -47,7 +53,9 @@ export async function smokeUpstream(): Promise<void> {
   assert.equal(calls, 1);
   assert.equal(disposed, 1);
   await ctx.fiber.dispose();
-  console.log(`Imported ${lock.packages.length} published packages; shared resolution and Cordis lifecycle passed`);
+  console.log(
+    `Imported ${lock.packages.length} published packages; shared resolution and Cordis lifecycle passed`,
+  );
 }
 
 if (import.meta.main) await smokeUpstream();

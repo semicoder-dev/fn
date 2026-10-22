@@ -10,7 +10,6 @@ async function run(command: string[], cwd: string) {
 
 // Validate the actual archive, then use it outside the source workspace.
 const release = validatePackage(await Bun.file(join(root, "packages/sdk/package.json")).json());
-const legacy = process.argv.includes("--legacy");
 const output = join(root, "artifacts/npm");
 await mkdir(output, { recursive: true });
 const archive = join(output, release.filename);
@@ -25,18 +24,7 @@ try {
   const unpacked = join(temporary, "package");
   const pkg = await Bun.file(join(unpacked, "package.json")).json();
   assert(validatePackage(pkg).version === release.version, "Packed SDK version differs");
-  const allowed = new Set([
-    "package.json",
-    "README.md",
-    "src",
-    "build.ts",
-    "build-cordis.ts",
-    "plugin.ts",
-    "templates",
-    "styles.ts",
-    "create.ts",
-    "dist",
-  ]);
+  const allowed = new Set(["package.json", "README.md", "src", "build.ts", "styles.ts", "dist"]);
   for (const entry of await readdir(unpacked, { withFileTypes: true })) {
     assert(
       allowed.has(entry.name) && !entry.isSymbolicLink(),
@@ -45,24 +33,12 @@ try {
   }
   for (const name of [
     ".",
-    "./cordis-client",
-    "./build-cordis",
-    ...(legacy
-      ? [
-          "./types",
-          "./chat",
-          "./agent",
-          "./client",
-          "./ui",
-          "./runtime",
-          "./build",
-          "./theme.css",
-          "./ui.css",
-          "./plugin",
-          "./manifest",
-          "./tailwind.css",
-        ]
-      : []),
+    "./client",
+    "./build",
+    "./ui",
+    "./theme.css",
+    "./ui.css",
+    "./tailwind.css",
   ]) {
     const target = pkg.exports?.[name];
     assert(
@@ -101,56 +77,9 @@ try {
     }),
   );
   await run([process.execPath, "install", "--ignore-scripts", "--registry", registry], consumer);
-  await cp(
-    new URL("./cordis-smoke.fixture.ts", import.meta.url),
-    join(consumer, "cordis-smoke.ts"),
-  );
-  await run([process.execPath, "run", "cordis-smoke.ts"], consumer);
-  for (const template of legacy ? ["notes", "model"] : []) {
-    const target = join(consumer, template);
-    await cp(join(unpacked, "templates", template, "src"), join(target, "src"), {
-      recursive: true,
-    });
-    for await (const path of new Bun.Glob("**/*").scan({ cwd: target, onlyFiles: true })) {
-      const file = join(target, path);
-      await Bun.write(
-        file,
-        (await Bun.file(file).text())
-          .replaceAll("__PLUGIN_ID__", template)
-          .replaceAll("__PLUGIN_NAME_JSON__", JSON.stringify(template)),
-      );
-    }
-    if (template === "model")
-      await Bun.write(
-        join(target, "src/backend.ts"),
-        'import { definePlugin, defineMethod, z } from "@semicoder/fn-sdk/runtime"; export default definePlugin({ methods: { echo: defineMethod("Echo", z.string(), value => value) } });',
-      );
-    await Bun.write(
-      join(target, "package.json"),
-      JSON.stringify({
-        name: `fixture-${template}`,
-        version: "0.1.0",
-        type: "module",
-        fn: {
-          schemaVersion: 1,
-          id: template,
-          name: template,
-          description: "SDK archive consumer",
-          icon: "T",
-          color: "#123456",
-          sdkVersion: "0.3",
-          frontend: "dist/client.js",
-          styles: "dist/client.css",
-          ...(template === "model" ? { backend: "dist/backend.js" } : {}),
-        },
-      }),
-    );
-  }
-  if (legacy) {
-    await cp(new URL("./smoke.fixture.ts", import.meta.url), join(consumer, "smoke.ts"));
-    await run([process.execPath, "run", "smoke.ts"], consumer);
-  }
-  console.log(`Verified SDK archive and standalone Cordis application builds: ${archive}`);
+  await cp(new URL("./plugin-smoke.fixture.ts", import.meta.url), join(consumer, "smoke.ts"));
+  await run([process.execPath, "run", "smoke.ts"], consumer);
+  console.log(`Verified SDK archive and standalone plugin consumption: ${archive}`);
 } finally {
   await rm(temporary, { recursive: true, force: true });
 }

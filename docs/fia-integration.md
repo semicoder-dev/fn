@@ -1,6 +1,6 @@
 # FIA 共仓开发与后续拆分
 
-状态：当前 fn 为本地更名源码；FIA 仍与宿主共仓，稳定后再拆出，框架名称及 API 不变。既有发行证据见 [历史记录](github-release.md#历史发行证据原名非-fn-发布状态)。
+状态：当前 fn 为未发布全插件化候选；FIA 仍与宿主共仓，稳定后再拆出，框架名称及 API 不变。既有发行证据见 [历史记录](github-release.md#历史发行证据原名非-fn-发布状态)。
 
 ## 来源与边界
 
@@ -10,7 +10,7 @@
 
 ## 开发与构建
 
-在宿主根执行 `bun install --frozen-lockfile --ignore-scripts` 后运行 `bun run dev`。Bun 固定 1.4.3，源码构建需要 Apple Silicon macOS 和 Swift 6 工具链。TypeScript/原生修改自动构建和重启开发实例；依赖清单、锁文件、维护工具变化则提示手工重启。前端 HMR 和业务后端重载沿用既有机制。框架自动重启清除未保存页面状态、撤销浏览器会话，持久数据不移动。
+在宿主根执行 `bun install --frozen-lockfile --ignore-scripts` 后运行 `bun run dev`。Bun 固定 1.4.3，源码构建需要 Apple Silicon macOS 和 Swift 6 工具链。TypeScript/原生修改自动构建和重启开发实例；依赖清单、锁文件、维护工具变化则提示手工重启。插件代码、配置与 seed 变化通过后台重启加载；不移植 Node HMR。框架自动重启清除未保存页面状态、撤销浏览器会话，持久数据不移动。
 
 `framework:prepare` 校验并准备产物；`framework:check` 检查框架；`framework:pack` 验证实际归档；`framework:verify` 在仓库外独立安装、构建并消费归档。框架工具及排除监听规则见[维护说明](../framework/fia/docs/co-development.md)。互斥锁防止构建交叠，失败不标记成功产物；缓存须同时满足输入与输出哈希。异常中断后只有确认 owner.json 中进程已停止，才可清理报告旁的锁目录。
 

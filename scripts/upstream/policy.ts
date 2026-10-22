@@ -12,10 +12,16 @@ export const vendorVersions: Readonly<Record<string, string>> = {
   "@deepseek-ai/cordis": "4.0.5",
   "@deepseek-ai/cosmokit": "1.8.6",
   "@deepseek-ai/schemastery": "3.18.5",
+  "@deepseek-ai/cordis-plugin-loader": "1.0.6",
+  "@deepseek-ai/cordis-plugin-include": "1.0.10",
+  "@deepseek-ai/cordis-plugin-group": "1.0.5",
 };
 
 export const entryPackages = [
   "@deepseek-ai/cordis",
+  "@deepseek-ai/cordis-plugin-loader",
+  "@deepseek-ai/cordis-plugin-include",
+  "@deepseek-ai/cordis-plugin-group",
   ...[
     "agent",
     "agent-loop",
@@ -33,6 +39,10 @@ export const entryPackages = [
     "launch-environment",
     "llm-retry",
     "user-approval",
+    "client-modules",
+    "client-store",
+    "client-ui-slots",
+    "client-ui-renderer",
   ].map((name) => `@deepseek-ai/dsh-${name}`),
 ].sort();
 

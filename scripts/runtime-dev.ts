@@ -12,7 +12,9 @@ export interface DevelopmentStatus {
   epoch: string;
   seedId: string;
   busy: boolean;
-  generation: { pending: boolean; installing: boolean; error: string | null };
+  pending: boolean;
+  installing: boolean;
+  error: string | null;
 }
 export interface ReloadSeedRequest {
   epoch: string;
@@ -23,9 +25,15 @@ export interface ReloadSeedResult {
   reason?: string;
 }
 
-const seedDirectories = ["packages/runtime", "packages/sdk"];
-const backendDirectories = ["backend", "shared"];
-const generated = new Set(["packages/sdk/src/cordis-types.ts", "packages/sdk/src/card-contract.ts"]);
+const seedDirectories = [
+  "packages/host",
+  "packages/sdk",
+  "packages/tool-support",
+  "plugins",
+  "profiles",
+];
+const backendDirectories = ["host"];
+const generated = new Set<string>();
 const excluded = new Set(["node_modules", ".git", ".fia", ".DS_Store", "tests", "dist"]);
 
 /** Hash source bytes, not mtime, so generated output cannot cause a rebuild loop. */
@@ -50,7 +58,8 @@ export async function developmentInputs(root: string): Promise<DevelopmentInputs
         if (
           excluded.has(entry.name) ||
           generated.has(relative(root, file)) ||
-          (!packageManifests && entry.name === "package.json")
+          (!packageManifests && entry.name === "package.json") ||
+          (packageManifests && entry.isFile() && !["package.json", "bun.lock"].includes(entry.name))
         )
           continue;
         // Workspace source must be local; never traverse dependency symlinks.
@@ -64,7 +73,7 @@ export async function developmentInputs(root: string): Promise<DevelopmentInputs
     fingerprint(seedDirectories),
     fingerprint(backendDirectories),
     fingerprint(
-      seedDirectories.map((path) => `${path}/package.json`),
+      ["package.json", "bun.lock", "packages", "plugins", "framework/fia/packages"],
       true,
     ),
   ]);
@@ -115,7 +124,7 @@ export class RuntimeDevelopmentSupervisor {
     const input = await this.options.inputs();
     if (input.dependencies !== this.applied.dependencies) {
       this.report(
-        "runtime/SDK dependency declarations changed; finish tasks, install if needed, then restart dev",
+        "plugin dependency declarations changed; finish tasks, install if needed, then restart dev",
       );
       return;
     }
@@ -127,11 +136,11 @@ export class RuntimeDevelopmentSupervisor {
           // A lost reply may have arrived before admission. Retry only after
           // observing that the same backend is still available and accepting.
           this.waiting = undefined;
-        } else if (!status.busy && status.generation.error) {
+        } else if (!status.busy && status.error) {
           this.failedReload = JSON.stringify(this.waiting.inputs);
           this.waiting = undefined;
           this.report(
-            `reload failed; running backend retained. Edit sources to retry: ${status.generation.error}`,
+            `reload failed; running backend retained. Edit sources to retry: ${status.error}`,
           );
         }
         return;
@@ -140,7 +149,7 @@ export class RuntimeDevelopmentSupervisor {
       if (status.seedId !== this.waiting.seedId) {
         this.failedReload = JSON.stringify(this.waiting.inputs);
         this.report(
-          `seed activation failed; current runtime retained: ${status.generation.error ?? "unexpected seed"}`,
+          `seed activation failed; current runtime retained: ${status.error ?? "unexpected seed"}`,
         );
       } else this.report(`backend ready with seed ${status.seedId}`);
       this.waiting = undefined;
@@ -149,7 +158,7 @@ export class RuntimeDevelopmentSupervisor {
     if (this.failedReload === JSON.stringify(input)) return;
     if (input.seed !== this.built) {
       if (this.failed === input.seed) return;
-      this.report("rebuilding SDK snapshot and runtime seed");
+      this.report("rebuilding plugins and runtime seed");
       try {
         this.seedId = await this.options.build();
         this.built = input.seed;
@@ -178,10 +187,8 @@ export class RuntimeDevelopmentSupervisor {
     // initialize() keeps the last ready generation responsive. A newly built
     // startup seed still needs background preparation even without a later edit.
     if (sourcesUnchanged && status.seedId === this.seedId) return;
-    if (status.busy || status.generation.pending || status.generation.installing) {
-      this.report(
-        "changes ready; waiting for model, tool, login, sync and installation tasks to become idle",
-      );
+    if (status.busy || status.pending || status.installing) {
+      this.report("changes ready; waiting for registered tasks to become idle");
       return;
     }
     try {
@@ -264,7 +271,6 @@ export async function runRuntimeDevelopment(root: string, args: string[]): Promi
     }
   }
   async function build() {
-    await run(["run", "sdk:snapshot"]);
     await run(["run", "runtime:seed"]);
     const metadata = JSON.parse(await readFile(join(root, "resources/runtime-seed.json"), "utf8"));
     if (typeof metadata.id !== "string") throw new Error("Runtime seed metadata is missing its id");
@@ -307,14 +313,14 @@ export async function runRuntimeDevelopment(root: string, args: string[]): Promi
       {
         inputs: () => developmentInputs(root),
         build,
-        status: () => call<DevelopmentStatus>("runtime.status"),
-        reload: (request) => call<ReloadSeedResult>("runtime.reloadSeed", { ...request }),
+        status: () => call<DevelopmentStatus>("plugins.status"),
+        reload: (request) => call<ReloadSeedResult>("plugins.reload", { ...request }),
         log,
       },
       initial,
       seedId,
     );
-    log("watching runtime, SDK, backend and shared sources; reload waits for idle");
+    log("watching host, plugins, profiles and SDK sources; reload waits for idle");
     log("framework, dependency, configuration and command changes use the FIA restart workflow");
     let previous = initial;
     while (!stopped && child.exitCode === null && child.signalCode === null) {

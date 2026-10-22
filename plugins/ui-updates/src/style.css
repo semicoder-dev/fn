@@ -1,0 +1,13 @@
+.update-card {
+  padding: var(--m-space-6);
+}
+.update-card > p {
+  line-height: 1.8;
+  margin-top: 12px;
+}
+.update-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}

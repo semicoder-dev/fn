@@ -12,8 +12,15 @@
   },
   "entries": [
     "@deepseek-ai/cordis",
+    "@deepseek-ai/cordis-plugin-group",
+    "@deepseek-ai/cordis-plugin-include",
+    "@deepseek-ai/cordis-plugin-loader",
     "@deepseek-ai/dsh-agent",
     "@deepseek-ai/dsh-agent-loop",
+    "@deepseek-ai/dsh-client-modules",
+    "@deepseek-ai/dsh-client-store",
+    "@deepseek-ai/dsh-client-ui-renderer",
+    "@deepseek-ai/dsh-client-ui-slots",
     "@deepseek-ai/dsh-credentials",
     "@deepseek-ai/dsh-credentials-local",
     "@deepseek-ai/dsh-launch-environment",
@@ -46,10 +53,58 @@
         "@deepseek-ai/cordis-plugin-loader": "~1.0.6",
         "@deepseek-ai/cordis-plugin-include": "~1.0.10"
       },
-      "optionalPeers": [
-        "@deepseek-ai/cordis-plugin-include",
-        "@deepseek-ai/cordis-plugin-loader"
-      ]
+      "optionalPeers": ["@deepseek-ai/cordis-plugin-include", "@deepseek-ai/cordis-plugin-loader"]
+    },
+    {
+      "name": "@deepseek-ai/cordis-plugin-group",
+      "version": "1.0.5",
+      "archive": "vendor/dsh/packages/cordis-plugin-group-1.0.5.tgz",
+      "sha256": "0a1bd8cf4d46373c35d1b720979f7eb209efaac1113b5e715e7d47ee18a4bb36",
+      "integrity": "sha512-PGYqImAydmAjmy5fl1Js6qDmk0Ivt1fipa3fOj1KyyRd0tZ9i61a2rhzHc7LaSeBb/spJ1LF4k3Pcppaq+w8fw==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/cordis-plugin-group/-/cordis-plugin-group-1.0.5.tgz",
+      "license": "MIT",
+      "dependencies": {},
+      "peerDependencies": {
+        "@deepseek-ai/cordis": "~4.0.5",
+        "@deepseek-ai/cordis-plugin-loader": "~1.0.6"
+      },
+      "optionalPeers": []
+    },
+    {
+      "name": "@deepseek-ai/cordis-plugin-include",
+      "version": "1.0.10",
+      "archive": "vendor/dsh/packages/cordis-plugin-include-1.0.10.tgz",
+      "sha256": "451da2d7721a1c53b9e4f38d783b9bff749cc66cf5ce61daf15200689deb49ea",
+      "integrity": "sha512-Rdo6Uqf9WfDbfN3dsYkYj/EW+SGuWCSfthz1PoOtZYUr6qrRpqD7ND4Gj3nUYj8XhSGIo8E3xpsck6J5nM5BYQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/cordis-plugin-include/-/cordis-plugin-include-1.0.10.tgz",
+      "license": "MIT",
+      "dependencies": {
+        "js-yaml": "^4.1.0",
+        "@deepseek-ai/cosmokit": "~1.8.6"
+      },
+      "peerDependencies": {
+        "@deepseek-ai/cordis": "~4.0.5",
+        "@deepseek-ai/cordis-plugin-loader": "~1.0.6"
+      },
+      "optionalPeers": []
+    },
+    {
+      "name": "@deepseek-ai/cordis-plugin-loader",
+      "version": "1.0.6",
+      "archive": "vendor/dsh/packages/cordis-plugin-loader-1.0.6.tgz",
+      "sha256": "da55e856a9751aadc2e7323383e93bfdccc825ecef95a85c3940af5775c38e65",
+      "integrity": "sha512-fr011A782oEjkJXCY4pePt2qaPpkGvem7Rmst6Rhwgg6icgwI4eN9QBRb6S/q9XOYGVQUdvL0wXUWyNxO8WipA==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/cordis-plugin-loader/-/cordis-plugin-loader-1.0.6.tgz",
+      "license": "MIT",
+      "dependencies": {
+        "@deepseek-ai/cosmokit": "~1.8.6",
+        "@deepseek-ai/schemastery": "~3.18.5"
+      },
+      "peerDependencies": {
+        "@deepseek-ai/cordis": "~4.0.5",
+        "node-addon-require-builtin": "^0.1.9"
+      },
+      "optionalPeers": ["node-addon-require-builtin"]
     },
     {
       "name": "@deepseek-ai/cosmokit",
@@ -83,9 +138,7 @@
         "@deepseek-ai/dsh-typert-protocol": "0.2.1-rc.2",
         "@deepseek-ai/dsh-session-projection": "0.2.1-rc.2"
       },
-      "optionalPeers": [
-        "@deepseek-ai/dsh-workspace"
-      ]
+      "optionalPeers": ["@deepseek-ai/dsh-workspace"]
     },
     {
       "name": "@deepseek-ai/dsh-agent-loop",
@@ -166,6 +219,62 @@
       "sha256": "abc43c2daa0c476881cd3441d57e662e386f6e07bf60fbde8c9e41e126f70716",
       "integrity": "sha512-T2kcygikRS8rv8cKjgho2x381EgGprv5yQmvHl4/iYbuHE19OW+SLGtHWbV27PGdSHz5U8CJxasYzFosKW4e2A==",
       "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-brand/-/dsh-brand-0.2.1-rc.2.tgz",
+      "license": "MIT",
+      "dependencies": {},
+      "peerDependencies": {
+        "@deepseek-ai/cordis": "~4.0.5"
+      },
+      "optionalPeers": []
+    },
+    {
+      "name": "@deepseek-ai/dsh-client-modules",
+      "version": "0.2.1-rc.2",
+      "archive": "vendor/dsh/packages/dsh-client-modules-0.2.1-rc.2.tgz",
+      "sha256": "181d02ea3289d1c78f04950472a433ad18374cb3b8bc1f3d37ce1c53d5509f02",
+      "integrity": "sha512-6JN2EJgR2Dt0+oLxper1m+WC1lfHppv1QnOHfb9ARsmExcQoxzGPj+Cgzs9zoz57yMb4T2w1xZs+5iDN6j1vHA==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-client-modules/-/dsh-client-modules-0.2.1-rc.2.tgz",
+      "license": "MIT",
+      "dependencies": {},
+      "peerDependencies": {
+        "@deepseek-ai/cordis": "~4.0.5"
+      },
+      "optionalPeers": []
+    },
+    {
+      "name": "@deepseek-ai/dsh-client-store",
+      "version": "0.2.1-rc.2",
+      "archive": "vendor/dsh/packages/dsh-client-store-0.2.1-rc.2.tgz",
+      "sha256": "16feff5e054973cc0c74d83222e9c91180157e1e3ca2f48481a58fd6a66d3142",
+      "integrity": "sha512-cYijKdEVbvROtorEcTl6ZkHMSbi2Utkh3pklaLQuC7aQl0FgMxXsnvNpmlx6AEjJkaZB+Quwmd3tH9EKFZf0dQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-client-store/-/dsh-client-store-0.2.1-rc.2.tgz",
+      "license": "MIT",
+      "dependencies": {},
+      "peerDependencies": {
+        "@deepseek-ai/cordis": "~4.0.5"
+      },
+      "optionalPeers": []
+    },
+    {
+      "name": "@deepseek-ai/dsh-client-ui-renderer",
+      "version": "0.2.1-rc.2",
+      "archive": "vendor/dsh/packages/dsh-client-ui-renderer-0.2.1-rc.2.tgz",
+      "sha256": "db016bdfd1259c93effe6855ec9632d8f892910651dead5c569345b78395d9c4",
+      "integrity": "sha512-HYS0vcreOjVEyizEbPJdbH42w9RU+zWtVXdhrGdPAUdQKTgiX7K12WITv64/w8T2efbO+g94SBTswWjfxGKXoQ==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-client-ui-renderer/-/dsh-client-ui-renderer-0.2.1-rc.2.tgz",
+      "license": "MIT",
+      "dependencies": {},
+      "peerDependencies": {
+        "@deepseek-ai/cordis": "~4.0.5"
+      },
+      "optionalPeers": []
+    },
+    {
+      "name": "@deepseek-ai/dsh-client-ui-slots",
+      "version": "0.2.1-rc.2",
+      "archive": "vendor/dsh/packages/dsh-client-ui-slots-0.2.1-rc.2.tgz",
+      "sha256": "11df5ddaa69724017aba11dd7de88258d31ca9ce90f201ec056e6e2ac511ee35",
+      "integrity": "sha512-/DroOBXeQzFczr07RkMh2FolFL8yW8GTryc7fvaM7QPiFvwHv8oWoBGESQ3AaVQHY9TgpYhJ5X8JuMtaYovE4A==",
+      "tarball": "https://registry.npmjs.org/@deepseek-ai/dsh-client-ui-slots/-/dsh-client-ui-slots-0.2.1-rc.2.tgz",
       "license": "MIT",
       "dependencies": {},
       "peerDependencies": {
@@ -303,9 +412,7 @@
         "@deepseek-ai/cordis-plugin-loader": "~1.0.6",
         "@deepseek-ai/dsh-launch-environment": "0.2.1-rc.2"
       },
-      "optionalPeers": [
-        "@deepseek-ai/cordis-plugin-loader"
-      ]
+      "optionalPeers": ["@deepseek-ai/cordis-plugin-loader"]
     },
     {
       "name": "@deepseek-ai/dsh-llm-retry",

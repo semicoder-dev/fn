@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "plugins",
+    "packages/host",
+    "packages/tool-support",
+    "host",
+    "frontend/main.tsx",
+    "frontend/node-module.ts",
+    "packages/sdk/src",
+    "packages/sdk/build.ts"
+  ],
+  "exclude": []
+}

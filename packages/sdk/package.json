@@ -1,7 +1,7 @@
 {
   "name": "@semicoder/fn-sdk",
   "version": "0.4.0",
-  "description": "Model, storage, UI and plugin build SDK for fn",
+  "description": "Cordis plugin contracts, generic UI primitives and build tools for fn",
   "homepage": "https://semicoder.dev/fn",
   "bugs": {
     "url": "https://github.com/semicoder-dev/fn/issues"
@@ -15,31 +15,18 @@
     "src",
     "build.ts",
     "README.md",
-    "plugin.ts",
-    "templates",
     "styles.ts",
-    "create.ts",
-    "dist",
-    "build-cordis.ts"
+    "dist"
   ],
   "type": "module",
   "exports": {
-    ".": "./src/cordis.ts",
-    "./types": "./src/types.ts",
+    ".": "./src/index.ts",
     "./client": "./src/client.ts",
     "./ui": "./src/ui.tsx",
-    "./runtime": "./src/runtime.ts",
     "./build": "./build.ts",
     "./theme.css": "./src/theme.css",
     "./ui.css": "./dist/ui.css",
-    "./plugin": "./plugin.ts",
-    "./manifest": "./src/manifest.ts",
-    "./tailwind.css": "./src/tailwind.css",
-    "./chat": "./src/chat.ts",
-    "./agent": "./src/agent.ts",
-    "./cordis-client": "./src/cordis-client.tsx",
-    "./build-cordis": "./build-cordis.ts",
-    "./cards": "./src/card-contract.ts"
+    "./tailwind.css": "./src/tailwind.css"
   },
   "publishConfig": {
     "access": "public",
@@ -50,17 +37,16 @@
     "@tailwindcss/postcss": "^4.3.3",
     "lucide-react": "^1.55.0",
     "postcss": "^8.5.28",
-    "postcss-selector-parser": "^7.1.6",
-    "postcss-value-parser": "^4.2.0",
     "tailwindcss": "^4.3.3",
     "zod": "4.6.5"
   },
   "peerDependencies": {
-    "react": ">=19 <20",
-    "react-dom": ">=19 <20",
     "@deepseek-ai/cordis": "4.0.5",
-    "@deepseek-ai/dsh-agent": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-session": "0.2.1-rc.2"
+    "@deepseek-ai/dsh-client-ui-renderer": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-slots": "0.2.1-rc.2",
+    "@semicoder/fia": "0.18.0",
+    "react": ">=19 <20",
+    "react-dom": ">=19 <20"
   },
   "engines": {
     "bun": ">=1.4.2"

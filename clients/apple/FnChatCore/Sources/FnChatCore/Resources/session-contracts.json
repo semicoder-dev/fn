@@ -5,7 +5,7 @@
     "properties": {
       "protocolVersion": {
         "type": "number",
-        "const": 3
+        "const": 4
       },
       "id": {
         "type": "string",
@@ -37,12 +37,12 @@
           },
           "createdAt": {
             "type": "integer",
-            "minimum": -9007199254740991,
+            "minimum": 0,
             "maximum": 9007199254740991
           },
           "expiresAt": {
             "type": "integer",
-            "minimum": -9007199254740991,
+            "minimum": 0,
             "maximum": 9007199254740991
           },
           "state": {
@@ -357,7 +357,7 @@
     "properties": {
       "protocolVersion": {
         "type": "number",
-        "const": 3
+        "const": 4
       },
       "id": {
         "type": "string",
@@ -392,7 +392,7 @@
     "properties": {
       "protocolVersion": {
         "type": "number",
-        "const": 3
+        "const": 4
       },
       "id": {
         "type": "string",
@@ -404,12 +404,7 @@
         "minLength": 1,
         "maxLength": 160
       },
-      "appId": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 160
-      },
-      "endpointId": {
+      "targetId": {
         "type": "string",
         "minLength": 1,
         "maxLength": 160
@@ -426,8 +421,7 @@
       "protocolVersion",
       "id",
       "hostId",
-      "appId",
-      "endpointId",
+      "targetId",
       "name",
       "enabled"
     ],
@@ -439,7 +433,7 @@
     "properties": {
       "protocolVersion": {
         "type": "number",
-        "const": 3
+        "const": 4
       },
       "id": {
         "type": "string",
@@ -497,7 +491,7 @@
     "properties": {
       "protocolVersion": {
         "type": "number",
-        "const": 3
+        "const": 4
       },
       "id": {
         "type": "string",
@@ -517,7 +511,7 @@
             "minLength": 1,
             "maxLength": 160
           },
-          "appId": {
+          "targetId": {
             "type": "string",
             "minLength": 1,
             "maxLength": 160
@@ -555,11 +549,6 @@
           "cwd": {
             "type": "string"
           },
-          "endpointId": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 160
-          },
           "status": {
             "type": "string",
             "enum": [
@@ -571,7 +560,7 @@
         },
         "required": [
           "id",
-          "appId",
+          "targetId",
           "connectionId",
           "modelId",
           "title",
@@ -637,7 +626,7 @@
     "properties": {
       "protocolVersion": {
         "type": "number",
-        "const": 3
+        "const": 4
       },
       "id": {
         "type": "string",
@@ -734,7 +723,7 @@
     "properties": {
       "protocolVersion": {
         "type": "number",
-        "const": 3
+        "const": 4
       },
       "id": {
         "type": "string",
@@ -833,7 +822,7 @@
         "properties": {
           "protocolVersion": {
             "type": "number",
-            "const": 3
+            "const": 4
           },
           "id": {
             "type": "string",
@@ -857,12 +846,7 @@
             "type": "string",
             "const": "create"
           },
-          "appId": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 160
-          },
-          "endpointId": {
+          "targetId": {
             "type": "string",
             "minLength": 1,
             "maxLength": 160
@@ -889,8 +873,7 @@
           "deviceId",
           "createdAt",
           "action",
-          "appId",
-          "endpointId",
+          "targetId",
           "connectionId",
           "modelId"
         ],
@@ -901,7 +884,7 @@
         "properties": {
           "protocolVersion": {
             "type": "number",
-            "const": 3
+            "const": 4
           },
           "id": {
             "type": "string",
@@ -991,7 +974,7 @@
         "properties": {
           "protocolVersion": {
             "type": "number",
-            "const": 3
+            "const": 4
           },
           "id": {
             "type": "string",
@@ -1043,7 +1026,7 @@
         "properties": {
           "protocolVersion": {
             "type": "number",
-            "const": 3
+            "const": 4
           },
           "id": {
             "type": "string",
@@ -1095,7 +1078,7 @@
         "properties": {
           "protocolVersion": {
             "type": "number",
-            "const": 3
+            "const": 4
           },
           "id": {
             "type": "string",
@@ -1141,7 +1124,7 @@
         "properties": {
           "protocolVersion": {
             "type": "number",
-            "const": 3
+            "const": 4
           },
           "id": {
             "type": "string",
@@ -1193,7 +1176,7 @@
         "properties": {
           "protocolVersion": {
             "type": "number",
-            "const": 3
+            "const": 4
           },
           "id": {
             "type": "string",
@@ -1243,7 +1226,7 @@
         "properties": {
           "protocolVersion": {
             "type": "number",
-            "const": 3
+            "const": 4
           },
           "id": {
             "type": "string",
@@ -1302,7 +1285,7 @@
     "properties": {
       "protocolVersion": {
         "type": "number",
-        "const": 3
+        "const": 4
       },
       "id": {
         "type": "string",

@@ -6,6 +6,19 @@ import react from "@vitejs/plugin-react";
 import fia from "@semicoder/fia/vite";
 export default defineConfig({
   root: "frontend",
+  resolve: {
+    alias: [
+      {
+        find: /^node:module$/,
+        replacement: resolve(import.meta.dirname, "frontend/node-module.ts"),
+      },
+    ],
+  },
+  define: {
+    "process.versions.node": '"0.0.0"',
+    "process.execArgv": "[]",
+    "process.env.CORDIS_SHARED": "undefined",
+  },
   plugins: [sdkStyles(), tailwindcss(), react(), fia()],
   build: { outDir: "dist", emptyOutDir: true },
 });

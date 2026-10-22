@@ -1,0 +1,656 @@
+import "./style.css";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import type { Context } from "@deepseek-ai/cordis";
+import type { APIClient, z } from "@semicoder/fia/api";
+import { client, readAllPages } from "@semicoder/fn-sdk/client";
+import type { PropsRenderSlots } from "@deepseek-ai/dsh-client-ui-slots";
+import { NavigationButton } from "@semicoder/fn-ui-navigation/view";
+import type UiSession from "@semicoder/fn-ui-session/types";
+import type Navigation from "@semicoder/fn-ui-navigation/types";
+import type {} from "@semicoder/fn-ui-layout/contract";
+import type {} from "./contract.ts";
+import sessionApi, { runtimeSession } from "@semicoder/fn-session-controller/contract";
+import approvalApi from "@semicoder/fn-session-controller/approval-contract";
+import connectionApi, { runtimeConnection } from "@semicoder/fn-connections/contract";
+import modelApi from "@semicoder/fn-models/contract";
+import chatApi from "@semicoder/fn-chat/contract";
+import type {
+  SessionDisplayItem,
+  SessionProjectionPage,
+} from "@semicoder/fn-session-controller/projection";
+export const inject = [
+  "uiSession",
+  "layoutSlots",
+  "api:sessions",
+  "api:chat",
+  "api:connections",
+  "api:models",
+  "api:approvals",
+  "slots",
+  "navigation",
+  "platform",
+];
+type Session = z.infer<typeof runtimeSession>;
+type Connection = z.infer<typeof runtimeConnection>;
+type Approval = { id: string; sessionId: string; toolName: string; reason?: string };
+type Endpoint = { targetId: string; name: string };
+type Remote = {
+  sessions: APIClient<typeof sessionApi>;
+  approvals: APIClient<typeof approvalApi>;
+  connections: APIClient<typeof connectionApi>;
+  models: APIClient<typeof modelApi>;
+  chat: APIClient<typeof chatApi>;
+};
+const children = {
+  "fn.chat.message": { kind: "single", scope: "root" },
+  "fn.chat.cards": { kind: "list", scope: "root" },
+  "fn.chat.input-actions": { kind: "list", scope: "root" },
+} as const;
+function Conversation({
+  remote,
+  navigation,
+  selection,
+  renderSlot,
+}: PropsRenderSlots<keyof typeof children> & {
+  remote: Remote;
+  navigation: Navigation;
+  selection: UiSession;
+}) {
+  const [sessions, setSessions] = useState<Session[]>([]),
+    [connections, setConnections] = useState<Connection[]>([]),
+    [endpoints, setEndpoints] = useState<Endpoint[]>([]);
+  const [approvals, setApprovals] = useState<Approval[]>([]),
+    [items, setItems] = useState<SessionDisplayItem[]>([]);
+  const [sessionId, setSessionId] = useState(
+    () => localStorage.getItem("fn.plugins-v1.session") ?? "",
+  );
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [archived, setArchived] = useState(false),
+    [creating, setCreating] = useState(false),
+    [sending, setSending] = useState(false);
+  const [error, setError] = useState(""),
+    [online, setOnline] = useState(false);
+  const [stream, setStream] = useState<{
+    attemptId: string;
+    index: number;
+    text: string;
+    reasoning: string;
+  } | null>(null);
+  const revision = useRef(0),
+    current = useRef(sessionId),
+    mounted = useRef(false);
+  const requestIds = useRef(new Map<string, { text: string; id: string }>());
+  current.current = sessionId;
+  useEffect(() => {
+    selection.select(sessionId);
+    return () => selection.select();
+  }, [sessionId, selection]);
+  const active = sessions.find((session) => session.id === sessionId),
+    text = drafts[sessionId] ?? "";
+  const refresh = useCallback(async () => {
+    const call = ++revision.current;
+    try {
+      const [sessions, connections, endpoints, approvals] = await Promise.all([
+        readAllPages((offset, limit) => remote.sessions.call("list", { offset, limit })),
+        readAllPages((offset, limit) => remote.connections.call("list", { offset, limit })),
+        remote.chat.call("endpoints", {}),
+        remote.approvals.call("list", {}),
+      ]);
+      if (!mounted.current || call !== revision.current) return;
+      setSessions(sessions.sort((a, b) => b.updatedAt - a.updatedAt || a.id.localeCompare(b.id)));
+      setConnections(connections);
+      setEndpoints(endpoints);
+      setApprovals(approvals);
+      setOnline(true);
+      const id = current.current,
+        result: SessionDisplayItem[] = [];
+      let offset = 0;
+      if (id && sessions.some((session) => session.id === id))
+        for (let page = 0; page < 1000; page++) {
+          const projection = (await remote.sessions.call("projection", {
+            id,
+            offset,
+            limit: 100,
+          })) as unknown as SessionProjectionPage;
+          result.push(...projection.items);
+          if (!projection.hasMore) break;
+          if (projection.nextOffset <= offset)
+            throw new Error("Session projection did not advance");
+          offset = projection.nextOffset;
+        }
+      if (mounted.current && call === revision.current && current.current === id) setItems(result);
+    } catch (error) {
+      if (mounted.current && call === revision.current) {
+        setOnline(false);
+        setError(String(error));
+      }
+    }
+  }, []);
+  useEffect(() => {
+    mounted.current = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      if (!timer)
+        timer = setTimeout(() => {
+          timer = undefined;
+          void refresh();
+        }, 100);
+    };
+    const off = remote.sessions.on("changed", (event) => {
+      if (event.kind === "stream" && event.sessionId === current.current && event.data) {
+        const frame = event.data as {
+          type: string;
+          attemptId: string;
+          index?: number;
+          text?: string;
+          reasoning?: boolean;
+        };
+        if (frame.type === "end") setStream(null);
+        else if (frame.type === "start")
+          setStream({ attemptId: frame.attemptId, index: -1, text: "", reasoning: "" });
+        else
+          setStream((previous) => {
+            const value =
+              previous?.attemptId === frame.attemptId
+                ? previous
+                : { attemptId: frame.attemptId, index: -1, text: "", reasoning: "" };
+            if ((frame.index ?? -1) <= value.index) return value;
+            const key = frame.reasoning ? "reasoning" : "text";
+            return {
+              ...value,
+              index: frame.index ?? value.index,
+              [key]: (value[key] + (frame.text ?? "")).slice(-262144),
+            };
+          });
+      }
+      schedule();
+    });
+    const stops = [
+      off,
+      remote.connections.on("changed", schedule),
+      remote.chat.on("changed", schedule),
+      remote.sessions.onReconnect(() => {
+        setStream(null);
+        schedule();
+      }),
+    ];
+    void refresh();
+    return () => {
+      mounted.current = false;
+      revision.current++;
+      clearTimeout(timer);
+      stops.forEach((stop) => stop());
+    };
+  }, [refresh]);
+  useEffect(() => {
+    localStorage.setItem("fn.plugins-v1.session", sessionId);
+    setStream(null);
+    setItems([]);
+    void refresh();
+  }, [sessionId, refresh]);
+  const action = async (operation: () => Promise<unknown>) => {
+    setError("");
+    try {
+      await operation();
+      await refresh();
+    } catch (error) {
+      if (mounted.current) setError(String(error));
+    }
+  };
+  async function send(event: React.FormEvent) {
+    event.preventDefault();
+    if (!active || !text.trim() || sending) return;
+    const id = active.id,
+      body = text;
+    let request = requestIds.current.get(id);
+    if (!request || request.text !== body) {
+      request = { text: body, id: crypto.randomUUID() };
+      requestIds.current.set(id, request);
+    }
+    setSending(true);
+    setError("");
+    try {
+      await remote.sessions.call("send", { id, text: body, requestId: request.id });
+      requestIds.current.delete(id);
+      if (mounted.current)
+        setDrafts((previous) => (previous[id] === body ? { ...previous, [id]: "" } : previous));
+      await refresh();
+    } catch (error) {
+      if (mounted.current) setError(String(error));
+    } finally {
+      if (mounted.current) setSending(false);
+    }
+  }
+  return (
+    <div style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0 }}>
+      {error && (
+        <div role="alert" className="runtime-error">
+          <span>{error}</span>
+          <button onClick={() => setError("")}>关闭</button>
+        </div>
+      )}
+      <div className="runtime-chat">
+        <aside className="runtime-sessions">
+          <button className="runtime-primary" onClick={() => setCreating(true)}>
+            ＋ 新会话
+          </button>
+          <button onClick={() => setArchived(!archived)}>
+            {archived ? "返回当前会话" : "查看已归档"}
+          </button>
+          {sessions
+            .filter((session) => session.archived === archived)
+            .map((session) => (
+              <button
+                key={session.id}
+                className={session.id === sessionId ? "selected" : ""}
+                onClick={() => setSessionId(session.id)}
+              >
+                <strong>{session.title}</strong>
+                <small>
+                  {endpoints.find((endpoint) => endpoint.targetId === session.targetId)?.name ??
+                    session.targetId}{" "}
+                  · {session.status === "running" ? "运行中" : "空闲"}
+                </small>
+              </button>
+            ))}
+        </aside>
+        <section className="runtime-conversation">
+          {active ? (
+            <>
+              <header>
+                <div>
+                  <h1>{active.title}</h1>
+                  <p>
+                    {connections.find((connection) => connection.id === active.connectionId)?.name}{" "}
+                    · {active.modelId}
+                  </p>
+                </div>
+                <SessionModel remote={remote} session={active} action={action} />
+                <button
+                  onClick={() =>
+                    void action(async () => {
+                      await remote.sessions.call("archive", {
+                        id: active.id,
+                        archived: !active.archived,
+                      });
+                      setArchived(!active.archived);
+                    })
+                  }
+                >
+                  {active.archived ? "恢复会话" : "归档"}
+                </button>
+              </header>
+              <div className="runtime-messages">
+                {!items.length && <div className="runtime-empty">发送消息，开始这次对话。</div>}
+                {items.map((item) => (
+                  <React.Fragment key={item.id}>
+                    {renderSlot("fn.chat.message", { item })}
+                  </React.Fragment>
+                ))}
+                {renderSlot("fn.chat.cards", {
+                  sessionId: active.id,
+                  enabled: endpoints.some((endpoint) => endpoint.targetId === active.targetId),
+                })}
+                {stream && (
+                  <article className="runtime-message assistant">
+                    <small>助手 · 正在生成</small>
+                    {stream.reasoning && (
+                      <details>
+                        <summary>思考过程</summary>
+                        <pre>{stream.reasoning}</pre>
+                      </details>
+                    )}
+                    <div className="runtime-message-text">{stream.text}</div>
+                  </article>
+                )}
+                {active.status === "running" && <p role="status">正在处理…</p>}
+              </div>
+              {approvals
+                .filter((approval) => approval.sessionId === active.id)
+                .map((approval) => (
+                  <div className="runtime-approval" key={approval.id}>
+                    <strong>允许执行 {approval.toolName}？</strong>
+                    <p>{approval.reason}</p>
+                    <button
+                      onClick={() =>
+                        void action(() =>
+                          remote.approvals.call("reply", { id: approval.id, allow: false }),
+                        )
+                      }
+                    >
+                      拒绝
+                    </button>
+                    <button
+                      onClick={() =>
+                        void action(() =>
+                          remote.approvals.call("reply", { id: approval.id, allow: true }),
+                        )
+                      }
+                    >
+                      允许一次
+                    </button>
+                  </div>
+                ))}
+              <form className="runtime-composer" onSubmit={send}>
+                <textarea
+                  aria-label="消息"
+                  placeholder="输入消息…"
+                  value={text}
+                  onChange={(event) =>
+                    setDrafts((previous) => ({ ...previous, [sessionId]: event.target.value }))
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                      event.preventDefault();
+                      event.currentTarget.form?.requestSubmit();
+                    }
+                  }}
+                />
+                <div>
+                  <small>
+                    {active.policy === "controlled" ? "写入与外部操作需要批准" : "已启用自动执行"} ·
+                    ⌘ Enter 发送
+                  </small>
+                  {renderSlot("fn.chat.input-actions", { session: active })}
+                  {active.status === "running" && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void action(() => remote.sessions.call("cancel", { id: active.id }))
+                      }
+                    >
+                      停止
+                    </button>
+                  )}
+                  <button className="runtime-primary" disabled={!online || sending || !text.trim()}>
+                    {sending ? "正在提交…" : "发送"}
+                  </button>
+                </div>
+              </form>
+            </>
+          ) : (
+            <div className="runtime-welcome">
+              <div className="runtime-mark">fn</div>
+              <h1>为每件事留一个会话</h1>
+              <p>选择模型连接，继续你的工作。</p>
+              <button
+                onClick={() =>
+                  connections.some((connection) => connection.configured)
+                    ? setCreating(true)
+                    : navigation.go("settings/models")
+                }
+              >
+                {connections.some((connection) => connection.configured)
+                  ? "新建会话"
+                  : "添加模型连接"}
+              </button>
+            </div>
+          )}
+        </section>
+      </div>
+      {creating && (
+        <NewSession
+          remote={remote}
+          endpoints={endpoints}
+          connections={connections}
+          close={() => setCreating(false)}
+          created={(id) => {
+            setSessionId(id);
+            setCreating(false);
+            void refresh();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+function Message({ item }: { item: SessionDisplayItem }) {
+  return (
+    <article className={`runtime-message ${item.kind}`}>
+      <div className="runtime-message-label">
+        {item.kind === "user"
+          ? "你"
+          : item.kind === "assistant"
+            ? "助手"
+            : (item.toolName ?? "会话状态")}
+        {item.state ? ` · ${item.state}` : ""}
+      </div>
+      {item.reasoning && (
+        <details>
+          <summary>思考过程</summary>
+          <pre>{item.reasoning}</pre>
+        </details>
+      )}
+      <div className="runtime-message-text">{item.text}</div>
+      {item.truncated && <small>此条内容较长，展示已截断。</small>}
+    </article>
+  );
+}
+export function apply(ctx: Context) {
+  const remote = {
+    sessions: client(ctx, "sessions", sessionApi),
+    approvals: client(ctx, "approvals", approvalApi),
+    connections: client(ctx, "connections", connectionApi),
+    models: client(ctx, "models", modelApi),
+    chat: client(ctx, "chat", chatApi),
+  };
+  ctx.slots.register({ name: "fn.sidebar.top", id: "chat", order: 0 }, () => (
+    <NavigationButton navigation={ctx.navigation} path="chat" label="fn Chat" compact>
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      >
+        <path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6 4V6a2 2 0 0 1 2-2Z" />
+      </svg>
+    </NavigationButton>
+  ));
+  ctx.slots.register(
+    {
+      name: "fn.main",
+      key: "chat",
+      children,
+      inject: () => ({ remote, navigation: ctx.navigation, selection: ctx.uiSession }),
+    },
+    Conversation,
+  );
+  ctx.slots.register({ name: "fn.chat.message", priority: 0 }, Message);
+  ctx.provide("chatSlots", true);
+}
+
+function SessionModel({
+  remote,
+  session,
+  action,
+}: {
+  remote: Remote;
+  session: Session;
+  action: (operation: () => Promise<unknown>) => Promise<void>;
+}) {
+  const [models, setModels] = useState<{ id: string; name: string }[]>([]);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let disposed = false;
+    setModels([]);
+    setError("");
+    void readAllPages((offset, limit) =>
+      remote.connections.call("models", { id: session.connectionId, offset, limit }),
+    )
+      .then((value) => {
+        if (!disposed) setModels(value);
+      })
+      .catch((caught) => {
+        if (!disposed) setError(String(caught));
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [session.connectionId]);
+  return (
+    <div>
+      <select
+        aria-label="会话模型"
+        value={session.modelId}
+        disabled={session.status === "running" || !models.length}
+        onChange={(event) => {
+          const modelId = event.target.value;
+          void action(() => remote.sessions.call("model", { id: session.id, modelId }));
+        }}
+      >
+        {!models.some((model) => model.id === session.modelId) && (
+          <option value={session.modelId}>{session.modelId}</option>
+        )}
+        {models.map((model) => (
+          <option key={model.id} value={model.id}>
+            {model.name}
+          </option>
+        ))}
+      </select>
+      {error && <small role="alert">{error}</small>}
+    </div>
+  );
+}
+
+function NewSession({
+  remote,
+  endpoints,
+  connections,
+  close,
+  created,
+}: {
+  remote: Remote;
+  endpoints: Endpoint[];
+  connections: Connection[];
+  close: () => void;
+  created: (id: string) => void;
+}) {
+  const available = connections.filter((connection) => connection.configured);
+  const [targetId, setTargetId] = useState(endpoints[0]?.targetId ?? "");
+  const [connectionId, setConnectionId] = useState(available[0]?.id ?? "");
+  const [modelId, setModelId] = useState("");
+  const [models, setModels] = useState<{ id: string; name: string }[]>([]);
+  const [title, setTitle] = useState("");
+  const [cwd, setCwd] = useState("");
+  const [automatic, setAutomatic] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let alive = true;
+    setModelId("");
+    setModels([]);
+    if (connectionId)
+      void readAllPages((offset, limit) => remote.models.call("saved", { offset, limit }))
+        .then((value) => value.filter((model) => model.connectionId === connectionId))
+        .then(
+          (result) => {
+            if (alive) {
+              setModels(result);
+              setModelId(result[0]?.id ?? "");
+            }
+          },
+          (caught) => {
+            if (alive) setError(String(caught));
+          },
+        );
+    return () => {
+      alive = false;
+    };
+  }, [connectionId]);
+  async function create(event: React.FormEvent) {
+    event.preventDefault();
+    setPending(true);
+    setError("");
+    try {
+      const session = await remote.sessions.call("create", {
+        targetId,
+        connectionId,
+        modelId,
+        title: title || "新会话",
+        ...(cwd ? { cwd } : {}),
+        policy: automatic ? "automatic" : "controlled",
+      });
+      created(session.id);
+    } catch (caught) {
+      setError(String(caught));
+    } finally {
+      setPending(false);
+    }
+  }
+  return (
+    <div className="runtime-modal-backdrop">
+      <section
+        className="runtime-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-session-title"
+      >
+        <header>
+          <h2 id="new-session-title">新会话</h2>
+          <button aria-label="关闭" onClick={close}>
+            ×
+          </button>
+        </header>
+        <form onSubmit={create} className="runtime-form">
+          <label>
+            对话入口
+            <select value={targetId} onChange={(event) => setTargetId(event.target.value)}>
+              {endpoints.map((endpoint) => (
+                <option key={endpoint.targetId} value={endpoint.targetId}>
+                  {endpoint.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            连接
+            <select value={connectionId} onChange={(e) => setConnectionId(e.target.value)} required>
+              {available.map((connection) => (
+                <option key={connection.id} value={connection.id}>
+                  {connection.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            模型
+            <select value={modelId} onChange={(e) => setModelId(e.target.value)} required>
+              <option value="">{models.length ? "选择模型" : "请先在设置中添加模型"}</option>
+              {models.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            标题
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="新会话" />
+          </label>
+          <label>
+            工作目录
+            <input
+              value={cwd}
+              onChange={(e) => setCwd(e.target.value)}
+              placeholder="可选绝对路径；文件与进程工具需要此项"
+            />
+          </label>
+          <label className="runtime-checkbox">
+            <input
+              type="checkbox"
+              checked={automatic}
+              onChange={(e) => setAutomatic(e.target.checked)}
+            />
+            自动批准此会话的工具操作
+          </label>
+          {error && <p role="alert">{error}</p>}
+          <button className="runtime-primary" disabled={pending || !connectionId || !modelId}>
+            {pending ? "正在创建…" : "创建会话"}
+          </button>
+        </form>
+      </section>
+    </div>
+  );
+}

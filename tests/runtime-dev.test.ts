@@ -17,7 +17,9 @@ function fixture() {
     epoch: "process-1",
     seedId: "seed-1",
     busy: false,
-    generation: { pending: false, installing: false, error: null },
+    pending: false,
+    installing: false,
+    error: null,
   };
   const reloads: ReloadSeedRequest[] = [];
   const logs: string[] = [];
@@ -159,7 +161,9 @@ test("unavailable endpoints and pending installations defer without another proc
     epoch: "process-1",
     seedId: "seed-1",
     busy: false,
-    generation: { pending: true, installing: false, error: null },
+    pending: true,
+    installing: false,
+    error: null,
   });
   await f.supervisor.poll();
   expect(f.reloads).toHaveLength(0);
@@ -172,7 +176,9 @@ test("an activation rollback is reported once instead of restarting repeatedly",
   f.setStatus({
     epoch: "process-2",
     seedId: "seed-1",
-    generation: { pending: false, installing: false, error: "plugin incompatible" },
+    pending: false,
+    installing: false,
+    error: "plugin incompatible",
   });
   await f.supervisor.poll();
   await f.supervisor.poll();
@@ -196,7 +202,7 @@ test("an asynchronous restart failure resumes watching and retries after a backe
   const f = fixture();
   f.setInput({ backend: "backend-2" });
   await f.supervisor.poll();
-  f.setStatus({ generation: { pending: false, installing: false, error: "restart refused" } });
+  f.setStatus({ pending: false, installing: false, error: "restart refused" });
   await f.supervisor.poll();
   await f.supervisor.poll();
   expect(f.reloads).toHaveLength(1);
@@ -229,47 +235,54 @@ test("source fingerprints exclude generated files and retain separate backend/de
   const root = await mkdtemp(join(tmpdir(), "fn-runtime-dev-"));
   temporary.push(root);
   for (const directory of [
-    "packages/runtime/src",
-    "packages/runtime/tests",
-    "packages/runtime/node_modules/pkg",
+    "packages/host/src",
+    "packages/host/tests",
+    "packages/host/node_modules/pkg",
     "packages/sdk/src",
     "packages/sdk/dist",
-    "backend",
-    "shared",
+    "host",
+    "plugins",
     "resources",
+    "profiles",
+    "packages/tool-support",
+    "framework/fia/packages",
   ])
     await mkdir(join(root, directory), { recursive: true });
   const write = (path: string, contents = "fixture") => writeFile(join(root, path), contents);
-  await write("packages/runtime/package.json", "{}");
+  await write("packages/host/package.json", "{}");
   await write("packages/sdk/package.json", "{}");
-  await write("packages/runtime/src/index.ts");
-  await write("packages/sdk/src/cordis-client.tsx");
+  await write("packages/host/src/index.ts");
+  await write("packages/sdk/src/client.ts");
+  await write("package.json", "{}");
+  await write("bun.lock", "{}");
   const initial = await developmentInputs(root);
   for (const path of [
-    "packages/runtime/tests/test.ts",
-    "packages/runtime/node_modules/pkg/index.ts",
-    "packages/sdk/src/cordis-types.ts",
-    "packages/sdk/src/card-contract.ts",
+    "packages/host/tests/test.ts",
+    "packages/host/node_modules/pkg/index.ts",
     "packages/sdk/dist/ui.css",
     "resources/runtime-seed.json",
   ])
     await write(path);
   expect(await developmentInputs(root)).toEqual(initial);
-  await write("backend/runtime.ts");
+  await write("host/backend.ts");
   const backend = await developmentInputs(root);
   expect(backend.seed).toBe(initial.seed);
   expect(backend.backend).not.toBe(initial.backend);
-  await write("packages/runtime/package.json", '{"dependencies":{}}');
+  await write("package.json", '{"dependencies":{}}');
   const dependencies = await developmentInputs(root);
   expect(dependencies.seed).toBe(initial.seed);
   expect(dependencies.dependencies).not.toBe(initial.dependencies);
-  await write("packages/runtime/src/index.ts", "updated");
+  await write("packages/host/package.json", '{"dependencies":{"fixture":"1.0.0"}}');
+  expect((await developmentInputs(root)).dependencies).not.toBe(dependencies.dependencies);
+  await write("packages/host/src/index.ts", "updated");
   expect((await developmentInputs(root)).seed).not.toBe(initial.seed);
   expect(runtimeWatchIgnores).toEqual([
-    "packages/runtime",
+    "packages/host",
     "packages/sdk",
-    "backend",
-    "shared",
+    "packages/tool-support",
+    "plugins",
+    "profiles",
+    "host",
     "resources",
     "tests",
     "scripts",

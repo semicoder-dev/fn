@@ -1,33 +1,75 @@
-import { createWebClient } from "./web-client";
-import { createAgentClient } from "./agent-client";
-import type { HostBridge, JSONValue, ModelInfo, ModelRequest, ModelRun } from "./types";
+import type { Context } from "@deepseek-ai/cordis";
+import type { APIClient, APIContract } from "@semicoder/fia/api";
+import type { native } from "@semicoder/fia/client";
+import type {} from "@deepseek-ai/dsh-client-ui-renderer/client";
 
-export function createPluginClient(pluginId: string) {
-  const bridge = (globalThis as typeof globalThis & { __FN_BRIDGE__?: HostBridge }).__FN_BRIDGE__;
-  if (!bridge) throw new Error("This plugin must be opened in fn.");
-  const call = <T>(method: string, input: unknown) => bridge.call(method, input) as Promise<T>;
-  return {
-    agents: createAgentClient(bridge, pluginId),
-    web: createWebClient(bridge, pluginId),
-    models: {
-      list: () => call<ModelInfo[]>("models.list", {}),
-      onChange: (listener: () => void) => bridge.on("models.changed", listener),
-      start: (input: ModelRequest) => call<ModelRun>("models.generate", { pluginId, ...input }),
-    },
-    runs: {
-      list: () => call<ModelRun[]>("runs.list", { pluginId }),
-      get: (runId: string) => call<ModelRun>("runs.get", { pluginId, runId }),
-      cancel: (runId: string) => call<ModelRun>("runs.cancel", { pluginId, runId }),
-      onChange: (listener: () => void) => bridge.on("runs.changed", (payload) => {
-        if ((payload as { pluginId: string }).pluginId === pluginId) listener();
-      }),
-    },
-    kv: {
-      get: (key: string) => call<JSONValue | null>("kv.get", { pluginId, key }),
-      set: (key: string, value: JSONValue) => call<null>("kv.set", { pluginId, key, value }),
-      delete: (key: string) => call<null>("kv.delete", { pluginId, key }),
-    },
-    invoke: <T = JSONValue>(method: string, input: unknown) => call<T>("plugins.invoke", { pluginId, method, input }),
-    onReconnect: bridge.onReconnect,
+export interface ClientPlatform {
+  readonly native: typeof native;
+  readonly api: APIClient;
+}
+declare module "@deepseek-ai/cordis" {
+  interface Context {
+    platform: ClientPlatform;
+  }
+}
+
+/** A typed namespace view; requests and subscriptions are owned by the calling fiber. */
+export function client<C extends APIContract>(
+  ctx: Context,
+  namespace: string,
+  _contract: C,
+): APIClient<C> {
+  const signal = new AbortController();
+  const stops = new Set<() => void>();
+  let closed = false;
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    signal.abort();
+    for (const off of stops) off();
+    stops.clear();
   };
+  ctx.effect(() => close);
+  const own = (stop: () => void) => {
+    stops.add(stop);
+    return () => {
+      stops.delete(stop);
+      stop();
+    };
+  };
+  return {
+    call: (method, input, options = {}) => {
+      signal.signal.throwIfAborted();
+      return ctx.platform.api.call(`${namespace}.${method}`, input, {
+        ...options,
+        signal: AbortSignal.any([signal.signal, ...(options.signal ? [options.signal] : [])]),
+      }) as never;
+    },
+    on: (event, listener, options) => {
+      signal.signal.throwIfAborted();
+      return own(ctx.platform.api.on(`${namespace}.${event}`, listener as never, options));
+    },
+    onReconnect: (listener) => {
+      signal.signal.throwIfAborted();
+      return own(ctx.platform.api.onReconnect(listener));
+    },
+    close,
+  };
+}
+export async function readAllPages<T>(
+  read: (
+    offset: number,
+    limit: number,
+  ) => Promise<{ items: T[]; hasMore: boolean; nextOffset: number }>,
+): Promise<T[]> {
+  const result: T[] = [];
+  let offset = 0;
+  for (let page = 0; page < 1000; page++) {
+    const value = await read(offset, 100);
+    result.push(...value.items);
+    if (!value.hasMore) return result;
+    if (value.nextOffset <= offset) throw new Error("Pagination did not advance");
+    offset = value.nextOffset;
+  }
+  throw new Error("Pagination limit exceeded");
 }

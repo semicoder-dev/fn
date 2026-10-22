@@ -450,3 +450,11 @@ export type {
 
 export { createClient, APIError } from "./api-client.ts";
 export type { APIClient, CallOptions } from "./business-api.ts";
+
+/** Fetch an application HTTP route through the same native/browser authorization transport. */
+export function fetchBackend(path: string, init?: RequestInit): Promise<Response> {
+  const url = new URL(path, window.location.href);
+  if (url.origin !== window.location.origin || !url.pathname.startsWith("/api/"))
+    throw new Error("Expected an application /api/ route");
+  return frontendFetch(url.pathname + url.search, init);
+}

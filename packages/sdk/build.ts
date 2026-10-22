@@ -1,112 +1,129 @@
-import * as React from "react";
-import * as JSX from "react/jsx-runtime";
-import * as JSXDev from "react/jsx-dev-runtime";
-import * as ReactDOM from "react-dom";
-import * as ReactDOMClient from "react-dom/client";
-import { resolve } from "node:path";
-import { mkdir, rename, rm } from "node:fs/promises";
-import { buildPluginStyles } from "./styles";
-import { uiExports, sharedModules } from "./src/shared-modules";
-import { safeFile } from "./src/style-check";
-import { iconSvgSchema, MAX_ICON_SVG_BYTES, manifestSchema } from "./src/manifest";
-const names: Record<string, readonly string[]> = Object.fromEntries([
-  ["react", Object.keys(React)],
-  ["react/jsx-runtime", Object.keys(JSX)],
-  ["react/jsx-dev-runtime", Object.keys(JSXDev)],
-  ["react-dom", Object.keys(ReactDOM)],
-  ["react-dom/client", Object.keys(ReactDOMClient)],
-  ["@semicoder/fn-sdk/ui", uiExports],
-]);
-/** Emit a single host-shared UI bundle and page-scoped CSS. Never leave a partial dist. */
-export async function buildPlugin(directory: string) {
-  const root = resolve(directory),
-    dist = resolve(root, "dist"),
-    temporary = resolve(root, `.fn-build-${crypto.randomUUID()}`);
-  await rm(dist, { recursive: true, force: true });
-  await mkdir(temporary);
+import { mkdir, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
+import type { PluginMetadata } from "./src/index.ts";
+export const sharedClientModules = [
+  "react",
+  "react/jsx-runtime",
+  "react/jsx-dev-runtime",
+  "react-dom",
+  "react-dom/client",
+  "@deepseek-ai/cordis",
+  "@deepseek-ai/dsh-client-ui-slots",
+  "@deepseek-ai/dsh-client-store",
+  "@semicoder/fia/api",
+  "@semicoder/fia/client",
+  "@semicoder/fn-sdk/client",
+  "@semicoder/fn-sdk/ui",
+];
+export function parsePluginMetadata(value: unknown): PluginMetadata {
+  if (value === undefined) return {};
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error("Invalid fn metadata");
+  const metadata = value as Record<string, unknown>;
+  for (const key of Object.keys(metadata))
+    if (
+      !["name", "description", "icon", "iconSvg", "clientSource", "bundle", "profile"].includes(key)
+    )
+      throw new Error(`Unknown fn metadata: ${key}`);
+  for (const key of ["name", "description", "icon", "iconSvg", "clientSource", "bundle", "profile"])
+    if (metadata[key] !== undefined && typeof metadata[key] !== "string")
+      throw new Error(`Invalid fn.${key}`);
+  return metadata as PluginMetadata;
+}
+async function inside(root: string, path: string) {
+  if (!path.startsWith("./")) throw new Error("Exports must be package-relative");
+  const target = await realpath(resolve(root, path));
+  const rel = relative(root, target);
+  if (isAbsolute(rel) || rel === ".." || rel.startsWith("../"))
+    throw new Error("Export escapes package");
+  return target;
+}
+export async function inspectPlugin(directory: string) {
+  const root = await realpath(directory),
+    pkg = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
+  if (
+    !/^(@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/.test(pkg.name) ||
+    pkg.type !== "module" ||
+    !(
+      typeof pkg.version === "string" &&
+      /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(
+        pkg.version,
+      )
+    )
+  )
+    throw new Error("Plugin requires npm name/version and type: module");
+  if (
+    pkg.name.startsWith("@semicoder/") &&
+    (!pkg.name.startsWith("@semicoder/fn-") || pkg.name.startsWith("@semicoder/fn-cordis-"))
+  )
+    throw new Error("Use @semicoder/fn-<capability>");
+  const metadata = parsePluginMetadata(pkg.fn);
+  if (!pkg.exports?.["."] && !pkg.exports?.["./client"])
+    throw new Error("Plugin requires a backend or client export");
+  if (typeof pkg.exports["."] === "string") await inside(root, pkg.exports["."]);
+  if (pkg.exports["./client"] && pkg.exports["./client"] !== "./dist/client.js")
+    throw new Error("Client output must be ./dist/client.js");
+  return { root, pkg, metadata };
+}
+/** Build the upstream lazy CommonJS factory ABI; shared modules stay external. */
+export async function buildPlugin(directory: string): Promise<void> {
+  const { root, pkg, metadata } = await inspectPlugin(directory);
+  if (!pkg.exports["./client"]) return;
+  const source = await inside(root, metadata.clientSource ?? "./src/client.tsx");
+  const output = resolve(root, "dist"),
+    staging = resolve(root, `.fn-build-${crypto.randomUUID()}`);
   try {
-    const manifest = manifestSchema.parse(
-      (await Bun.file(resolve(root, "package.json")).json()).fn,
+    const result = await Bun.build({
+      entrypoints: [source],
+      target: "browser",
+      format: "cjs",
+      outdir: staging,
+      external: sharedClientModules,
+      jsx: { development: false },
+      naming: "[name].[ext]",
+      publicPath: "__FN_ASSET_BASE__/",
+    });
+    if (!result.success) throw new AggregateError(result.logs, "Plugin client build failed");
+    const javascript = result.outputs.find((file) => file.path.endsWith(".js"));
+    if (!javascript) throw new Error("Missing browser module");
+    const css = (
+      await Promise.all(
+        result.outputs.filter((file) => file.path.endsWith(".css")).map((file) => file.text()),
+      )
+    ).join("\n");
+    const javascriptSource = (await javascript.text()).replace(
+      /(["'])__FN_ASSET_BASE__\/([^"']+)\1/g,
+      (_match, _quote, file: string) => `new URL(${JSON.stringify(file)},assetBase).href`,
     );
-    if (manifest.iconSvg) {
-      const file = Bun.file(await safeFile(root, "src/icon.svg"));
-      if (file.size > MAX_ICON_SVG_BYTES) throw new Error("SVG 图标不能超过 8 KiB");
-      const svg = iconSvgSchema.parse(
-        new TextDecoder("utf-8", { fatal: true }).decode(await file.bytes()),
-      );
-      await Bun.write(resolve(temporary, "icon.svg"), svg);
+    const code = `(function(assetBase){window.__ModuleLoader__.load({id:${JSON.stringify(pkg.name + "/client")},factory:function(require){\nvar module={exports:{}};var exports=module.exports;\n${javascriptSource}\nconst exported=module.exports;\n${css ? `const plugin=exported.default??exported;return {...exported,default:{...plugin,name:plugin.name,inject:plugin.inject,Config:plugin.Config,async apply(ctx,config){ctx.effect(()=>{const node=document.createElement("style");node.textContent=${JSON.stringify(css)}.replaceAll("__FN_ASSET_BASE__/",assetBase);document.head.append(node);return ()=>node.remove();});await ctx.plugin(plugin,config);}}};` : "return exported;"}\n}});})(new URL(".",document.currentScript.src).href);\n`;
+    await mkdir(output, { recursive: true });
+    await writeFile(resolve(staging, "client.js"), code);
+    await rename(resolve(staging, "client.js"), resolve(output, "client.js"));
+    for (const asset of result.outputs.filter((file) => !/\.(?:js|css)$/.test(file.path))) {
+      const path = resolve(output, relative(staging, asset.path));
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(path, new Uint8Array(await asset.arrayBuffer()));
     }
-    for (const source of ["client.tsx", "backend.ts"]) {
-      if (!(await Bun.file(resolve(root, "src", source)).exists())) continue;
-      const result = await Bun.build({
-        entrypoints: [resolve(root, "src", source)],
-        outdir: temporary,
-        target: source === "backend.ts" ? "bun" : "browser",
-        format: "esm",
-        jsx: { development: false },
-        naming: { entry: "[name].[ext]", asset: "assets/[name]-[hash].[ext]" },
-        publicPath: "./",
-        loader: {
-          ".svg": "file",
-          ".png": "file",
-          ".jpg": "file",
-          ".webp": "file",
-          ".woff": "file",
-          ".woff2": "file",
-        },
-        plugins:
-          source === "backend.ts"
-            ? []
-            : [
-                {
-                  name: "fn-host-modules",
-                  setup(build) {
-                    build.onLoad({ filter: /[\/]src[\/]styles\.css$/ }, () => ({
-                      loader: "css",
-                      contents: "",
-                    }));
-                    build.onResolve(
-                      {
-                        filter:
-                          /^(?:react(?:\/.*)?|react-dom(?:\/.*)?|@semicoder\/fn-sdk\/ui)$/,
-                      },
-                      (args) => {
-                        if (!(sharedModules as readonly string[]).includes(args.path))
-                          throw new Error(`Unsupported host runtime import: ${args.path}`);
-                        return { path: args.path, namespace: "fn-host" };
-                      },
-                    );
-                    build.onLoad({ filter: /.*/, namespace: "fn-host" }, (args) => ({
-                      loader: "js",
-                      contents:
-                        `const runtime = globalThis.__FN_MODULES__?.[${JSON.stringify(args.path)}]; if (!runtime) throw new Error("需要fn SDK 0.3 宿主，请重新构建插件"); export default runtime;\n` +
-                        names[args.path]!.filter(
-                          (name) => name !== "default" && /^[a-zA-Z_$][\w$]*$/.test(name),
-                        )
-                          .map((name) => `export const ${name} = runtime.${name};`)
-                          .join("\n"),
-                    }));
-                  },
-                },
-              ],
-      });
-      if (!result.success)
-        throw new AggregateError(result.logs, result.logs.map(String).join("\n"));
-    }
-    // The manifest always has a CSS entry, including plugins with no business rules.
-    if (!(await Bun.file(resolve(temporary, "client.css")).exists()))
-      await Bun.write(resolve(temporary, "client.css"), "/* No page styles. */\n");
-    const cssPath = resolve(temporary, "client.css");
-    await Bun.write(
-      cssPath,
-      await buildPluginStyles(root, manifest.id, await Bun.file(cssPath).text()),
-    );
-    await rename(temporary, dist);
   } finally {
-    await rm(temporary, { recursive: true, force: true });
+    await rm(staging, { recursive: true, force: true });
   }
 }
-if (import.meta.main) {
-  const { runPluginTool } = await import("./plugin");
-  process.exitCode = await runPluginTool(["build", ...process.argv.slice(2)]);
+export async function packPlugin(
+  directory: string,
+  destination: string = resolve(directory, "artifacts"),
+) {
+  await buildPlugin(directory);
+  await mkdir(resolve(destination), { recursive: true });
+  const child = Bun.spawn([process.execPath, "pm", "pack", "--destination", resolve(destination)], {
+    cwd: directory,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const [code, out, err] = await Promise.all([
+    child.exited,
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+  ]);
+  if (code) throw new Error(err || out);
+  return out.trim();
 }

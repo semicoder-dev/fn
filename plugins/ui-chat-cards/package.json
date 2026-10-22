@@ -1,0 +1,21 @@
+{
+  "name": "@semicoder/fn-ui-chat-cards",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./client": "./dist/client.js",
+    "./card": "./src/card.tsx"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "@semicoder/fia": "workspace:*",
+    "@semicoder/fn-chat-cards": "workspace:*",
+    "@semicoder/fn-sdk": "workspace:*",
+    "@semicoder/fn-ui-chat": "workspace:*",
+    "react": "19.2.7"
+  },
+  "fn": {
+    "name": "ui-chat-cards"
+  }
+}

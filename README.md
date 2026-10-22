@@ -1,33 +1,30 @@
 # fn
 
-fn 是基于 FIA 的本地插件应用平台。Bun 直接执行 TypeScript 后端，原版 dsh / Cordis 提供 Agent、模型适配、工具和 Session；FIA 负责原生窗口、系统交互和进程生命周期。
+fn 是运行在 Bun＋FIA 上的 Cordis 插件平台。当前源码正在进行**全插件化重构，尚未发布**。公开版本仍为 fn **0.5.2 / build 12**、SDK **0.4.0**、iPhone 内测 **0.3.0（4）**；本地版本字符串没有递增，不能用于判断候选代码是否已公开。[正式安装入口](https://semicoder.dev/fn/docs/installation)。
 
-当前发行版本为 **fn 0.5.0 / build 10、SDK 0.4.0、iPhone 内测 0.3.0（4）**。实际公开状态分别见[应用发行](docs/github-release.md)、[SDK 发行](docs/npm-release.md)和[TestFlight](clients/apple/TESTFLIGHT.md)。统一[下载入口](https://semicoder.dev/fn/docs/installation)。
+默认组合提供紧凑侧栏、模型连接、Chat、卡片、插件管理、外观和应用更新。Agent、Session、模型适配及工具调度使用锁定的原版 dsh；布局和全部产品页面也是插件。关闭页面或断线不终止后台 Agent。
 
-## 使用
+## 代码结构
 
-- 从应用中心自主安装译文、随手记或网络搜索；宿主不内置插件。新市场 `marketplace-cordis.json` 与旧市场独立。
-- 在设置中创建模型连接，同一 provider 可添加多个账号。支持 API Key、Pi 订阅登录与自定义端点；添加模型后在应用或 Chat 中选择。
-- Agent 在后台运行，关闭页面不取消任务。写入、进程及外部副作用默认需要批准，应用可以显式选择自动执行。
-- Chat v3 使用同一 iCloud 账号连接桌面与手机，支持多会话、离线重试、已读、审批及应用自定义卡片。手机只展示桌面已添加且仍可用的模型。
-- 支持紧凑侧栏、主题、SVG 图标、页面 keepAlive、插件启停/卸载/更新和 FIA 应用更新。插件更新等待任务空闲后重启后台，窗口自动重连。
-
-升级必须使用完整 DMG。旧 SDK、插件、Chat v2 和数据均不兼容；重新配置连接与应用。新数据写入各模式数据目录的 `Backend/cordis-v1/`，不读取、迁移或删除旧数据。插件为可信本地代码，Cordis 作用域不是安全沙箱。
+| 目录                      | 职责                                                        |
+| ------------------------- | ----------------------------------------------------------- |
+| `host/`、`packages/host/` | FIA 启动、配置装配、不可变运行目录、资源传输和故障恢复      |
+| `plugins/`                | 按能力拆分的后端和 UI 插件，名称为 `@semicoder/fn-<能力名>` |
+| `profiles/`               | 默认 bundle、顺序及上游 patch 配置                          |
+| `packages/sdk/`           | Cordis 插件构建、泛型客户端和基础 UI；不提供业务聚合服务    |
+| `clients/apple/`          | Chat v4 的 SwiftUI 客户端、协议资源与签名辅助               |
+| `framework/fia/`          | 通用窗口、原生能力、动态 API、进程和更新框架                |
+| `scripts/`、`commands/`   | 构建、验证和开发工具                                        |
 
 ## 开发
 
-macOS 14+ / Apple Silicon，Bun 1.4.3、Swift 6 / Xcode：
+要求 Apple Silicon macOS 14+、Bun 1.4.3、Swift 6 / Xcode。在本仓库根执行：
 
 ```sh
 bun install --frozen-lockfile --ignore-scripts
 bun run dev
-```
-
-FIA 活跃源码在 `framework/fia/`，自动从本提交构建。fn 后台变化准备新运行目录，等待任务空闲后重启；前端使用 HMR。开发、预览、正式数据互相隔离。开发依赖变动与原生框架变动可能需要完整重启。
-
-```sh
-bun run agent application create /tmp/my-app
 bun run agent open --browser
+bun run agent schema --json
 bun run check
 bun run test
 bun run build
@@ -35,12 +32,10 @@ bun run npm:pack
 bun run framework:verify
 ```
 
-应用是普通 npm 包：`exports["."]` 为 Cordis 后端，`exports["./client"]` 为可选预构建前端；React、Cordis 和 SDK 由宿主共享。使用 `application check/build/pack` 验证独立应用。旧 `plugin` CLI 与 SDK 接口不适用于此版本。
+插件后端直接执行 ESM TypeScript，前端通过 `exports["./client"]` 提供上游模块工厂。`bun run agent plugin check/build/pack <目录>` 验证、构建、打包；纯服务、纯前端和双端插件均可。插件源码变更通过后台重启加载；安装先准备完整候选目录，空闲后切换。运行阶段关闭自动安装，禁止修改已生效目录。
 
-[架构与开发流程](docs/cordis-runtime.md) · [SDK](packages/sdk/README.md) · [验收证据](docs/runtime-validation.md) · [核心能力核对](docs/core-capability-audit.md)
+新源码仅使用 `Backend/plugins-v1/` 与 Chat v4 数据空间，不读取、迁移或删除既有数据。不保留旧 SDK、应用 Bridge、公开 KV、网页抓取或网页搜索接口；fn 不再依赖 agent-webtool。旧三个测试插件从本地市场源码移除，生产市场尚未更改。插件属于可信本地代码，Cordis 不提供安全沙箱。
 
-模型内核锁定 dsh 0.2.1-rc.2、Cordis 4.0.5，实际闭包见 `upstream.lock.json`；模型请求使用锁定 Pi 适配器。网页工具精确依赖公开 agent-webtool 0.8.2。模型凭证按连接独立存储在权限受限文件，不通过业务 API 返回前端。
+[架构](docs/cordis-runtime.md) · [插件开发](docs/plugin-development.md) · [SDK](packages/sdk/README.md) · [验收](docs/runtime-validation.md) · [Apple 客户端](clients/apple/README.md) · [待发布清单](release/notes/unreleased.md)。
 
-## 发布
-
-日常改动集中记录在[待发布清单](release/notes/unreleased.md)，只有明确发布时升版。应用、SDK、官方插件、手机与官网分别验收；FIA 独立 npm 在共仓期间暂停。发布需完成签名公证、运行目录、CloudKit 和客户端验收，不能仅凭版本字符串认定已发布。
+日常开发不升版、不推送、不发布。发布必须另行授权，并分别验证应用、SDK、市场、手机、CloudKit 和官网；FIA 独立 npm 仍暂停。

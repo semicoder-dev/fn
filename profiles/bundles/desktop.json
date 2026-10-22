@@ -1,0 +1,143 @@
+{
+  "plugins": [
+    {
+      "id": "activity",
+      "name": "@semicoder/fn-activity",
+      "config": {}
+    },
+    {
+      "id": "rpc",
+      "name": "@semicoder/fn-rpc",
+      "config": {}
+    },
+    {
+      "id": "session-sqlite",
+      "name": "@semicoder/fn-session-sqlite",
+      "config": {}
+    },
+    {
+      "id": "connections",
+      "name": "@semicoder/fn-connections",
+      "config": {}
+    },
+    {
+      "id": "session-controller",
+      "name": "@semicoder/fn-session-controller",
+      "config": {}
+    },
+    {
+      "id": "chat-cards",
+      "name": "@semicoder/fn-chat-cards",
+      "config": {}
+    },
+    {
+      "id": "models",
+      "name": "@semicoder/fn-models",
+      "config": {}
+    },
+    {
+      "id": "appearance",
+      "name": "@semicoder/fn-appearance",
+      "config": {}
+    },
+    {
+      "id": "chat",
+      "name": "@semicoder/fn-chat",
+      "config": {}
+    },
+    {
+      "id": "chat-cloudkit",
+      "name": "@semicoder/fn-chat-cloudkit",
+      "config": {}
+    },
+    {
+      "id": "chat-default",
+      "name": "@semicoder/fn-chat/target",
+      "config": {
+        "id": "chat",
+        "name": "Chat",
+        "systemPrompt": "You are a helpful assistant.",
+        "plugins": [
+          {
+            "id": "file",
+            "name": "@semicoder/fn-tool-file"
+          },
+          {
+            "id": "process",
+            "name": "@semicoder/fn-tool-process"
+          },
+          {
+            "id": "native",
+            "name": "@semicoder/fn-tool-native"
+          }
+        ]
+      }
+    },
+    {
+      "id": "plugin-manager",
+      "name": "@semicoder/fn-plugin-manager"
+    },
+    {
+      "id": "plugin-market",
+      "name": "@semicoder/fn-plugin-market"
+    }
+  ],
+  "client": [
+    {
+      "id": "renderer",
+      "name": "@deepseek-ai/dsh-client-ui-renderer"
+    },
+    {
+      "id": "ui-session",
+      "name": "@semicoder/fn-ui-session/client"
+    },
+    {
+      "id": "ui-base",
+      "name": "@semicoder/fn-ui-base/client"
+    },
+    {
+      "id": "ui-navigation",
+      "name": "@semicoder/fn-ui-navigation/client"
+    },
+    {
+      "id": "ui-layout",
+      "name": "@semicoder/fn-ui-layout/client"
+    },
+    {
+      "id": "ui-settings",
+      "name": "@semicoder/fn-ui-settings/client"
+    },
+    {
+      "id": "ui-models",
+      "name": "@semicoder/fn-ui-models/client"
+    },
+    {
+      "id": "ui-chat",
+      "name": "@semicoder/fn-ui-chat/client"
+    },
+    {
+      "id": "ui-chat-cards",
+      "name": "@semicoder/fn-ui-chat-cards/client"
+    },
+    {
+      "id": "ui-plugins",
+      "name": "@semicoder/fn-ui-plugins/client"
+    },
+    {
+      "id": "ui-theme",
+      "name": "@semicoder/fn-ui-theme/client"
+    },
+    {
+      "id": "app-update",
+      "name": "@semicoder/fn-app-update/client"
+    },
+    {
+      "id": "ui-updates",
+      "name": "@semicoder/fn-ui-updates/client"
+    },
+    {
+      "id": "ui-cloudkit",
+      "name": "@semicoder/fn-ui-cloudkit/client"
+    }
+  ]
+}

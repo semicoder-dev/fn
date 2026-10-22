@@ -3,7 +3,7 @@ import Foundation
 /// fn display DTOs are independent of dsh runtime and persistence objects.
 public struct SessionHost: Codable, Identifiable, Sendable { public let id, hostId, name: String }
 public struct SessionEndpoint: Codable, Identifiable, Sendable {
-  public let id, hostId, appId, endpointId, name: String
+  public let id, hostId, targetId, name: String
   public let enabled: Bool
 }
 public struct SessionConnection: Codable, Identifiable, Sendable {
@@ -13,8 +13,7 @@ public struct SessionConnection: Codable, Identifiable, Sendable {
   public let models: [Model]
 }
 public struct SessionInfo: Codable, Identifiable, Sendable {
-  public let id, appId, connectionId, modelId, title, policy, status: String
-  public let endpointId: String?
+  public let id, targetId, connectionId, modelId, title, policy, status: String
   public let createdAt, updatedAt: Int64
   public let archived: Bool
 }
@@ -61,11 +60,11 @@ public enum SessionContract {
   public static func validate(type: String, data: Data) throws {
     guard data.count <= 192 * 1024 else { throw ChatError.oversized }
     let value = try JSONDecoder().decode(JSONValue.self, from: data)
-    guard let object = value.object, object["protocolVersion"] == .number(3) else {
+    guard let object = value.object, object["protocolVersion"] == .number(4) else {
       throw ChatError.unsupportedVersion
     }
     guard let schema = schemas.object?[type] else { throw ChatError.unknownType }
-    try Contract.validate(value, schema: schema, root: schema)
+    try JSONSchema.validate(value, schema: schema, root: schema)
     if type == "FnSessionCard" {
       let record = try JSONDecoder().decode(SessionCardRecord.self, from: data)
       guard record.card.id == record.id, record.card.sessionId == record.sessionId else { throw ChatError.invalidMessage }

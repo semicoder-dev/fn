@@ -27,7 +27,6 @@ export * from "./ui/selection";
 export * from "./ui/overlays";
 export * from "./ui/layout";
 export { UIProvider, Toast, useToast } from "./ui/provider";
-export { ModelSelect } from "./model-select";
 export {
   Plus,
   X,

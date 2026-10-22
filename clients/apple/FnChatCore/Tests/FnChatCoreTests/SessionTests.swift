@@ -33,15 +33,15 @@ private func sessionRecord(_ type: String, _ object: [String: Any]) throws -> Ch
   }
 }
 @Test func sessionProtocolRejectsLegacyAndKeepsDisplayDTOsIndependent() throws {
-  let host = try sessionRecord("FnSessionHost", ["protocolVersion": 3, "id": "h", "hostId": "h", "name": "Mac", "updatedAt": 1])
+  let host = try sessionRecord("FnSessionHost", ["protocolVersion": 4, "id": "h", "hostId": "h", "name": "Mac", "updatedAt": 1])
   #expect(host.id == "FnSessionHost:h:h")
   #expect(throws: (any Error).self) {
     try sessionRecord("FnSessionHost", ["protocolVersion": 2, "id": "h", "hostId": "h", "name": "Mac", "updatedAt": 1])
   }
   #expect(throws: (any Error).self) {
-    try sessionRecord("FnSessionCommand", ["protocolVersion": 3, "id": "x", "hostId": "h", "deviceId": "p", "createdAt": 1, "action": "send", "sessionId": "s", "text": " "])
+    try sessionRecord("FnSessionCommand", ["protocolVersion": 4, "id": "x", "hostId": "h", "deviceId": "p", "createdAt": 1, "action": "send", "sessionId": "s", "text": " "])
   }
-  let reply = try sessionRecord("FnSessionReply", ["protocolVersion": 3, "id": "s:1", "hostId": "h", "sessionId": "s",
+  let reply = try sessionRecord("FnSessionReply", ["protocolVersion": 4, "id": "s:1", "hostId": "h", "sessionId": "s",
     "item": ["id": "s:1", "seq": 1, "createdAt": 1, "kind": "assistant", "text": "hello", "truncated": false]])
   let decoded = try JSONDecoder().decode(SessionItemRecord.self, from: Data(reply.payload.utf8))
   #expect(decoded.item.text == "hello")
@@ -74,9 +74,9 @@ private func sessionRecord(_ type: String, _ object: [String: Any]) throws -> Ch
   let path = try SessionSQLiteStore.accountFile(root: root, environment: "development", container: "iCloud.test.development", account: "a")
   let other = try SessionSQLiteStore.accountFile(root: root, environment: "development", container: "iCloud.test.development", account: "b")
   #expect(path != other)
-  #expect(path.path.contains("chat-v3"))
+  #expect(path.path.contains("chat-v4"))
   let store = try SessionSQLiteStore(path: path.path)
-  let command = try sessionRecord("FnSessionCommand", ["protocolVersion": 3, "id": "q", "hostId": "h", "deviceId": "p", "createdAt": 1, "action": "cancel", "sessionId": "s"])
+  let command = try sessionRecord("FnSessionCommand", ["protocolVersion": 4, "id": "q", "hostId": "h", "deviceId": "p", "createdAt": 1, "action": "cancel", "sessionId": "s"])
   try store.enqueue(.init(id: "q", kind: "command", payload: "command"), records: [command])
   try store.apply([], deleted: [], token: "fresh", reset: true)
   #expect(try store.record(id: command.id) == command)
@@ -88,7 +88,7 @@ private func sessionRecord(_ type: String, _ object: [String: Any]) throws -> Ch
   let root = URL.temporaryDirectory.appending(path: UUID().uuidString)
   defer { try? FileManager.default.removeItem(at: root) }
   let transport = SessionMemoryTransport()
-  let reply = try sessionRecord("FnSessionReply", ["protocolVersion": 3, "id": "s:1", "hostId": "h", "sessionId": "s",
+  let reply = try sessionRecord("FnSessionReply", ["protocolVersion": 4, "id": "s:1", "hostId": "h", "sessionId": "s",
     "item": ["id": "s:1", "seq": 1, "createdAt": 1, "kind": "assistant", "text": "hello", "truncated": false]])
   transport.records[reply.id] = reply
   let sync = SessionSync(root: root)
@@ -109,8 +109,8 @@ private func sessionRecord(_ type: String, _ object: [String: Any]) throws -> Ch
   #expect(sync.pendingCount == 0)
   #expect(transport.commits == 1)
   let other = SessionSync(root: root.appending(path: "other-device"))
-  let summary = try sessionRecord("FnSessionSummary", ["protocolVersion": 3, "id": "s", "hostId": "h", "asOfSeq": 1, "readSeq": 1, "approvals": [],
-    "session": ["id": "s", "appId": "app", "connectionId": "c", "modelId": "m", "title": "Session", "createdAt": 1, "updatedAt": 1, "archived": false, "policy": "controlled", "status": "idle"]])
+  let summary = try sessionRecord("FnSessionSummary", ["protocolVersion": 4, "id": "s", "hostId": "h", "asOfSeq": 1, "readSeq": 1, "approvals": [],
+    "session": ["id": "s", "targetId": "chat", "connectionId": "c", "modelId": "m", "title": "Session", "createdAt": 1, "updatedAt": 1, "archived": false, "policy": "controlled", "status": "idle"]])
   transport.records[summary.id] = summary
   await other.connect(container: "iCloud.test.development", environment: "development", bundleID: "test", transport: transport)
   #expect(other.unreadCount(host: "h", session: "s") == 0)
@@ -131,7 +131,7 @@ private func cardObject(state: String = "pending") -> [String: Any] {
         ["id": "multi", "label": "Multi", "type": "multiSelect", "required": false, "options": [["id": "a", "label": "A"]]]],
       "actions": [["id": "ok", "label": "OK"]]]]
   if state == "completed" { card["answer"] = ["actionId": "ok", "values": ["text": "hello", "number": 2, "flag": false, "choice": "a"]] }
-  return ["protocolVersion": 3, "id": "card", "hostId": "h", "sessionId": "s", "card": card]
+  return ["protocolVersion": 4, "id": "card", "hostId": "h", "sessionId": "s", "card": card]
 }
 @Test func sessionCardsValidateIdentityDefinitionAndAllFieldTypes() throws {
   let record = try sessionRecord("FnSessionCard", cardObject())
@@ -154,9 +154,9 @@ private func cardObject(state: String = "pending") -> [String: Any] {
   defer { try? FileManager.default.removeItem(at: root) }
   let transport = SessionMemoryTransport()
   let records = [try sessionRecord("FnSessionCard", cardObject()),
-    try sessionRecord("FnSessionEndpoint", ["protocolVersion": 3, "id": "endpoint", "hostId": "h", "appId": "app", "endpointId": "chat", "name": "Chat", "enabled": true]),
-    try sessionRecord("FnSessionSummary", ["protocolVersion": 3, "id": "s", "hostId": "h", "asOfSeq": -1, "readSeq": -1, "approvals": [],
-      "session": ["id": "s", "appId": "app", "endpointId": "chat", "connectionId": "c", "modelId": "m", "title": "Session", "createdAt": 1, "updatedAt": 1, "archived": false, "policy": "controlled", "status": "idle"]])]
+    try sessionRecord("FnSessionEndpoint", ["protocolVersion": 4, "id": "endpoint", "hostId": "h", "targetId": "chat", "name": "Chat", "enabled": true]),
+    try sessionRecord("FnSessionSummary", ["protocolVersion": 4, "id": "s", "hostId": "h", "asOfSeq": -1, "readSeq": -1, "approvals": [],
+      "session": ["id": "s", "targetId": "chat", "connectionId": "c", "modelId": "m", "title": "Session", "createdAt": 1, "updatedAt": 1, "archived": false, "policy": "controlled", "status": "idle"]])]
   for record in records { transport.records[record.id] = record }
   let sync = SessionSync(root: root)
   await sync.connect(container: "iCloud.test.development", environment: "development", bundleID: "test", transport: transport)
@@ -176,7 +176,7 @@ private func cardObject(state: String = "pending") -> [String: Any] {
   #expect(!sync.cardAvailable(card)) // A transport receipt is not a host result.
   let command = try #require(transport.records.values.first { $0.type == "FnSessionCommand" })
   let commandJSON = try #require(try JSONSerialization.jsonObject(with: Data(command.payload.utf8)) as? [String: Any])
-  let result = try sessionRecord("FnSessionResult", ["protocolVersion": 3, "hostId": "h", "id": commandJSON["id"]!, "sessionId": "s", "status": "completed", "updatedAt": 2])
+  let result = try sessionRecord("FnSessionResult", ["protocolVersion": 4, "hostId": "h", "id": commandJSON["id"]!, "sessionId": "s", "status": "completed", "updatedAt": 2])
   transport.records[result.id] = result
   let completed = try sessionRecord("FnSessionCard", cardObject(state: "completed"))
   transport.records[completed.id] = completed
@@ -194,13 +194,13 @@ private func cardObject(state: String = "pending") -> [String: Any] {
   defer { try? FileManager.default.removeItem(at: root) }
   let transport = SessionMemoryTransport()
   for (id, host, enabled, models) in [("selected", "h", true, [["id": "m", "name": "Selected"]]), ("empty", "h", true, []), ("disabled", "h", false, [["id": "m", "name": "Unavailable"]]), ("other", "other-host", true, [["id": "m", "name": "Other"]])] {
-    let record = try sessionRecord("FnSessionConnection", ["protocolVersion": 3, "id": id, "hostId": host, "name": id, "enabled": enabled, "models": models])
+    let record = try sessionRecord("FnSessionConnection", ["protocolVersion": 4, "id": id, "hostId": host, "name": id, "enabled": enabled, "models": models])
     transport.records[record.id] = record
   }
   let sync = SessionSync(root: root)
   await sync.connect(container: "iCloud.test.development", environment: "development", bundleID: "test", transport: transport)
   #expect(sync.connections(host: "h").map(\.id) == ["selected"])
-  let empty = try sessionRecord("FnSessionConnection", ["protocolVersion": 3, "id": "selected", "hostId": "h", "name": "Selected", "enabled": false, "models": []])
+  let empty = try sessionRecord("FnSessionConnection", ["protocolVersion": 4, "id": "selected", "hostId": "h", "name": "Selected", "enabled": false, "models": []])
   transport.records[empty.id] = empty; await sync.sync()
   #expect(sync.connections(host: "h").isEmpty)
 }

@@ -1,0 +1,199 @@
+.runtime-sessions button.selected {
+  background: var(--rt-panel);
+  border-color: var(--rt-line);
+}
+.runtime-chat {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.runtime-sessions {
+  width: 205px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--rt-line);
+  padding: 20px 12px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.runtime-sessions button {
+  text-align: left;
+  background: transparent;
+  border-color: transparent;
+  padding: 10px;
+}
+.runtime-sessions .runtime-primary {
+  text-align: center;
+  margin-bottom: 15px;
+}
+.runtime-sessions strong,
+.runtime-sessions small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.runtime-sessions strong {
+  font-weight: 500;
+  font-size: 13px;
+}
+.runtime-sessions small {
+  font-size: 10px;
+  margin-top: 4px;
+}
+.runtime-conversation {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.runtime-conversation header {
+  padding: 20px 30px;
+  border-bottom: 1px solid var(--rt-line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.runtime-conversation header h1 {
+  font-size: 17px;
+}
+.runtime-conversation header p {
+  color: var(--rt-muted);
+  font-size: 11px;
+  margin: 0;
+}
+.runtime-messages {
+  flex: 1;
+  overflow: auto;
+  padding: 28px max(25px, calc((100% - 730px) / 2));
+}
+.runtime-message {
+  margin-bottom: 26px;
+  overflow-wrap: anywhere;
+}
+.runtime-message-label {
+  font-size: 11px;
+  color: var(--rt-muted);
+  margin-bottom: 7px;
+}
+.runtime-message-text {
+  white-space: pre-wrap;
+  line-height: 1.8;
+}
+.runtime-message.user {
+  padding: 15px 18px;
+  border-radius: 12px;
+  background: var(--rt-side);
+}
+.runtime-message.tool,
+.runtime-message.notice {
+  border-left: 2px solid var(--rt-line);
+  padding: 4px 14px;
+  font-size: 12px;
+}
+.runtime-message.tool .runtime-message-text {
+  max-height: 200px;
+  overflow: auto;
+  font-family: ui-monospace, monospace;
+}
+.runtime-message details {
+  color: var(--rt-muted);
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+.runtime-message pre {
+  white-space: pre-wrap;
+  font: inherit;
+}
+.runtime-composer {
+  margin: 8px 25px 22px;
+  border: 1px solid var(--rt-line);
+  border-radius: 13px;
+  padding: 9px 10px;
+  background: var(--rt-panel);
+}
+.runtime-composer textarea {
+  border: 0;
+  background: transparent;
+  min-height: 65px;
+  max-height: 250px;
+}
+.runtime-composer > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+}
+.runtime-composer small {
+  flex: 1;
+  font-size: 10px;
+}
+.runtime-composer button {
+  padding: 6px 16px;
+}
+.runtime-welcome {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 30px;
+}
+.runtime-mark {
+  font:
+    600 55px/1.2 -apple-system,
+    sans-serif;
+  letter-spacing: -5px;
+  color: var(--rt-accent);
+  margin-bottom: 22px;
+}
+.runtime-welcome h1 {
+  font-size: 24px;
+}
+.runtime-welcome p {
+  color: var(--rt-muted);
+  margin-bottom: 24px;
+}
+.runtime-empty {
+  text-align: center;
+  padding-top: 60px;
+  color: var(--rt-muted);
+}
+.runtime-approval {
+  padding: 15px 22px;
+  margin: 0 25px 5px;
+  background: #f1e9d3;
+  border-radius: 10px;
+  color: #614e29;
+}
+.runtime-approval p {
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+.runtime-approval button {
+  margin-right: 8px;
+  font-size: 12px;
+}
+@media (max-width: 850px) {
+  .runtime-sessions {
+    width: 155px;
+  }
+}
+@media (max-width: 850px) {
+  .runtime-conversation header {
+    padding: 16px;
+  }
+}
+@media (max-width: 850px) {
+  .runtime-composer {
+    margin: 8px 14px 14px;
+  }
+}
+@media (max-width: 850px) {
+  .runtime-composer small {
+    display: none;
+  }
+}

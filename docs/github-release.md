@@ -1,5 +1,7 @@
 # fn 应用发布
 
+> 当前工作树为未发布全插件化候选。应用/SDK 版本号未改；下方公开发行证据仅对应其固定提交。后续发行前须完成 `runtime-validation.md` 的真实环境事项，配套 Chat v4 与新市场，不可用旧归档替代。
+
 fn **0.5.2 / build 12** 已公开；官网为 `https://semicoder.dev/fn`，安装页为其 `/docs/installation`，更新源为 `https://semicoder-dev.github.io/fn/updates/latest.json`。公开标签及附件不移动、不覆盖。
 
 ## 0.5.2 插件安装提速（2026-10-22）
@@ -65,12 +67,12 @@ fn **0.5.2 / build 12** 已公开；官网为 `https://semicoder.dev/fn`，安�
 
 2026-10-10 起采用“持续开发、集中归集、明确授权后统一发布”。普通任务完成、提交、合并或 CI 通过均不意味着发布；只有用户明确提出发布，才进入本文的发布准备流程。不按时间、提交数量或最低特性数量自动发版。
 
-| 变化                                        | 应用版本处理                                 |
-| ------------------------------------------- | -------------------------------------------- |
-| 日常开发、提交、合并、测试构建              | 不修改版本号和 build                         |
-| 一批普通功能、体验优化、性能改进和 bug 修复 | 第三位递增，例如 `0.4.0 → 0.4.1`             |
+| 变化                                        | 应用版本处理                                     |
+| ------------------------------------------- | ------------------------------------------------ |
+| 日常开发、提交、合并、测试构建              | 不修改版本号和 build                             |
+| 一批普通功能、体验优化、性能改进和 bug 修复 | 第三位递增，例如 `0.4.0 → 0.4.1`                 |
 | 用户确认的大功能或产品阶段升级              | 第二位递增，第三位归零，例如 `<version> → 0.5.0` |
-| 用户明确确认进入 1.0 正式阶段               | 才将第一位改为 `1`                           |
+| 用户明确确认进入 1.0 正式阶段               | 才将第一位改为 `1`                               |
 
 发布大小按内容判断，不按代码量、提交数量或是否需要完整 DMG 判断。涉及插件兼容或数据迁移时，发布前列出影响，由用户确认版本归类。公开发布 0.x 安装包仍处于 1.0 之前；本文的“正式发行”指公开签名安装包，不代表产品已进入 1.0。
 
@@ -180,7 +182,6 @@ FIA 的 `runtimeId` 包含 `updates.downloadURL`，因此此次入口修改会�
 - 本地可用 `bun scripts/release/verify.ts dist/updates dist/fn.app` 验证更新签名、每个文件及安装包一致性；首发公网清单与文件已独立验收，跨版本客户端升级尚未实测，网站部署另行核实。
 
 依据：[GitHub Pages 工作流](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)、[GitHub macOS 签名证书](https://docs.github.com/en/actions/how-tos/deploy/deploy-to-third-party-platforms/sign-xcode-applications)、[FIA 构建与代码更新](../node_modules/@semicoder/fia/docs/framework/README.md)。
-
 
 ## 历史发行证据（原名，非 fn 发布状态）
 

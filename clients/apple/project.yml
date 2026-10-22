@@ -89,6 +89,27 @@ targets:
         FNCommunicationEnvironment: production
         UIBackgroundModes: [fetch, remote-notification]
         ITSAppUsesNonExemptEncryption: false
+  FnMacHostSigning:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources: [Signing]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.semicoder.fn.dev
+        CODE_SIGN_ENTITLEMENTS: Config/macOS.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+  FnMacBetaSigning:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources: [Signing]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.semicoder.fn.beta
+        CODE_SIGN_ENTITLEMENTS: Config/macOSProduction.entitlements
+        FN_CLOUDKIT_CONTAINER: iCloud.com.semicoder.fn.production
+        ENABLE_HARDENED_RUNTIME: YES
 schemes:
   FnPhone:
     build:
@@ -104,3 +125,11 @@ schemes:
         FnPhoneTestFlight: all
     archive:
       config: Release
+  FnMacHostSigning:
+    build:
+      targets:
+        FnMacHostSigning: all
+  FnMacBetaSigning:
+    build:
+      targets:
+        FnMacBetaSigning: all

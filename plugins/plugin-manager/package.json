@@ -1,0 +1,17 @@
+{
+  "name": "@semicoder/fn-plugin-manager",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./contract": "./src/contract.ts"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "@semicoder/fia": "workspace:*",
+    "@semicoder/fn-activity": "workspace:*",
+    "@semicoder/fn-host": "workspace:*",
+    "@semicoder/fn-rpc": "workspace:*"
+  }
+}

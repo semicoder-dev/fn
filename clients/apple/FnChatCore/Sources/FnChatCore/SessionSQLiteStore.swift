@@ -16,9 +16,9 @@ public final class SessionSQLiteStore {
   public static func accountFile(root: URL, environment: String, container: String, account: String)
     throws -> URL
   {
-    let data = try JSONEncoder().encode(["chat-v3", environment, container, account])
+    let data = try JSONEncoder().encode(["chat-v4", environment, container, account])
     let name = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
-    let directory = root.appendingPathComponent("chat-v3").appendingPathComponent(name)
+    let directory = root.appendingPathComponent("chat-v4").appendingPathComponent(name)
     try FileManager.default.createDirectory(
       at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
     return directory.appendingPathComponent("chat.sqlite")

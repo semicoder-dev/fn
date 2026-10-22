@@ -1,5 +1,0 @@
-// Development-only probe. Production/Preview are deliberately not defined yet.
-FN_CLOUDKIT_CONTAINER = iCloud.com.semicoder.fn.development
-FN_CLOUDKIT_ZONE = fn-communication-probe-v1
-// Copy Local.xcconfig.example to Local.xcconfig and set your own development team.
-#include? "Local.xcconfig"

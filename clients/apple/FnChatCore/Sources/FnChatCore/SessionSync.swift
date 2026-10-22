@@ -84,7 +84,7 @@ import Foundation
     guard record.card.state == "pending", record.card.expiresAt > Int64(Date().timeIntervalSince1970 * 1000),
       !pendingCard(host: record.hostId, id: record.id),
       let summary = sessions(host: record.hostId).first(where: { $0.id == record.sessionId }) else { return false }
-    return endpoints(host: record.hostId).contains { $0.appId == summary.session.appId && $0.endpointId == summary.session.endpointId }
+    return endpoints(host: record.hostId).contains { $0.targetId == summary.session.targetId }
   }
   public func respondCard(_ record: SessionCardRecord, action: String, values: [String: JSONValue]) throws {
     guard let current = cards(host: record.hostId, session: record.sessionId).first(where: { $0.id == record.id }), cardAvailable(current) else { throw SQLiteFailure(message: "卡片已处理、过期或应用不可用") }
@@ -105,7 +105,7 @@ import Foundation
     guard let store else { throw SQLiteFailure(message: "尚未连接") }
     var object = fields
     let id = UUID().uuidString
-    object["protocolVersion"] = 3; object["id"] = id; object["hostId"] = host
+    object["protocolVersion"] = 4; object["id"] = id; object["hostId"] = host
     object["deviceId"] = store.deviceId; object["createdAt"] = Int64(Date().timeIntervalSince1970 * 1000)
     object["action"] = action
     let data = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys, .withoutEscapingSlashes])

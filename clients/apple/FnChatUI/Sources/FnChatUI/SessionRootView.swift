@@ -89,7 +89,7 @@ private struct NewSessionView: View {
         ToolbarItem(placement: .confirmationAction) {
           Button("创建") {
             guard let selected = endpoints.first(where: { $0.id == endpoint }) else { return }
-            model.command("create", fields: ["appId": selected.appId, "endpointId": selected.endpointId, "connectionId": connection, "modelId": modelID])
+            model.command("create", fields: ["targetId": selected.targetId, "connectionId": connection, "modelId": modelID])
             if model.error.isEmpty { dismiss() }
           }.disabled(endpoint.isEmpty || connection.isEmpty || modelID.isEmpty)
         }

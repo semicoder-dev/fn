@@ -25,7 +25,9 @@ export function apiError(error: unknown, status = 400): Response {
   );
 }
 export class APIServer {
-  readonly schema;
+  get schema() {
+    return describeAPI(this.implementation.contract);
+  }
   updating = false;
   ready = false;
   readonly calls = new Map<string, AbortController>();
@@ -43,7 +45,7 @@ export class APIServer {
     this.eventBufferBytes = options.eventBufferBytes ?? 4 * API_MAX_BYTES;
     if (!Number.isSafeInteger(this.eventBufferBytes) || this.eventBufferBytes < API_MAX_BYTES)
       throw new TypeError("apiOptions.eventBufferBytes must be a safe integer of at least 1 MiB");
-    this.schema = describeAPI(implementation.contract);
+    describeAPI(implementation.contract);
   }
   emit = (event: string, payload: unknown) => {
     const definition = this.implementation.contract.events[event];
@@ -117,7 +119,8 @@ export class APIServer {
       if (typeof method !== "string" || typeof requestId !== "string" || requestId.length > 128)
         throw new APIError("invalid_argument", "Invalid API call");
       const definition = this.implementation.contract.methods[method];
-      if (!Object.hasOwn(this.implementation.contract.methods, method) || !definition)
+      const handler = this.implementation.handlers[method];
+      if (!Object.hasOwn(this.implementation.contract.methods, method) || !definition || !handler)
         throw new APIError("not_found", "Unknown method: " + method);
       if (this.calls.size >= 128) throw new APIError("resource_limit", "Too many concurrent calls");
       const key = sessionId + ":" + requestId;
@@ -133,7 +136,7 @@ export class APIServer {
         controller.signal.throwIfAborted();
         let result: unknown;
         try {
-          result = await this.implementation.handlers[method]!(parsed as never, {
+          result = await handler(parsed as never, {
             ...this.context,
             emit: this.emit,
             source,

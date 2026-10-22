@@ -1,0 +1,21 @@
+{
+  "name": "@semicoder/fn-test-service",
+  "version": "0.0.0",
+  "private": true,
+  "files": [
+    "src",
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "@semicoder/fia": "0.18.0",
+    "@semicoder/fn-sdk": "0.4.0"
+  },
+  "fn": {
+    "name": "Acceptance service"
+  }
+}
