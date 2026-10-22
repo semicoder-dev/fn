@@ -1,0 +1,139 @@
+{
+  "seedId": "69a91926d31e7939fb88a8fe",
+  "platform": "darwin",
+  "bun": "1.4.3",
+  "scope": "Offline stageInstall; excludes initial seed, market/network, FIA restart and frontend reconnect; OS caches unchanged",
+  "samples": [
+    {
+      "id": "cordis-quick-notes",
+      "totalMs": 4203,
+      "phasesMs": {
+        "download": 1,
+        "extract": 16,
+        "copy": 3951,
+        "dependencies": 3,
+        "verify": 79,
+        "preflight": 152
+      }
+    },
+    {
+      "id": "cordis-translate",
+      "totalMs": 3492,
+      "phasesMs": {
+        "download": 0,
+        "extract": 15,
+        "copy": 3307,
+        "dependencies": 3,
+        "verify": 63,
+        "preflight": 104
+      }
+    },
+    {
+      "id": "cordis-web-search",
+      "totalMs": 3481,
+      "phasesMs": {
+        "download": 0,
+        "extract": 14,
+        "copy": 3293,
+        "dependencies": 3,
+        "verify": 68,
+        "preflight": 101
+      }
+    }
+  ],
+  "baselineCommit": "8ca60f781097bf0cefe42d280e2d1be55550f299",
+  "baselineSamples": [
+    {
+      "id": "cordis-quick-notes",
+      "totalMs": 5932,
+      "phasesMs": {}
+    },
+    {
+      "id": "cordis-translate",
+      "totalMs": 5808,
+      "phasesMs": {}
+    },
+    {
+      "id": "cordis-web-search",
+      "totalMs": 5705,
+      "phasesMs": {}
+    }
+  ],
+  "preliminarySamples": [
+    {
+      "id": "cordis-quick-notes",
+      "totalMs": 2933,
+      "timings": {
+        "download": 1,
+        "extract": 17,
+        "copy": 2760,
+        "dependencies": 2,
+        "verify": 63,
+        "preflight": 89
+      }
+    },
+    {
+      "id": "cordis-translate",
+      "totalMs": 2885,
+      "timings": {
+        "download": 0,
+        "extract": 15,
+        "copy": 2721,
+        "dependencies": 3,
+        "verify": 57,
+        "preflight": 89
+      }
+    },
+    {
+      "id": "cordis-web-search",
+      "totalMs": 2821,
+      "timings": {
+        "download": 0,
+        "extract": 14,
+        "copy": 2660,
+        "dependencies": 3,
+        "verify": 56,
+        "preflight": 88
+      }
+    }
+  ],
+  "notes": "Baseline full copy and copy-optimization candidate retained for comparison. Final layered run used the same formal seed and archives with no concurrent build. No OS cache clearing; excludes network, initial materialization, restart and frontend reconnect.",
+  "layeredSamples": [
+    {
+      "id": "cordis-quick-notes",
+      "totalMs": 196,
+      "phasesMs": {
+        "download": 1,
+        "extract": 14,
+        "copy": 0,
+        "dependencies": 22,
+        "verify": 59,
+        "preflight": 99
+      }
+    },
+    {
+      "id": "cordis-translate",
+      "totalMs": 187,
+      "phasesMs": {
+        "download": 0,
+        "extract": 12,
+        "copy": 1,
+        "dependencies": 22,
+        "verify": 59,
+        "preflight": 93
+      }
+    },
+    {
+      "id": "cordis-web-search",
+      "totalMs": 189,
+      "phasesMs": {
+        "download": 0,
+        "extract": 12,
+        "copy": 0,
+        "dependencies": 23,
+        "verify": 59,
+        "preflight": 94
+      }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, cp, lstat, mkdtemp, mkdir, readFile, readdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, dirname } from "node:path";
 import { GenerationManager, materializeRuntimeSeed, verifyGenerationDependencies, type SeedManifest } from "../src/generations";
@@ -57,16 +57,18 @@ async function fixture(withFrontend = false) {
   let busy = false;
   let restartFailure = false;
   const restarts: string[] = [];
+  const phases: string[] = [];
   const options = {
     dataDirectory: join(directory, "data"), seedDirectory, execPath: process.execPath,
     busy: () => busy,
+    progress: (phase: string) => { phases.push(phase); },
     restart: async (next: { id: string }) => {
       if (restartFailure) throw new Error("restart failed");
       restarts.push(next.id);
     },
   };
   return {
-    directory, seedDirectory, versions, options, restarts,
+    directory, seedDirectory, versions, options, restarts, phases,
     setBusy(value: boolean) { busy = value; },
     setRestartFailure(value: boolean) { restartFailure = value; },
     manager: new GenerationManager(options),
@@ -119,13 +121,16 @@ describe("immutable runtime generations", () => {
     await expect(materializeRuntimeSeed(options)).rejects.toThrow("SHA-256 mismatch");
     await symlink("/etc/passwd", join(f.seedDirectory, "escape"));
     await pack();
-    await expect(materializeRuntimeSeed(options)).rejects.toThrow("link escapes");
+    await expect(materializeRuntimeSeed(options)).rejects.toThrow("identity already exists");
+    await expect(materializeRuntimeSeed({ ...options, dataDirectory: join(f.directory, "escaping-seed") })).rejects.toThrow("link escapes");
   });
 
   test("loads raw TS, accumulates candidates, defers while busy, and activates after restart", async () => {
     const f = await fixture();
     const initial = await f.manager.initialize();
+    f.phases.length = 0;
     const first = await f.manager.stageInstall(await application(f.directory, "first"));
+    expect(f.phases).toEqual(["download", "extract", "copy", "dependencies", "verify", "preflight"]);
     const second = await f.manager.stageInstall(await application(f.directory, "second"));
     expect(first.applications).toHaveLength(1);
     expect(second.applications.map((app) => app.id)).toEqual(["first", "second"]);
@@ -141,10 +146,19 @@ describe("immutable runtime generations", () => {
     await restarted.confirmActivation();
     expect((await new GenerationManager(f.options).initialize()).id).toBe(second.id);
     expect(f.restarts).toEqual([second.id]);
-    const lock = JSON.parse(await readFile(join(second.directory, "bun.lock"), "utf8"));
-    expect(lock.workspaces["applications/first"].name).toBe("@test/first");
+    expect(second.manifest.schemaVersion).toBe(2);
+    expect(await realpath(initial.runtimeEntry)).toBe(await realpath(second.runtimeEntry));
+    expect((await lstat(initial.runtimeEntry)).ino).toBe((await lstat(second.runtimeEntry)).ino);
+    expect(await realpath(first.applications[0]!.entry)).toBe(await realpath(second.applications[0]!.entry));
+    expect((await readdir(second.directory)).sort()).toEqual([".archives", ".core", "applications", "generation.json", "node_modules"]);
+    expect(await Bun.file(join(second.directory, "bun.lock")).exists()).toBe(false);
     // An immutable predecessor contains neither application nor modified links.
     expect(await Bun.file(join(initial.directory, "applications/first/package.json")).exists()).toBe(false);
+    const relocated = join(f.directory, "relocated");
+    await cp(f.options.dataDirectory, relocated, { recursive: true, verbatimSymlinks: true });
+    const moved = await new GenerationManager({ ...f.options, dataDirectory: relocated, seedDirectory: "/absent" }).initialize();
+    expect(await realpath(moved.runtimeEntry)).toContain("/relocated/runtime/cores/");
+    expect(await realpath(moved.applications[0]!.entry)).toContain("/relocated/runtime/extensions/");
   });
 
   test("rejects mismatched shared peers, bundled core, links, and invalid module imports", async () => {
@@ -179,9 +193,9 @@ describe("immutable runtime generations", () => {
   test("rejects a second canonical copy of a shared runtime dependency", async () => {
     const f = await fixture();
     const current = await f.manager.initialize();
-    const duplicate = join(current.directory, "packages/sdk/node_modules/@deepseek-ai/cordis");
+    const duplicate = join(current.directory, ".core/packages/sdk/node_modules/@deepseek-ai/cordis");
     await writeJSON(join(duplicate, "package.json"), { name: "@deepseek-ai/cordis", version: "4.0.5" });
-    await expect(verifyGenerationDependencies(current.directory, f.versions, ["@semicoder/fn-sdk"]))
+    await expect(verifyGenerationDependencies(await realpath(join(current.directory, ".core")), f.versions, ["@semicoder/fn-sdk"]))
       .rejects.toThrow("Duplicate shared runtime");
   });
 
@@ -193,9 +207,9 @@ describe("immutable runtime generations", () => {
         .rejects.toThrow(`Application requires ${name}@18.3.1`);
       await expect(f.manager.stageInstall(await application(f.directory, `bundled-${name}`, { dependencies: { [name]: "19.2.7" } })))
         .rejects.toThrow("exact peer");
-      const duplicate = join(current.directory, "packages/sdk/node_modules", name);
+      const duplicate = join(current.directory, ".core/packages/sdk/node_modules", name);
       await writeJSON(join(duplicate, "package.json"), { name, version: "19.2.7" });
-      await expect(verifyGenerationDependencies(current.directory, f.versions, ["@semicoder/fn-sdk"]))
+      await expect(verifyGenerationDependencies(await realpath(join(current.directory, ".core")), f.versions, ["@semicoder/fn-sdk"]))
         .rejects.toThrow("Duplicate shared runtime");
       await rm(duplicate, { recursive: true });
     }
@@ -393,4 +407,98 @@ test("application SVG metadata is read from the verified package and invalid ico
   expect(candidate.applications[0]).toMatchObject({ icon: "记", iconSvg: svg });
   await expect(f.manager.stageInstall(await application(f.directory, "icon-app", { iconSvg: "invalid", version: "1.0.1" }))).rejects.toThrow();
   expect((await f.manager.status()).pendingId).toBe(candidate.id);
+});
+
+test("private dependency versions stay isolated while transitive peers share the core, without installer writes to it", async () => {
+  const f = await fixture();
+  const archives = new Map<string, Uint8Array>();
+  for (const version of ["1.0.0", "2.0.0"]) {
+    const root = join(f.directory, `registry-${version}`), pkg = join(root, "package");
+    await writeJSON(join(pkg, "package.json"), { name: "private-helper", version, type: "module", exports: "./index.js",
+      peerDependencies: { "@deepseek-ai/cordis": "4.0.5" }, scripts: { postinstall: "touch DO_NOT_RUN" } });
+    await writeFile(join(pkg, "index.js"), `export { Context } from '@deepseek-ai/cordis'; export const version = '${version}';`);
+    const archive = join(root, "package.tgz");
+    const child = Bun.spawn(["tar", "-czf", archive, "-C", root, "package"]);
+    expect(await child.exited).toBe(0);
+    archives.set(version, await readFile(archive));
+  }
+  const requests: string[] = [];
+  const server = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch(request): Response {
+    const path = decodeURIComponent(new URL(request.url).pathname); requests.push(path);
+    if (path === "/private-helper") return Response.json({ name: "private-helper", "dist-tags": { latest: "2.0.0" },
+      versions: Object.fromEntries([...archives].map(([version, bytes]) => [version, { name: "private-helper", version,
+        peerDependencies: { "@deepseek-ai/cordis": "4.0.5" }, dist: {
+          tarball: `http://127.0.0.1:${server.port}/${version}.tgz`,
+          integrity: `sha512-${createHash("sha512").update(bytes).digest("base64")}`,
+        } }])) });
+    const bytes = archives.get(path.slice(1).replace(".tgz", ""));
+    return bytes ? new Response(Buffer.from(bytes)) : new Response("Not found", { status: 404 });
+  } });
+  const wrapper = join(f.directory, "bun-test-runner");
+  await writeFile(wrapper, `#!${process.execPath}\nconst args = process.argv.slice(2).map(value => value.startsWith('--registry=') ? '--registry=http://127.0.0.1:${server.port}' : value); const child = Bun.spawn([process.execPath, ...args], {cwd:process.cwd(),env:process.env,stdout:'inherit',stderr:'inherit'}); process.exit(await child.exited);`);
+  await chmod(wrapper, 0o700);
+  const manager = new GenerationManager({ ...f.options, execPath: wrapper });
+  try {
+    const initial = await manager.initialize();
+    const before = await readFile(initial.runtimeEntry, "utf8");
+    const coreLock = await readFile(join(initial.directory, ".core/bun.lock"), "utf8");
+    for (const [id, version] of [["one", "1.0.0"], ["two", "2.0.0"]]) {
+      await manager.stageInstall(await application(f.directory, id!, { dependencies: { "private-helper": version! }, body:
+        `import { Context } from '@deepseek-ai/cordis'; import { Context as Peer, version } from 'private-helper'; if (Context !== Peer || version !== '${version}') throw new Error('Wrong core identity or private version'); export { Context, version };` }));
+    }
+    await manager.activateWhenIdle(); const active = await new GenerationManager({ ...f.options, execPath: "/no-installer-at-startup" }).initialize(); await manager.confirmActivation();
+    const probe = Bun.spawn([process.execPath, "--no-install", "--eval", `
+const one = await import(${JSON.stringify(active.applications[0]!.entry)});
+const two = await import(${JSON.stringify(active.applications[1]!.entry)});
+if (one.Context !== two.Context || one.version !== '1.0.0' || two.version !== '2.0.0') throw new Error('Cross-application resolution');`], { stdout: "pipe", stderr: "pipe" });
+    expect({ code: await probe.exited, error: await new Response(probe.stderr).text() }).toEqual({ code: 0, error: "" });
+    expect(await realpath(initial.runtimeEntry)).toBe(await realpath(active.runtimeEntry));
+    expect(await readFile(initial.runtimeEntry, "utf8")).toBe(before);
+    expect(await readFile(join(initial.directory, ".core/bun.lock"), "utf8")).toBe(coreLock);
+    for (const app of active.applications) {
+      const directory = join(manager.root, app.storage!);
+      // Published directories never run an installer again. Their private lock and
+      // fixed core reference together describe the graph; startup works without a cache.
+      expect(app.dependencyLockSha256).toBe(createHash("sha256").update(await readFile(join(directory, "bun.lock"))).digest("hex"));
+      expect(await Bun.file(join(directory, "node_modules/private-helper/DO_NOT_RUN")).exists()).toBe(false);
+    }
+    expect(requests.some(path => path.includes("deepseek"))).toBe(false);
+    const unchanged = active.applications.find(app => app.id === "one")!;
+    const updated = await manager.stageInstall(await application(f.directory, "two", { version: "1.0.1" }));
+    expect(updated.applications.find(app => app.id === "one")!.storage).toBe(unchanged.storage);
+    expect(await readFile(active.applications[1]!.entry, "utf8")).toContain("private-helper");
+    const removed = await manager.stageRemove("two");
+    expect(removed.applications[0]!.storage).toBe(unchanged.storage);
+    const extensions = await readdir(join(manager.root, "extensions"));
+    await expect(manager.stageInstall(await application(f.directory, "bad", { dependencies: { "private-helper": "1.0.0" }, body: "throw new Error('bad plugin');" }))).rejects.toThrow("bad plugin");
+    expect((await readdir(join(manager.root, "extensions"))).sort()).toEqual(extensions.sort());
+    expect((await manager.status()).pendingId).toBe(removed.id);
+  } finally { await server.stop(true); }
+}, 30_000);
+
+test("adopts a legacy full-tree installation without modifying its files or losing rollback", async () => {
+  const f = await fixture();
+  const oldId = "seed-legacy", old = join(f.manager.root, "generations", oldId);
+  await cp(f.seedDirectory, old, { recursive: true, verbatimSymlinks: true });
+  const archive = await application(f.directory, "existing");
+  const unpack = join(f.directory, "legacy-unpack"); await mkdir(unpack);
+  const tar = Bun.spawn(["tar", "-xzf", archive, "-C", unpack]); expect(await tar.exited).toBe(0);
+  await mkdir(join(old, "applications")); await cp(join(unpack, "package"), join(old, "applications/existing"), { recursive: true });
+  await mkdir(join(old, "node_modules/@test")); await symlink("../../applications/existing", join(old, "node_modules/@test/existing"));
+  await writeFile(join(old, "existing.tgz"), await readFile(archive));
+  const manifest = { schemaVersion: 1, id: oldId, seedId: "testseed", createdAt: "legacy", runtimeEntry: "packages/runtime/index.ts",
+    coreVersions: f.versions, dependencyLockSha256: null, applications: [{ id: "existing", name: "Existing", version: "1.0.0", packageName: "@test/existing",
+      entry: "applications/existing/server.ts", client: "applications/existing/client.js", archive: "existing.tgz" }] };
+  await writeJSON(join(old, "generation.json"), manifest);
+  await writeJSON(join(f.manager.root, "active.json"), { schemaVersion: 1, id: oldId, state: "ready" });
+  expect((await f.manager.initialize()).id).toBe(oldId);
+  const before = await readFile(join(old, "generation.json"), "utf8");
+  const candidate = await f.manager.stageInstall(await application(f.directory, "new-app"));
+  expect(candidate.manifest.schemaVersion).toBe(2);
+  expect(candidate.applications.map(app => app.id)).toEqual(["existing", "new-app"]);
+  expect(await readFile(join(old, "generation.json"), "utf8")).toBe(before);
+  expect(await realpath(candidate.runtimeEntry)).toBe(await realpath(join(old, manifest.runtimeEntry)));
+  await f.manager.activateWhenIdle(); await new GenerationManager(f.options).initialize();
+  expect((await new GenerationManager(f.options).initialize()).id).toBe(oldId);
+  expect(await readFile(join(old, "generation.json"), "utf8")).toBe(before);
 });

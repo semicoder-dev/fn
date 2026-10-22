@@ -5,11 +5,11 @@
 `bun run dev` 使用 fn Dev，`bun run run` 使用 fn Preview；分别通过 `bun run agent` 和 `bun run agent --preview` 操作。生产 `.app` 默认使用生产目录，本地验收使用 Preview。新架构数据全部在各模式数据根下的 `cordis-v1/`，不读取、导入、迁移或删除旧数据。不得输出凭证或登录秘密。
 
 - `models.saved` 分页读取用户添加的模型；`models.select` 添加/移除列表项，不发起生成或删除会话。`connections.providers/presets/refresh` 提供服务商与隔离账号目录；不得将静态目录存在视为账号鉴权成功。
-- `market.list/add/change/remove/refresh/catalog/install` 管理 schemaVersion 2 市场；官方新索引尚未发布，不能混用旧市场。`apps.update` 按记录的原来源更新并验证身份；状态由 `runtime.status` 和 `runtime.changed` 读取。应用自身更新走 FIA，Dev/Preview 默认关闭正式更新。
+- `market.list/add/change/remove/refresh/catalog/install` 管理 schemaVersion 2 市场；官方 Cordis 索引已发布，不能混用旧市场。`apps.update` 按记录的原来源更新并验证身份；状态由 `runtime.status` 和 `runtime.changed` 读取。应用自身更新走 FIA，Dev/Preview 默认关闭正式更新。
 - `runtime.status` 返回 epoch、seedId、busy 和运行目录状态。`runtime.changed` 只用于失效通知，没有事件回放；初次连接和重连都重新读状态与持久投影。页面关闭、客户端断线不终止任务。
 - `apps.list` 列出已加载应用、方法名称和 Chat 入口。应用是可信本机代码，具有 Bun 能力；Cordis scope 不是安全沙箱。调用 `apps.invoke({appId,name,args})` 前阅读该应用的接口说明，不猜测未知方法。
-- `apps.install({source})` 接受 npm 包、HTTPS 归档或本地 tgz，返回准备状态。安装不立即等于启用：轮询 `runtime.status`，确认新 epoch 和 `apps.list`。候选目录验包后等待空闲，再 flush、销毁和重启 Bun。失败保留可用目录并报告错误。`runtime.applyUpdate` 显式重试待切换目录。
-- `apps.enable` 启停 Cordis 应用；停用等待调用完成、取消 Agent 并释放资源。`apps.remove` 准备不含该应用的新运行目录，保留 KV 与历史。全局核心依赖和精确 peer 版本由宿主固定，不能在运行目录内原地安装依赖。
+- `apps.install({source})` 接受 npm 包、HTTPS 归档或本地 tgz，返回准备状态。`runtime.status.generation.phase` 区分市场、下载、解包、目录准备、依赖、校验和启动检查，结束时为 null；阶段不是百分比。安装不立即等于启用：轮询 `runtime.status`，确认新 epoch 和 `apps.list`。候选目录验包后等待空闲，再 flush、销毁和重启 Bun。失败保留可用目录并报告错误。`runtime.applyUpdate` 显式重试待切换目录。
+- `apps.enable` 启停 Cordis 应用；停用等待调用完成、取消 Agent 并释放资源。`apps.remove` 准备不含该应用的新运行目录，保留 KV 与历史。全局核心依赖和精确 peer 版本由宿主固定。schema 2 运行清单只引用共享核心与不可变插件安装目录，不能在发布后的目录内原地安装依赖；历史引用暂不自动回收。
 - `connections.providers` 列出认证方式。`connections.create` 建立独立连接，`connections.setKey` 保存新连接的 API Key。一个 provider 可有多个连接。`connections.models({id,...page})` 读取该连接模型，模型选择始终为 `{connectionId,modelId}`；不自动切换账号或计费来源。
 - 订阅登录使用 `auth.start({connectionId})`、`auth.list` 和 `auth.reply({id,promptId,value})`，由锁定 Pi 协议驱动。让用户在官方浏览器完成登录；不将 token、验证码、登录 URL 写进对话日志。`auth.cancel` 取消交互并释放回调；`auth.logout` 清除凭证。已经绑定历史的连接不能覆盖账号身份，需新连接和新会话；正常 token 刷新不改变连接。
 - `connections.list`、`connections.models`、`sessions.list`、`apps.kv.list` 都返回 `{items,nextOffset,hasMore}`。传 `offset` 和 `limit`（最多100）；有后续页时使用 nextOffset。SDK 浏览器端可用 `ctx.clientApp.api.list` 或 `readAllPages` 聚合。不要把第一页当全集。

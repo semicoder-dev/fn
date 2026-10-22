@@ -1,3 +1,4 @@
+import { generationPhases } from "../packages/runtime/src/generation-progress.ts";
 import { sessionCardSchema, cardValuesSchema } from "../packages/runtime/src/card-contract.ts";
 import { appearanceSchema, appearanceUpdate } from "./theme";
 import { runtimeMarket, runtimeCatalogEntry, savedModel, catalogModel, marketURL } from "./runtime-product";
@@ -41,7 +42,7 @@ const login = z.object({
   events: z.array(z.json()), prompt: z.json().nullable(), error: z.string().nullable(),
 });
 const generation = z.object({
-  id: z.string(), pending: z.boolean(), installing: z.boolean(), error: z.string().nullable(),
+  id: z.string(), pending: z.boolean(), installing: z.boolean(), phase: z.enum(generationPhases).nullable(), error: z.string().nullable(),
 });
 const method = <I extends z.ZodType, O extends z.ZodType>(description: string, input: I, output: O) =>
   ({ description, input, output });

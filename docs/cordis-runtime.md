@@ -34,6 +34,18 @@ FIA 启动一个固定 Bun 1.4.3 进程。`backend/runtime.ts` 只装配产品 A
 
 应用自身更新继续使用 FIA 的检查、下载、完整安装包提示和忙时延后流程。正式构建启动时及每 24 小时自动检查；Dev/Preview 默认关闭正式更新，避免覆盖开发构建。插件更新与应用更新使用不同入口，前者只重启后台，后者遵循 FIA 发行清单。
 
+## 内核与扩展分离（本地开发，未发布）
+
+用户在对比 dsh 后确认取消每次安装的全量内核复制。`GenerationManager` 新建 schema 2 清单；正式归档解包到 `runtime/seeds/<seedId>` 后直接共享，外部开发 seed 只在首次接入时物化到 `runtime/cores/<seedId>`。相同 seed ID 不允许用另一归档覆盖已有内容。核心仍由原版 dsh/Cordis 包组成，不修改上游。
+
+每个新插件安装到独立 `runtime/extensions/<id>`，包含原始归档、`package/`、私有依赖与自己的 Bun 锁文件；旧插件安装目录继续引用，更新不改写前一版本。`runtime/generations/<id>` 仅保存清单和受管理的相对链接，引用核心与选中的插件目录。卸载生成新的选择清单，保留旧版本、Session 和 KV。当前不自动回收历史目录，避免误删仍被回退版本引用的文件。
+
+Bun 使用普通真实路径解析，没有 Node loader/HMR。插件私有依赖在独立目录安装；为包管理器提供仅含版本元数据的共享 peer 占位包，冻结锁验证后再连接到固定核心。安装器始终看不到可写的核心链接。实际依赖图逐项检查共享包的 canonical path，拒绝真实重复副本、别名绕过和越界依赖；整个数据目录搬移后相对引用仍可恢复。运行阶段不执行安装器。
+
+无额外依赖的插件只离线生成空锁文件、建立引用并预导入，不再遍历复制内核。已有 schema 1 可正常启动；升级内核或首次修改插件时建立新清单，旧目录不改写，仍可回退。固定 seed 源码改变意味着后续发行仍需完整 DMG，公开 0.5.1 不包含本节优化。
+
+`runtime.status.generation.phase` 区分 catalog、download、extract、copy、dependencies、verify、preflight；copy 表示准备目录及引用，只有外部 seed 首次接入才复制核心。阶段不代表百分比；完成清空 phase，pending 继续表示等待空闲切换。FIA 保留窗口与重连流程。
+
 ## 连接与凭证
 
 模型选择为 `{ connectionId, modelId }`。一个 Session 固定一个连接，空闲时可在该连接内换模型。账号或端点改变需要新连接和新 Session。
@@ -91,4 +103,4 @@ bun run framework:verify
 
 `runtime-seed.ts --distribution` 要求 `FN_SIGNING_IDENTITY`，在 seed 副本中通过 FIA `signNativeCodeTree` 为 Mach-O 依赖签名和验证，再计算 seed ID、归档与摘要。普通 check/build 不读取签名凭据；发布时先准备临时 keychain，再构建 seed。上游原始归档和安装依赖不被改写。`release:update` 复用同一 seed，避免安装包与更新包的资源身份不同。
 
-首次安装需要校验、解包和复制完整 seed，fn 将 FIA `backend.startupTimeoutMs` 显式设置为 60000 毫秒；普通启动复用已有 generation。该值随完整运行时身份固定，打包冒烟最多等待 75 秒，超时仍阻止发布并保留后台/原生请求诊断；不改变模型请求、浏览器回归或工具取消的期限。
+首次安装需要校验和解包完整 seed；上述开发版直接共享解包内容，外部开发 seed 才需首次复制。fn 将 FIA `backend.startupTimeoutMs` 显式设置为 60000 毫秒；普通启动复用已有 generation。该值随完整运行时身份固定，打包冒烟最多等待 75 秒，超时仍阻止发布并保留后台/原生请求诊断；不改变模型请求、浏览器回归或工具取消的期限。

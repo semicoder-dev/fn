@@ -1,3 +1,5 @@
+import RuntimeGenerationBanner from "../RuntimeGenerationBanner";
+import type { GenerationPhase } from "../../packages/runtime/src/generation-progress";
 import React, { act, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserHost, type ClientApplication } from "@semicoder/fn-sdk/cordis-client";
@@ -91,6 +93,23 @@ async function run() {
   await show(true); assert(!!button("Count 0"), "Default page state resets");
   await act(async () => pageRoot.unmount()); await host.dispose();
   results.push("PASS shared UI, opt-in retained state, default unload and plugin disposal");
+  phase("installation progress");
+  const bannerRoot = createRoot(document.getElementById("fixture")!);
+  let retries = 0;
+  const generation = { pending: false, installing: true, phase: "catalog" as GenerationPhase | null, error: null as string | null };
+  const renderBanner = async () => { await act(async () => bannerRoot.render(<RuntimeGenerationBanner generation={generation} retry={() => { retries++; }} />)); };
+  for (const [step, label] of [["catalog", "检查应用市场"], ["download", "获取应用安装包"], ["extract", "解包并校验"], ["copy", "准备应用版本"], ["dependencies", "准备应用依赖"], ["verify", "校验共享依赖"], ["preflight", "检查应用能否启动"]] as const) {
+    generation.phase = step; await renderBanner();
+    assert(document.querySelector('[role="status"]')?.textContent?.includes(label), `Install stage ${step} is visible`);
+  }
+  generation.installing = false; generation.phase = null; generation.pending = true; await renderBanner();
+  assert(document.querySelector('[role="status"]')?.textContent?.includes("等待后台任务空闲"), "Ready candidate waits for idle");
+  generation.error = "安装失败，当前应用仍可使用"; await renderBanner(); await click("重试切换");
+  assert(retries === 1 && document.querySelector('[role="status"]')?.textContent?.includes(generation.error), "Failure remains visible and retry works");
+  generation.error = null; generation.pending = false; await renderBanner();
+  assert(!document.querySelector('[role="status"]'), "Completed installation clears stale progress");
+  await act(async () => bannerRoot.unmount());
+  results.push("PASS installation phases, idle wait, failure and completion");
   document.getElementById("results")!.textContent = results.join("\n"); document.documentElement.dataset.testStatus = "passed";
 }
 void run().catch(error => { document.getElementById("results")!.textContent = `${results.join("\n")}\nFAIL ${error.stack}`; document.documentElement.dataset.testStatus = "failed"; });

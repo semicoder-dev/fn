@@ -1,3 +1,4 @@
+import RuntimeGenerationBanner from "./RuntimeGenerationBanner";
 import RuntimeCard from "./RuntimeCards";
 import type { SessionCard } from "@semicoder/fn-sdk/cards";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -184,10 +185,7 @@ export default function RuntimeApp() {
       </div>
     </nav>
     <main className="runtime-main">
-      {(status?.generation.pending || status?.generation.installing || status?.generation.error) &&
-        <div className="runtime-banner">{status.generation.error || (status.generation.installing ? "正在准备应用运行目录…" : "更新已准备好，等待后台任务空闲后重启。")}
-          {status.generation.error && <button onClick={() => void action(() => client.call("runtime.applyUpdate", {}))}>重试切换</button>}
-        </div>}
+      <RuntimeGenerationBanner generation={status?.generation} retry={() => void action(() => client.call("runtime.applyUpdate", {}))} />
       {error && <div role="alert" className="runtime-error"><span>{error}</span><button aria-label="关闭错误提示" onClick={() => setError("")}>×</button></div>}
       {pages.map(page => <PageSlot key={`${status?.epoch}:${page.key}`} pluginId={page.appId} visible={page.key === view} keepAlive={page.keepAlive === true} label={page.title}>
         <PageBoundary resetKey={`${status?.epoch}:${page.key}`}><page.component /></PageBoundary>

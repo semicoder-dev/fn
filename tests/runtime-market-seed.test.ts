@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { RuntimeProduct } from "../backend/runtime-product";
 import { GenerationManager, materializeRuntimeSeed } from "../packages/runtime/src/generations";
 import { buildRuntimeSeed } from "../scripts/runtime-seed";
@@ -39,14 +39,33 @@ test("packaged seed installs the official market through compatibility checks an
     await restarted.confirmActivation();
     expect(product.catalog(active.applications, active.manifest.coreVersions).map(entry => entry.state))
       .toEqual(["installed", "installed", "installed"]);
+    for (const application of active.applications) {
     const frozen = Bun.spawn([process.execPath, "install", "--offline", "--ignore-scripts", "--production",
       "--frozen-lockfile", "--lockfile-only", "--linker=hoisted"], {
-      cwd: active.directory, stdout: "pipe", stderr: "pipe",
+      cwd: join(dataDirectory, "runtime", application.storage!), stdout: "pipe", stderr: "pipe",
     });
     const [code, stdout, stderr] = await Promise.all([
       frozen.exited, new Response(frozen.stdout).text(), new Response(frozen.stderr).text(),
     ]);
     expect({ code, error: code ? stderr || stdout : "" }).toEqual({ code: 0, error: "" });
+    }
+    const engine = await import(pathToFileURL(active.runtimeEntry).href) as typeof import("../packages/runtime/src/index");
+    const runtimeData = join(directory, "sessions");
+    let runtime = await engine.FnRuntime.open({ dataDirectory: runtimeData, tools: { web: { search: async () => [], fetch: async () => ({}) } } });
+    try {
+      for (const app of active.applications) {
+        const module = await import(pathToFileURL(app.entry).href);
+        const loaded = await runtime.load({ manifest: app, plugin: module.default ?? module });
+        expect({status: loaded.status, error: loaded.error}).toEqual({status: "active", error: undefined});
+      }
+      runtime.store.kv("cordis-quick-notes").set("note:test", "preserved");
+      expect(await runtime.invoke("cordis-quick-notes", "count", null)).toBe(1);
+      await runtime.unload("cordis-quick-notes");
+      await expect(runtime.invoke("cordis-quick-notes", "count", null)).rejects.toThrow();
+      await runtime.close();
+      runtime = await engine.FnRuntime.open({ dataDirectory: runtimeData, tools: { web: { search: async () => [], fetch: async () => ({}) } } });
+      expect(runtime.store.kv("cordis-quick-notes").get("note:test")).toBe("preserved");
+    } finally { await runtime.close(); }
     for (const name of ["react", "react-dom"]) {
       const missing = { ...active.manifest.coreVersions };
       delete missing[name];

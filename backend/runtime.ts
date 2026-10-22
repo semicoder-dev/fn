@@ -4,6 +4,7 @@ import { join, dirname, relative, isAbsolute, sep } from "node:path";
 import { mkdir, readFile, rename, writeFile, realpath } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import api, { runtimeConnection } from "../shared/runtime-api";
+import type { GenerationPhase } from "../packages/runtime/src/generation-progress";
 import { GenerationManager, materializeRuntimeSeed, type Generation } from "../packages/runtime/src/generations";
 import { boundedPage, checkedKvValue } from "../packages/runtime/src/limits";
 import type { FnRuntime, Json, AssistantStreamFrame } from "../packages/runtime/src/index";
@@ -21,6 +22,7 @@ let product: RuntimeProduct;
 let setAppearance: (input: Parameters<RuntimeProduct["appearance"]>[0]) => ReturnType<RuntimeProduct["appearance"]>;
 let dataDirectory = "";
 let installing = false;
+let installPhase: GenerationPhase | null = null;
 let pending = false;
 let switching = false;
 let reloadRequested = false;
@@ -35,7 +37,7 @@ let restartBackend: () => Promise<void>;
 class RestartDeferred extends Error {}
 
 function status() {
-  return { id: active?.id ?? "", pending: pending || reloadRequested, installing, error: updateError };
+  return { id: active?.id ?? "", pending: pending || reloadRequested, installing, phase: installPhase, error: updateError };
 }
 function connectionSummary(value: ConnectionInfo) {
   // Provider profiles can contain a whole model catalog. The list is a summary,
@@ -52,15 +54,21 @@ async function saveSettings() {
   await writeFile(tmp, JSON.stringify(settings), { mode: 0o600 });
   await rename(tmp, target);
 }
-function stage(operation: () => Promise<Generation>) {
+function progress(phase: GenerationPhase) {
+  if (!installing || installPhase === phase) return;
+  installPhase = phase;
+  change("generation");
+}
+function stage(operation: () => Promise<Generation>, phase: GenerationPhase = "download") {
   writable();
   if (installing || switching) throw new Error("已有安装正在进行");
   installing = true;
+  installPhase = phase;
   updateError = null;
   change("generation");
   void operation().then(() => { pending = true; }, error => {
     updateError = String(error).slice(0, 2000);
-  }).finally(() => { installing = false; change("generation"); });
+  }).finally(() => { installing = false; installPhase = null; change("generation"); });
   return status();
 }
 async function applyPending() {
@@ -120,11 +128,12 @@ export default defineBackend({
     "market.install": ({ marketId, appId }) => stage(async () => {
       const { entry, origin } = await product.resolve(marketId, appId, active.applications, active.manifest.coreVersions);
       return generations.stageInstall(entry.url, { expected: entry, origin });
-    }),
+    }, "catalog"),
     "apps.update": ({ appId }) => stage(async () => {
       const app = active.applications.find(app => app.id === appId);
       if (!app?.origin) throw new Error("此应用未记录安装来源，请从地址安装新版归档");
       if (app.origin.marketId) {
+        progress("catalog");
         const { entry, origin } = await product.resolve(app.origin.marketId, appId, active.applications, active.manifest.coreVersions);
         return generations.stageInstall(entry.url, { expected: entry, origin });
       }
@@ -138,7 +147,7 @@ export default defineBackend({
       ...app, origin: active.applications.find(value => value.id === app.id)?.origin, ...(app.client ? { clientURL: `/api/app-assets/${active.id}/${app.id}/client.js` } : {}),
     })),
     "apps.install": ({ source }) => stage(() => generations.stageInstall(source)),
-    "apps.remove": ({ appId }) => stage(() => generations.stageRemove(appId)),
+    "apps.remove": ({ appId }) => stage(() => generations.stageRemove(appId), "copy"),
     "apps.enable": async ({ appId, enabled }) => {
       writable();
       if (enabled) { await runtime.enable(appId); settings.disabled = settings.disabled.filter(id => id !== appId); }
@@ -225,7 +234,7 @@ export default defineBackend({
     generations = new GenerationManager({
       // The seed path is needed only for a genuinely empty installation. An
       // existing generation must start even if the new archive cannot unpack.
-      dataDirectory, seedDirectory: join(dataDirectory, "runtime", "unmaterialized"),
+      dataDirectory, seedDirectory: join(dataDirectory, "runtime", "unmaterialized"), progress,
       execPath: process.execPath, busy: () => (runtime?.busy() ?? false) || (chat?.busy() ?? false) || (product?.busy() ?? false),
       restart: () => restartBackend(),
     });
@@ -245,7 +254,7 @@ export default defineBackend({
         return { accepted: false, reason: "等待应用、模型、同步或安装任务空闲" };
       // Preparation can include package installation. Keep it outside both the
       // RPC deadline and FIA's backend readiness window; old work stays usable.
-      installing = true; updateError = null; change("generation");
+      installing = true; installPhase = "copy"; updateError = null; change("generation");
       void (async () => {
         const nextSeed = await materializeRuntimeSeed({
           archive: join(context.app.runtimeDirectory, "resources/runtime-seed.tgz"),
@@ -258,7 +267,7 @@ export default defineBackend({
         reloadRequested = true;
       })().catch(error => {
         updateError = String(error).slice(0, 2000);
-      }).finally(() => { installing = false; change("generation"); });
+      }).finally(() => { installing = false; installPhase = null; change("generation"); });
       return { accepted: true };
     };
     const generationState = await generations.status();
@@ -338,7 +347,7 @@ export default defineBackend({
     void readFile(seedSource.metadata, "utf8").then(text => {
       const packagedSeed = JSON.parse(text);
       if (active.manifest.seedId !== packagedSeed.id && !installing && !pending && !switching)
-        stage(async () => generations.stageSeed(await materializeRuntimeSeed(seedSource)));
+        stage(async () => generations.stageSeed(await materializeRuntimeSeed(seedSource)), "copy");
     }).catch(error => { updateError = `运行内核升级：${String(error).slice(0, 1000)}`; change("generation"); });
     void chat.start().catch(error => { updateError = `Chat: ${String(error)}`; change("chat"); });
   },

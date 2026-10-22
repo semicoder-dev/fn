@@ -1,7 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
-import { cp, mkdir, readFile, readdir, readlink, realpath, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, readlink, realpath, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { gunzipSync } from "node:zlib";
+import { copyGenerationDirectory } from "./copy-generation.ts";
+import type { GenerationPhase } from "./generation-progress.ts";
 import { archiveGitSource, parseGitSource } from "./git-source.ts";
 
 /** This module deliberately imports no runtime, SDK, or Cordis package. */
@@ -22,6 +24,9 @@ export interface GenerationApplication {
   entry: string;
   client?: string;
   archive: string;
+  /** Immutable extension installation, relative to the managed runtime root (schema 2). */
+  storage?: string;
+  dependencyLockSha256?: string | null;
   origin?: { source: string; marketId?: string; marketURL?: string };
 }
 
@@ -63,6 +68,14 @@ export async function materializeRuntimeSeed(options: {
   const output = join(seeds, metadata.id);
   const existing = await optionalJson<SeedArchiveMetadata>(join(output, ".materialized.json"));
   if (existing?.sha256 === metadata.sha256) return output;
+  // Published generations may reference this seed directly. Never replace its
+  // contents, even if a different archive incorrectly reuses the same identity.
+  try {
+    await stat(output);
+    throw new Error("Runtime seed identity already exists with different or incomplete metadata");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
   await mkdir(seeds, { recursive: true, mode: 0o700 });
   const staging = join(seeds, `.extract-${randomUUID()}`);
   await mkdir(staging, { mode: 0o700 });
@@ -103,7 +116,6 @@ export async function materializeRuntimeSeed(options: {
       throw new Error("Runtime seed manifest differs from archive metadata");
     await verifyGenerationDependencies(staging, seed.coreVersions, ["@semicoder/fn-runtime", "@semicoder/fn-sdk"]);
     await atomicJson(join(staging, ".materialized.json"), metadata);
-    await rm(output, { recursive: true, force: true });
     await rename(staging, output);
     return output;
   } finally {
@@ -112,7 +124,9 @@ export async function materializeRuntimeSeed(options: {
 }
 
 export interface GenerationManifest {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
+  /** Shared core directory relative to the managed runtime root. */
+  core?: string;
   id: string;
   seedId: string;
   createdAt: string;
@@ -142,6 +156,7 @@ export interface GenerationManagerOptions {
   dataDirectory: string;
   seedDirectory: string;
   execPath?: string;
+  progress?: (phase: GenerationPhase) => void;
   busy: () => boolean | Promise<boolean>;
   /** Commit the backend restart after the durable activation pointer is written. */
   restart: (next: Generation, previous: Generation) => void | Promise<void>;
@@ -395,20 +410,25 @@ export async function verifyGenerationDependencies(
   directory: string,
   coreVersions: Record<string, string>,
   roots: string[],
+  references: { coreDirectory: string; applicationDirectories: string[] } | undefined = undefined,
 ): Promise<void> {
   directory = await realpath(directory);
+  const coreDirectory = references ? await realpath(references.coreDirectory) : directory;
+  const allowed = [directory, coreDirectory, ...await Promise.all((references?.applicationDirectories ?? []).map(path => realpath(path)))];
   const expected = new Map<string, string>();
   for (const [name, version] of Object.entries(coreVersions)) {
-    const target = await findPackageDirectory(name, directory);
-    if (!target || !within(directory, target)) throw new Error(`Missing shared runtime package: ${name}`);
+    const target = await findPackageDirectory(name, coreDirectory);
+    if (!target || !within(coreDirectory, target)) throw new Error(`Missing shared runtime package: ${name}`);
     const manifest = await json<PackageManifest>(join(target, "package.json"));
     if (manifest.version !== version) throw new Error(`Shared runtime version differs: ${name}`);
+    if (await findPackageDirectory(name, directory) !== target)
+      throw new Error(`Duplicate shared runtime resolution: generation -> ${name}`);
     expected.set(name, target);
   }
   const visited = new Set<string>();
   const visit = async (base: string) => {
     const canonical = await realpath(base);
-    if (!within(directory, canonical)) throw new Error("Dependency points outside the generation");
+    if (!allowed.some(root => within(root, canonical))) throw new Error("Dependency points outside the generation references");
     if (visited.has(canonical)) return;
     visited.add(canonical);
     const manifest = await json<PackageManifest>(join(canonical, "package.json"));
@@ -457,7 +477,24 @@ export class GenerationManager {
   private async generation(id: string): Promise<Generation> {
     const directory = this.directory(id);
     const manifest = await json<GenerationManifest>(join(directory, "generation.json"));
-    if (manifest.schemaVersion !== 1 || manifest.id !== id) throw new Error("Invalid generation manifest");
+    if (![1, 2].includes(manifest.schemaVersion) || manifest.id !== id) throw new Error("Invalid generation manifest");
+    if (manifest.schemaVersion === 2) {
+      const managed = await realpath(this.root);
+      const core = await realpath(this.coreDirectory({ directory, manifest }));
+      if (!within(managed, core) || await realpath(join(directory, ".core")) !== core
+        || !within(core, await realpath(relativeFile(directory, manifest.runtimeEntry))))
+        throw new Error("Invalid shared core binding");
+      for (const app of manifest.applications) {
+        const extension = await realpath(this.extensionDirectory(app));
+        const pkg = await realpath(join(extension, "package"));
+        if (!within(managed, extension) || !within(extension, pkg)
+          || !within(pkg, await realpath(relativeFile(directory, app.entry)))
+          || (app.client && !within(pkg, await realpath(relativeFile(directory, app.client))))
+          || await realpath(relativeFile(directory, app.archive)) !== join(extension, "archive.tgz")
+          || app.dependencyLockSha256 !== await this.lockHash(extension))
+          throw new Error("Invalid extension binding or lockfile");
+      }
+    }
     return {
       id, directory, manifest,
       runtimeEntry: relativeFile(directory, manifest.runtimeEntry),
@@ -483,31 +520,94 @@ export class GenerationManager {
     return { currentId: active?.id ?? null, ...(pending ? { pendingId: pending.id } : {}),
       ...(error ? { lastError: error.message } : {}) };
   }
+  private coreDirectory(generation: Pick<Generation, "directory" | "manifest">): string {
+    if (generation.manifest.schemaVersion === 1) return generation.directory;
+    const ref = generation.manifest.core;
+    if (!ref || !/^(?:cores|seeds|generations)\/[a-z0-9-]+$/.test(ref)) throw new Error("Invalid shared core reference");
+    return relativeFile(this.root, ref);
+  }
+  private extensionDirectory(application: StoredApplication): string {
+    if (!application.storage || !/^extensions\/[a-z0-9-]+$/.test(application.storage)) throw new Error("Invalid extension reference");
+    return relativeFile(this.root, application.storage);
+  }
+  private async link(directory: string, name: string, target: string): Promise<void> {
+    const filename = join(directory, name);
+    await mkdir(dirname(filename), { recursive: true });
+    // Candidate and published generation directories have the same depth.
+    // Canonical relative links also survive moving the complete data directory.
+    await symlink(relative(await realpath(dirname(filename)), await realpath(target)), filename);
+  }
+  private async assemble(directory: string, core: string, versions: Record<string, string>, applications: StoredApplication[]): Promise<void> {
+    await mkdir(directory, { recursive: true, mode: 0o700 });
+    await this.link(directory, ".core", core);
+    for (const name of Object.keys(versions)) {
+      const target = await findPackageDirectory(name, core);
+      if (!target) throw new Error(`Missing shared runtime package: ${name}`);
+      await this.link(directory, `node_modules/${name}`, target);
+    }
+    for (const app of applications) {
+      const extension = this.extensionDirectory(app);
+      await this.link(directory, `applications/${app.id}`, join(extension, "package"));
+      await this.link(directory, `node_modules/${app.packageName}`, join(extension, "package"));
+      await this.link(directory, app.archive, join(extension, "archive.tgz"));
+    }
+    // A generation is a selection, not a package-manager workspace. Only extension
+    // installation directories have package.json / bun.lock and may run an installer.
+  }
+  private async verify(directory: string, core: string, versions: Record<string, string>, applications: StoredApplication[]): Promise<void> {
+    await verifyGenerationDependencies(directory, versions,
+      ["@semicoder/fn-runtime", "@semicoder/fn-sdk", ...applications.map(app => app.packageName)],
+      { coreDirectory: core, applicationDirectories: applications.map(app => this.extensionDirectory(app)) });
+  }
   private async materializeSeed(seed: SeedManifest, seedDirectory = this.options.seedDirectory): Promise<Generation> {
-    if (seed.schemaVersion !== 1 || seed.bunVersion !== Bun.version)
+    if (seed.schemaVersion !== 1 || seed.bunVersion !== Bun.version || !generationId.test(seed.id))
       throw new Error(`Runtime seed requires schema 1 and Bun ${seed.bunVersion}`);
-    const id = `seed-${seed.id}`;
+    const id = `shared-${seed.id}`;
     const directory = this.directory(id);
     const existing = await optionalJson<GenerationManifest>(join(directory, "generation.json"));
-    if (existing) {
-      await verifyGenerationDependencies(directory, seed.coreVersions, ["@semicoder/fn-runtime", "@semicoder/fn-sdk"]);
-      return this.generation(id);
+    if (existing) return this.generation(id);
+    let core = join(this.root, "seeds", seed.id);
+    if (resolve(seedDirectory) !== resolve(core)) {
+      core = join(this.root, "cores", seed.id);
+      await mkdir(dirname(core), { recursive: true, mode: 0o700 });
+      if (!await optionalJson(join(core, "seed.json"))) {
+        const temporary = `${core}.${randomUUID()}.partial`;
+        try {
+          this.options.progress?.("copy");
+          await copyGenerationDirectory(seedDirectory, temporary);
+          await verifyGenerationDependencies(temporary, seed.coreVersions, ["@semicoder/fn-runtime", "@semicoder/fn-sdk"]);
+          await rename(temporary, core);
+        } finally { await rm(temporary, { recursive: true, force: true }); }
+      }
     }
-    const staging = join(this.root, `initial-${randomUUID()}`);
+    const staging = join(this.root, "generations", `initial-${randomUUID()}`);
     try {
-      await cp(seedDirectory, staging, { recursive: true, dereference: false, verbatimSymlinks: true });
+      await this.assemble(staging, core, seed.coreVersions, []);
       const manifest: GenerationManifest = {
-        schemaVersion: 1, id, seedId: seed.id, createdAt: new Date().toISOString(),
-        runtimeEntry: seed.runtimeEntry, coreVersions: seed.coreVersions, applications: [],
-        dependencyLockSha256: await this.lockHash(staging),
+        schemaVersion: 2, id, core: relative(this.root, core), seedId: seed.id, createdAt: new Date().toISOString(),
+        runtimeEntry: `.core/${seed.runtimeEntry}`, coreVersions: seed.coreVersions, applications: [],
+        dependencyLockSha256: await this.lockHash(core),
       };
+      this.options.progress?.("verify");
+      await this.verify(staging, core, seed.coreVersions, []);
       await atomicJson(join(staging, "generation.json"), manifest);
-      await verifyGenerationDependencies(staging, seed.coreVersions, ["@semicoder/fn-runtime", "@semicoder/fn-sdk"]);
       await rename(staging, directory);
       return this.generation(id);
-    } finally {
-      await rm(staging, { recursive: true, force: true });
-    }
+    } finally { await rm(staging, { recursive: true, force: true }); }
+  }
+  /** Adopt an old full-tree generation without changing it or the active pointer. */
+  private async layered(current: Generation): Promise<Generation> {
+    if (current.manifest.schemaVersion === 2) return current;
+    const id = `gen-${randomUUID()}`;
+    const directory = this.directory(id);
+    await this.assemble(directory, current.directory, current.manifest.coreVersions, []);
+    await atomicJson(join(directory, "generation.json"), {
+      ...current.manifest, schemaVersion: 2, id, core: relative(this.root, current.directory),
+      runtimeEntry: `.core/${current.manifest.runtimeEntry}`, applications: [],
+    } satisfies GenerationManifest);
+    let next = await this.generation(id);
+    for (const app of current.applications) next = await this.buildCandidate(next, app.archive, false, { origin: app.origin });
+    return next;
   }
   async initialize(): Promise<Generation> {
     return this.serial(async () => {
@@ -567,6 +667,7 @@ export class GenerationManager {
         // buildCandidate preflights every application and the runtime together.
         // An empty application set still needs to validate the new runtime entry.
         if (!source.applications.length) {
+          this.options.progress?.("preflight");
           await execute([this.options.execPath ?? process.execPath, "--no-env-file", "--no-install", "--no-macros",
             "--eval", `await import(${JSON.stringify(candidate.runtimeEntry)});`], candidate.directory);
         }
@@ -595,12 +696,17 @@ export class GenerationManager {
     });
   }
   private async buildCandidate(current: Generation, source: string, pending = true, options: InstallExpectation = {}): Promise<Generation> {
+      current = await this.layered(current);
       const staging = join(this.root, `install-${randomUUID()}`);
       const unpack = join(staging, "unpack");
       const candidate = join(staging, "candidate");
       await mkdir(unpack, { recursive: true, mode: 0o700 });
+      let extension: string | undefined;
+      let published = false;
       try {
+        this.options.progress?.("download");
         const bytes = await sourceBytes(source);
+        this.options.progress?.("extract");
         if (options.expected && digest(bytes) !== options.expected.sha256) throw new Error("市场归档 SHA-256 不匹配");
         const extracted = await extractApplication(bytes, unpack);
         const pkg = await json<PackageManifest>(join(extracted, "package.json"));
@@ -616,21 +722,21 @@ export class GenerationManager {
           throw new Error("归档身份与市场声明不一致");
         const id = `gen-${randomUUID()}`;
         const appDirectory = `applications/${parsed.application.id}`;
-        await cp(current.directory, candidate, { recursive: true, dereference: false, verbatimSymlinks: true });
-        await rm(join(candidate, appDirectory), { recursive: true, force: true });
-        await cp(extracted, join(candidate, appDirectory), { recursive: true });
+        this.options.progress?.("copy");
+        extension = join(this.root, "extensions", randomUUID());
+        await mkdir(extension, { recursive: true, mode: 0o700 });
+        await rename(extracted, join(extension, "package"));
         const archive = `.archives/${parsed.application.id}-${digest(bytes)}.tgz`;
-        await mkdir(dirname(join(candidate, archive)), { recursive: true });
-        await writeFile(join(candidate, archive), bytes, { mode: 0o600 });
+        await writeFile(join(extension, "archive.tgz"), bytes, { mode: 0o600 });
         const application: StoredApplication = {
           ...parsed.application,
           entry: `${appDirectory}/${parsed.application.entry.slice(2)}`,
           ...(parsed.application.client ? { client: `${appDirectory}/${parsed.application.client.slice(2)}` } : {}),
-          archive,
+          archive, storage: relative(this.root, extension),
           origin: options.origin ?? (pending ? { source } : undefined),
         };
         for (const file of [application.entry, application.client].filter((value): value is string => Boolean(value))) {
-          const filename = relativeFile(candidate, file);
+          const filename = relativeFile(join(extension, "package"), file.slice(appDirectory.length + 1));
           if (!(await stat(filename)).isFile()) throw new Error(`Application export is not a file: ${file}`);
         }
         const applications = current.manifest.applications.filter((app) => app.id !== application.id);
@@ -638,56 +744,14 @@ export class GenerationManager {
           throw new Error("Another application already uses this npm package name");
         applications.push(application);
         applications.sort((left, right) => left.id.localeCompare(right.id));
-        const rootPackage = await json<Record<string, unknown>>(join(candidate, "package.json"));
-        rootPackage.workspaces = ["packages/runtime", "packages/sdk", "applications/*"];
-        const dependencies = { ...(rootPackage.dependencies as Record<string, string>) };
-        for (const old of current.manifest.applications) delete dependencies[old.packageName];
-        for (const app of applications) dependencies[app.packageName] = "workspace:*";
-        rootPackage.dependencies = dependencies;
-        rootPackage.overrides = { ...current.manifest.coreVersions };
-        delete (rootPackage.overrides as Record<string, string>)["@semicoder/fn-runtime"];
-        delete (rootPackage.overrides as Record<string, string>)["@semicoder/fn-sdk"];
-        await atomicJson(join(candidate, "package.json"), rootPackage);
-        const appLink = join(candidate, "node_modules", application.packageName);
-        const previousApplication = current.manifest.applications.find((app) => app.id === application.id);
-        if (previousApplication && previousApplication.packageName !== application.packageName)
-          await rm(join(candidate, "node_modules", previousApplication.packageName), { force: true, recursive: true });
-        await mkdir(dirname(appLink), { recursive: true });
-        await rm(appLink, { force: true, recursive: true });
-        await symlink(relative(dirname(appLink), join(candidate, appDirectory)), appLink, "dir");
-        if (parsed.dependencies) {
-          const executable = this.options.execPath ?? process.execPath;
-          await execute([executable, "install", "--ignore-scripts", "--omit=dev", "--linker=hoisted",
-            "--registry=https://registry.npmjs.org"], candidate, 180_000);
-          await execute([executable, "install", "--ignore-scripts", "--production", "--linker=hoisted", "--frozen-lockfile",
-            "--registry=https://registry.npmjs.org"], candidate, 180_000);
-          await rm(join(candidate, ".install-cache"), { recursive: true, force: true });
-        } else {
-          // A dependency-free workspace changes only these lock records. Keep the
-          // complete resolved external graph unchanged, without a registry lookup.
-          const lock = Bun.JSON5.parse(await readFile(join(candidate, "bun.lock"), "utf8")) as {
-            workspaces: Record<string, unknown>;
-            packages: Record<string, unknown>;
-          };
-          lock.workspaces[""] = { name: rootPackage.name, dependencies };
-          for (const old of current.manifest.applications) {
-            delete lock.workspaces[`applications/${old.id}`];
-            delete lock.packages[old.packageName];
-          }
-          for (const app of applications) {
-            const manifest = await json<PackageManifest>(join(candidate, "applications", app.id, "package.json"));
-            lock.workspaces[`applications/${app.id}`] = {
-              name: manifest.name, version: manifest.version,
-              ...(manifest.dependencies ? { dependencies: manifest.dependencies } : {}),
-              ...(manifest.peerDependencies ? { peerDependencies: manifest.peerDependencies } : {}),
-              ...(manifest.optionalDependencies ? { optionalDependencies: manifest.optionalDependencies } : {}),
-            };
-            lock.packages[app.packageName] = [`${app.packageName}@workspace:applications/${app.id}`];
-          }
-          await atomicJson(join(candidate, "bun.lock"), lock);
-        }
-        await verifyGenerationDependencies(candidate, current.manifest.coreVersions,
-          ["@semicoder/fn-runtime", "@semicoder/fn-sdk", ...applications.map((app) => app.packageName)]);
+        const core = this.coreDirectory(current);
+        this.options.progress?.("dependencies");
+        await this.prepareExtension(extension, pkg, core, current.manifest.coreVersions, parsed.dependencies);
+        application.dependencyLockSha256 = await this.lockHash(extension);
+        await this.assemble(candidate, core, current.manifest.coreVersions, applications);
+        this.options.progress?.("verify");
+        await this.verify(candidate, core, current.manifest.coreVersions, applications);
+        this.options.progress?.("preflight");
         const entryPaths = [current.manifest.runtimeEntry, ...applications.map((app) => app.entry)];
         const preflight = join(candidate, ".preflight.ts");
         await writeFile(preflight,
@@ -697,47 +761,92 @@ export class GenerationManager {
         await rm(preflight);
         const manifest: GenerationManifest = {
           ...current.manifest, id, createdAt: new Date().toISOString(), applications,
-          dependencyLockSha256: await this.lockHash(candidate),
+          dependencyLockSha256: current.manifest.dependencyLockSha256,
         };
         await atomicJson(join(candidate, "generation.json"), manifest);
         await rename(candidate, this.directory(id));
+        published = true;
         if (pending) await atomicJson(this.pendingFile, { schemaVersion: 1, id });
         return this.generation(id);
       } finally {
         await rm(staging, { recursive: true, force: true });
+        if (extension && !published) await rm(extension, { recursive: true, force: true });
       }
+  }
+  private async prepareExtension(directory: string, pkg: PackageManifest, core: string, versions: Record<string, string>, needsInstall: boolean): Promise<void> {
+    const external = (values: Record<string, string> = {}) => Object.fromEntries(Object.entries(values).filter(([name]) => !sharedPackage(name)));
+    const peers = external(pkg.peerDependencies);
+    const optionalPeers = Object.fromEntries(Object.entries(peers).filter(([name]) => pkg.peerDependenciesMeta?.[name]?.optional));
+    const dependencies = { ...Object.fromEntries(Object.entries(peers).filter(([name]) => !pkg.peerDependenciesMeta?.[name]?.optional)), ...external(pkg.dependencies) };
+    const optionalDependencies = { ...optionalPeers, ...external(pkg.optionalDependencies) };
+    const overrides: Record<string, string> = {};
+    if (needsInstall) {
+      for (const [name, version] of Object.entries(versions)) {
+        const path = `.host-peers/${name.replaceAll("/", "_")}`;
+        overrides[name] = `file:./${path}`;
+        await atomicJson(join(directory, path, "package.json"), { name, version, private: true });
+      }
+    }
+    await atomicJson(join(directory, "package.json"), { name: "fn-extension-dependencies", private: true, type: "module", dependencies, optionalDependencies, overrides });
+    if (needsInstall) {
+      const executable = this.options.execPath ?? process.execPath;
+      await execute([executable, "install", "--ignore-scripts", "--omit=dev", "--linker=hoisted", "--registry=https://registry.npmjs.org"], directory, 180_000);
+      if (!await this.lockHash(directory)) throw new Error("Dependency installation did not produce a lockfile");
+      await execute([executable, "install", "--ignore-scripts", "--production", "--linker=hoisted", "--frozen-lockfile", "--registry=https://registry.npmjs.org"], directory, 180_000);
+      await rm(join(directory, ".install-cache"), { recursive: true, force: true });
+      // Replace only the installer's local, metadata-only host placeholders.
+      // Unexpected actual core copies/aliases remain for the graph audit to reject.
+      const wire = async (modules: string): Promise<void> => {
+        let entries;
+        try { entries = await readdir(modules, { withFileTypes: true }); }
+        catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return; throw error; }
+        for (const entry of entries) {
+          if (entry.name.startsWith(".")) continue;
+          const path = join(modules, entry.name);
+          if (entry.name.startsWith("@")) { await wire(path); continue; }
+          const manifest = await optionalJson<PackageManifest>(join(path, "package.json"));
+          if (!manifest) continue;
+          if (sharedPackage(manifest.name)) {
+            const declared = join(directory, ".host-peers", manifest.name.replaceAll("/", "_"), "package.json");
+            if (!versions[manifest.name] || await readFile(join(path, "package.json"), "utf8") !== await readFile(declared, "utf8"))
+              throw new Error(`Unexpected installed shared runtime package: ${manifest.name}`);
+            await rm(path, { recursive: true, force: true });
+            await this.link(dirname(path), entry.name, (await findPackageDirectory(manifest.name, core))!);
+          } else await wire(join(path, "node_modules"));
+        }
+      };
+      await wire(join(directory, "node_modules"));
+    } else {
+      // Let the pinned Bun version produce its empty lock format, without registry
+      // access, dependency installation, or exposing any shared core links to it.
+      await execute([this.options.execPath ?? process.execPath, "install", "--offline", "--lockfile-only", "--ignore-scripts"], directory);
+    }
+    for (const name of Object.keys(versions)) {
+      const link = join(directory, "node_modules", name);
+      await rm(link, { recursive: true, force: true });
+      await this.link(directory, `node_modules/${name}`, (await findPackageDirectory(name, core))!);
+    }
   }
   async stageRemove(applicationId: string): Promise<Generation> {
     return this.serial(async () => {
       const pointer = await optionalJson<ActivePointer>(this.activeFile);
       if (!pointer || pointer.state !== "ready") throw new Error("Runtime is not ready for installation");
       const pending = await optionalJson<{ id: string }>(this.pendingFile);
-      const current = await this.generation(pending?.id ?? pointer.id);
+      const current = await this.layered(await this.generation(pending?.id ?? pointer.id));
       const removed = current.manifest.applications.find((app) => app.id === applicationId);
       if (!removed) throw new Error(`Application is not installed: ${applicationId}`);
       const id = `gen-${randomUUID()}`;
-      const candidate = join(this.root, `remove-${randomUUID()}`);
+      const candidate = join(this.root, "generations", `remove-${randomUUID()}`);
       try {
-        await cp(current.directory, candidate, { recursive: true, dereference: false, verbatimSymlinks: true });
-        await rm(join(candidate, "applications", applicationId), { recursive: true, force: true });
-        await rm(join(candidate, "node_modules", removed.packageName), { recursive: true, force: true });
-        const rootPackage = await json<{ dependencies: Record<string, string> }>(join(candidate, "package.json"));
-        delete rootPackage.dependencies[removed.packageName];
-        await atomicJson(join(candidate, "package.json"), rootPackage);
-        const lock = Bun.JSON5.parse(await readFile(join(candidate, "bun.lock"), "utf8")) as {
-          workspaces: Record<string, { dependencies?: Record<string, string> }>;
-          packages: Record<string, unknown>;
-        };
-        delete lock.workspaces[`applications/${applicationId}`];
-        delete lock.workspaces[""]?.dependencies?.[removed.packageName];
-        delete lock.packages[removed.packageName];
-        await atomicJson(join(candidate, "bun.lock"), lock);
+        this.options.progress?.("copy");
         const applications = current.manifest.applications.filter((app) => app.id !== applicationId);
-        await verifyGenerationDependencies(candidate, current.manifest.coreVersions,
-          ["@semicoder/fn-runtime", "@semicoder/fn-sdk", ...applications.map((app) => app.packageName)]);
+        const core = this.coreDirectory(current);
+        await this.assemble(candidate, core, current.manifest.coreVersions, applications);
+        this.options.progress?.("verify");
+        await this.verify(candidate, core, current.manifest.coreVersions, applications);
         await atomicJson(join(candidate, "generation.json"), {
           ...current.manifest, id, applications, createdAt: new Date().toISOString(),
-          dependencyLockSha256: await this.lockHash(candidate),
+          dependencyLockSha256: current.manifest.dependencyLockSha256,
         } satisfies GenerationManifest);
         await rename(candidate, this.directory(id));
         await atomicJson(this.pendingFile, { schemaVersion: 1, id });
