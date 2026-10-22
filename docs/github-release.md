@@ -1,6 +1,17 @@
 # fn 应用发布
 
-fn **0.5.1 / build 11** 已公开；官网为 `https://semicoder.dev/fn`，安装页为其 `/docs/installation`，更新源为 `https://semicoder-dev.github.io/fn/updates/latest.json`。公开标签及附件不移动、不覆盖。
+fn **0.5.2 / build 12** 已公开；官网为 `https://semicoder.dev/fn`，安装页为其 `/docs/installation`，更新源为 `https://semicoder-dev.github.io/fn/updates/latest.json`。公开标签及附件不移动、不覆盖。
+
+## 0.5.2 插件安装提速（2026-10-22）
+
+`v0.5.2` 固定 `f6edfc3a1941c1199739a73d772bb4a1a1b702cb`。[正式工作流 39701865820](https://github.com/semicoder-dev/fn/actions/runs/39701865820) 成功，主干 CI 为 [39701720899](https://github.com/semicoder-dev/fn/actions/runs/39701720899)。完整 check、267 项测试/2316 断言、build、FIA 与 SDK 独立消费通过；FIA 88 JS/48 Swift。github-pages 仅增加精确 v0.5.2 标签许可。
+
+- [公开 DMG](https://github.com/semicoder-dev/fn/releases/download/v0.5.2/fn-0.5.2-12-mac-arm64.dmg)：66,101,814 字节，SHA-256 `ed7f08d19912ff8f5b39fdab039156a664d8b6653d688d940bb8e5023e9ff224`。五附件匿名摘要、Developer ID、Apple 公证票据、Gatekeeper、生产 CloudKit/profile、2 个原生依赖签名及 55 项内嵌 SDK 文件独立验收通过。
+- seed `be3f798487d6bef4d5e89ee1`，runtime ID `b910f3a2bc20c6a7b011963f10194c34284c4131a1fb4df817f544573ee5ab73`。签名更新清单、32 个在线文件大小/摘要及镜像逐文件比对通过；旧 build 11 两个文件抽检保留。本次需要完整 DMG。
+- 正式 seed 从真实市场 refresh/resolve 下载、校验并安装三个原始 0.1.0 插件，忙时等待、空闲重启、active/installed、卸载释放及 KV 恢复通过。实际 0.5.1 原版建立的运行代升级后插件/KV 保留，旧代不改写。
+- 空目录启动至正常退出 9,432 ms，后台只启动一次，受管进程组清理通过。该数值是单次 smoke，不能作为冷启动基准。
+
+共享固定内核、独立插件依赖与小型 generation 消除每次安装的全量复制；本地同组准备中位数 5.808 s → 0.189 s，范围见 [测量记录](runtime-validation.md)。旧运行目录保留回退，历史目录暂不自动回收。0.5.x 数据保留，0.4.x 仍遵循独立目录规则。SDK、官方插件、手机、agent-webtool 版本不变；官网安装入口和指南对应 Semicoder `54adc7f`，已完成本地质量、51 单元/12 Worker 测试、构建和 39 页面检查；两环境部署及线上验收单独记录于 workspace `docs/agent/sessions/2026-10-22-fn-052-release.md`。
 
 ## 0.5.1 官方市场修复（2026-10-21）
 
@@ -63,7 +74,7 @@ fn **0.5.1 / build 11** 已公开；官网为 `https://semicoder.dev/fn`，安�
 
 发布大小按内容判断，不按代码量、提交数量或是否需要完整 DMG 判断。涉及插件兼容或数据迁移时，发布前列出影响，由用户确认版本归类。公开发布 0.x 安装包仍处于 1.0 之前；本文的“正式发行”指公开签名安装包，不代表产品已进入 1.0。
 
-已有 `0.4.0` 和历史标签保留，后续按此规则演进。当前公开版本为 `0.5.1 / build 11`；用户已授权准备本次 0.5.2/build 12 候选，只有明确授权时才准备版本，日常开发不提前修改。应用、SDK、插件与 FIA 独立管理版本；应用发行不自动带动其他包升版。FIA 共仓期继续暂停独立 npm 发布。
+已有 `0.4.0` 和历史标签保留，后续按此规则演进。当前公开版本为 `0.5.2 / build 12`；下一次普通发行可采用 0.5.3 候选，只有明确授权时才准备版本，日常开发不提前修改。应用、SDK、插件与 FIA 独立管理版本；应用发行不自动带动其他包升版。FIA 共仓期继续暂停独立 npm 发布。
 
 ## 日常开发与待发布清单
 
