@@ -1,7 +1,5 @@
 import { resolve } from "node:path";
-import { buildUIStyles } from "./packages/sdk/styles";
-import { defineConfig, type Plugin } from "vite";
-import tailwindcss from "@tailwindcss/vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import fia from "@semicoder/fia/vite";
 export default defineConfig({
@@ -19,28 +17,24 @@ export default defineConfig({
     "process.execArgv": "[]",
     "process.env.CORDIS_SHARED": "undefined",
   },
-  plugins: [sdkStyles(), tailwindcss(), react(), fia()],
-  build: { outDir: "dist", emptyOutDir: true },
-});
-
-/** SDK CSS is also consumed from an archive, so keep the development artifact current. */
-function sdkStyles(): Plugin {
-  const source = resolve(import.meta.dirname, "packages/sdk/src");
-  let pending: Promise<void> = Promise.resolve();
-  const rebuild = () => {
-    pending = pending.catch(() => {}).then(buildUIStyles);
-    return pending;
-  };
-  return {
-    name: "fn-sdk-styles",
-    buildStart: rebuild,
-    configureServer(server) {
-      server.watcher.add(source);
-      server.watcher.on("change", (path) => {
-        if (path.startsWith(source + "/") && /\.(?:tsx?|css)$/.test(path)) {
-          void rebuild().catch((error) => server.config.logger.error(String(error)));
-        }
-      });
+  plugins: [react(), fia()],
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+    rollupOptions: {
+      treeshake: {
+        // Upstream's bundled barrel omits PURE markers on React component
+        // factories and this Shiki theme value factory. Their unused return
+        // values can be dropped without changing the original implementation.
+        // These optional formatters have no host registration side effects.
+        // Keep CSS imports; omit unused formatter JS imported by the DSH barrel.
+        moduleSideEffects: (id) =>
+          id.endsWith(".css") ||
+          !/[\/]node_modules[\/](?:\.bun[\/][^/]+[\/]node_modules[\/])?(?:katex|shiki|@shikijs[\/]|anser|diff|simple-icons|mdast-util-|micromark)/.test(
+            id,
+          ),
+        manualPureFunctions: ["memo", "forwardRef", "createContext", "createCssVariablesTheme"],
+      },
     },
-  };
-}
+  },
+});

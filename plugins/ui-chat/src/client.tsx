@@ -1,4 +1,9 @@
-import "./style.css";
+import { classes } from "@semicoder/fn-ui";
+import styles from "./style.module.css";
+const cx = (...values: (string | false | undefined)[]) => classes(styles, ...values);
+import { Checkbox } from "@semicoder/fn-ui";
+import { Modal } from "@semicoder/fn-ui";
+import { Button, Textarea, Select, Input } from "@semicoder/fn-ui";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { Context } from "@deepseek-ai/cordis";
 import type { APIClient, z } from "@semicoder/fia/api";
@@ -32,8 +37,16 @@ export const inject = [
 ];
 type Session = z.infer<typeof runtimeSession>;
 type Connection = z.infer<typeof runtimeConnection>;
-type Approval = { id: string; sessionId: string; toolName: string; reason?: string };
-type Endpoint = { targetId: string; name: string };
+type Approval = {
+  id: string;
+  sessionId: string;
+  toolName: string;
+  reason?: string;
+};
+type Endpoint = {
+  targetId: string;
+  name: string;
+};
 type Remote = {
   sessions: APIClient<typeof sessionApi>;
   approvals: APIClient<typeof approvalApi>;
@@ -79,7 +92,15 @@ function Conversation({
   const revision = useRef(0),
     current = useRef(sessionId),
     mounted = useRef(false);
-  const requestIds = useRef(new Map<string, { text: string; id: string }>());
+  const requestIds = useRef(
+    new Map<
+      string,
+      {
+        text: string;
+        id: string;
+      }
+    >(),
+  );
   current.current = sessionId;
   useEffect(() => {
     selection.select(sessionId);
@@ -224,26 +245,34 @@ function Conversation({
   return (
     <div style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0 }}>
       {error && (
-        <div role="alert" className="runtime-error">
+        <div role="alert" className={cx("runtime-error")}>
           <span>{error}</span>
-          <button onClick={() => setError("")}>关闭</button>
+          <Button onClick={() => setError("")} type="button">
+            关闭
+          </Button>
         </div>
       )}
-      <div className="runtime-chat">
-        <aside className="runtime-sessions">
-          <button className="runtime-primary" onClick={() => setCreating(true)}>
+      <div className={cx("runtime-chat")}>
+        <aside className={cx("runtime-sessions")}>
+          <Button
+            className={cx("runtime-primary")}
+            onClick={() => setCreating(true)}
+            type="button"
+            variant="primary"
+          >
             ＋ 新会话
-          </button>
-          <button onClick={() => setArchived(!archived)}>
+          </Button>
+          <Button onClick={() => setArchived(!archived)} type="button">
             {archived ? "返回当前会话" : "查看已归档"}
-          </button>
+          </Button>
           {sessions
             .filter((session) => session.archived === archived)
             .map((session) => (
-              <button
+              <Button
                 key={session.id}
-                className={session.id === sessionId ? "selected" : ""}
+                className={cx(session.id === sessionId ? "selected" : "")}
                 onClick={() => setSessionId(session.id)}
+                type="button"
               >
                 <strong>{session.title}</strong>
                 <small>
@@ -251,10 +280,10 @@ function Conversation({
                     session.targetId}{" "}
                   · {session.status === "running" ? "运行中" : "空闲"}
                 </small>
-              </button>
+              </Button>
             ))}
         </aside>
-        <section className="runtime-conversation">
+        <section className={cx("runtime-conversation")}>
           {active ? (
             <>
               <header>
@@ -266,7 +295,7 @@ function Conversation({
                   </p>
                 </div>
                 <SessionModel remote={remote} session={active} action={action} />
-                <button
+                <Button
                   onClick={() =>
                     void action(async () => {
                       await remote.sessions.call("archive", {
@@ -276,12 +305,15 @@ function Conversation({
                       setArchived(!active.archived);
                     })
                   }
+                  type="button"
                 >
                   {active.archived ? "恢复会话" : "归档"}
-                </button>
+                </Button>
               </header>
-              <div className="runtime-messages">
-                {!items.length && <div className="runtime-empty">发送消息，开始这次对话。</div>}
+              <div className={cx("runtime-messages")}>
+                {!items.length && (
+                  <div className={cx("runtime-empty")}>发送消息，开始这次对话。</div>
+                )}
                 {items.map((item) => (
                   <React.Fragment key={item.id}>
                     {renderSlot("fn.chat.message", { item })}
@@ -292,7 +324,7 @@ function Conversation({
                   enabled: endpoints.some((endpoint) => endpoint.targetId === active.targetId),
                 })}
                 {stream && (
-                  <article className="runtime-message assistant">
+                  <article className={cx("runtime-message assistant")}>
                     <small>助手 · 正在生成</small>
                     {stream.reasoning && (
                       <details>
@@ -300,7 +332,7 @@ function Conversation({
                         <pre>{stream.reasoning}</pre>
                       </details>
                     )}
-                    <div className="runtime-message-text">{stream.text}</div>
+                    <div className={cx("runtime-message-text")}>{stream.text}</div>
                   </article>
                 )}
                 {active.status === "running" && <p role="status">正在处理…</p>}
@@ -308,31 +340,33 @@ function Conversation({
               {approvals
                 .filter((approval) => approval.sessionId === active.id)
                 .map((approval) => (
-                  <div className="runtime-approval" key={approval.id}>
+                  <div className={cx("runtime-approval")} key={approval.id}>
                     <strong>允许执行 {approval.toolName}？</strong>
                     <p>{approval.reason}</p>
-                    <button
+                    <Button
                       onClick={() =>
                         void action(() =>
                           remote.approvals.call("reply", { id: approval.id, allow: false }),
                         )
                       }
+                      type="button"
                     >
                       拒绝
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() =>
                         void action(() =>
                           remote.approvals.call("reply", { id: approval.id, allow: true }),
                         )
                       }
+                      type="button"
                     >
                       允许一次
-                    </button>
+                    </Button>
                   </div>
                 ))}
-              <form className="runtime-composer" onSubmit={send}>
-                <textarea
+              <form className={cx("runtime-composer")} onSubmit={send}>
+                <Textarea
                   aria-label="消息"
                   placeholder="输入消息…"
                   value={text}
@@ -353,37 +387,43 @@ function Conversation({
                   </small>
                   {renderSlot("fn.chat.input-actions", { session: active })}
                   {active.status === "running" && (
-                    <button
+                    <Button
                       type="button"
                       onClick={() =>
                         void action(() => remote.sessions.call("cancel", { id: active.id }))
                       }
                     >
                       停止
-                    </button>
+                    </Button>
                   )}
-                  <button className="runtime-primary" disabled={!online || sending || !text.trim()}>
+                  <Button
+                    className={cx("runtime-primary")}
+                    disabled={!online || sending || !text.trim()}
+                    type="submit"
+                    variant="primary"
+                  >
                     {sending ? "正在提交…" : "发送"}
-                  </button>
+                  </Button>
                 </div>
               </form>
             </>
           ) : (
-            <div className="runtime-welcome">
-              <div className="runtime-mark">fn</div>
+            <div className={cx("runtime-welcome")}>
+              <div className={cx("runtime-mark")}>fn</div>
               <h1>为每件事留一个会话</h1>
               <p>选择模型连接，继续你的工作。</p>
-              <button
+              <Button
                 onClick={() =>
                   connections.some((connection) => connection.configured)
                     ? setCreating(true)
                     : navigation.go("settings/models")
                 }
+                type="button"
               >
                 {connections.some((connection) => connection.configured)
                   ? "新建会话"
                   : "添加模型连接"}
-              </button>
+              </Button>
             </div>
           )}
         </section>
@@ -406,8 +446,8 @@ function Conversation({
 }
 function Message({ item }: { item: SessionDisplayItem }) {
   return (
-    <article className={`runtime-message ${item.kind}`}>
-      <div className="runtime-message-label">
+    <article className={cx(`runtime-message ${item.kind}`)}>
+      <div className={cx("runtime-message-label")}>
         {item.kind === "user"
           ? "你"
           : item.kind === "assistant"
@@ -421,7 +461,7 @@ function Message({ item }: { item: SessionDisplayItem }) {
           <pre>{item.reasoning}</pre>
         </details>
       )}
-      <div className="runtime-message-text">{item.text}</div>
+      <div className={cx("runtime-message-text")}>{item.text}</div>
       {item.truncated && <small>此条内容较长，展示已截断。</small>}
     </article>
   );
@@ -460,7 +500,6 @@ export function apply(ctx: Context) {
   ctx.slots.register({ name: "fn.chat.message", priority: 0 }, Message);
   ctx.provide("chatSlots", true);
 }
-
 function SessionModel({
   remote,
   session,
@@ -470,7 +509,12 @@ function SessionModel({
   session: Session;
   action: (operation: () => Promise<unknown>) => Promise<void>;
 }) {
-  const [models, setModels] = useState<{ id: string; name: string }[]>([]);
+  const [models, setModels] = useState<
+    {
+      id: string;
+      name: string;
+    }[]
+  >([]);
   const [error, setError] = useState("");
   useEffect(() => {
     let disposed = false;
@@ -491,29 +535,25 @@ function SessionModel({
   }, [session.connectionId]);
   return (
     <div>
-      <select
-        aria-label="会话模型"
+      <Select
         value={session.modelId}
         disabled={session.status === "running" || !models.length}
-        onChange={(event) => {
-          const modelId = event.target.value;
+        onValueChange={(value) => {
+          const modelId = value;
           void action(() => remote.sessions.call("model", { id: session.id, modelId }));
         }}
-      >
-        {!models.some((model) => model.id === session.modelId) && (
-          <option value={session.modelId}>{session.modelId}</option>
-        )}
-        {models.map((model) => (
-          <option key={model.id} value={model.id}>
-            {model.name}
-          </option>
-        ))}
-      </select>
+        label={"会话模型"}
+        options={[
+          ...(!models.some((model) => model.id === session.modelId)
+            ? [{ value: session.modelId, label: session.modelId }]
+            : []),
+          ...(models.map((model) => ({ value: model.id, label: model.name })) ?? []),
+        ]}
+      />
       {error && <small role="alert">{error}</small>}
     </div>
   );
 }
-
 function NewSession({
   remote,
   endpoints,
@@ -531,7 +571,12 @@ function NewSession({
   const [targetId, setTargetId] = useState(endpoints[0]?.targetId ?? "");
   const [connectionId, setConnectionId] = useState(available[0]?.id ?? "");
   const [modelId, setModelId] = useState("");
-  const [models, setModels] = useState<{ id: string; name: string }[]>([]);
+  const [models, setModels] = useState<
+    {
+      id: string;
+      name: string;
+    }[]
+  >([]);
   const [title, setTitle] = useState("");
   const [cwd, setCwd] = useState("");
   const [automatic, setAutomatic] = useState(false);
@@ -580,77 +625,85 @@ function NewSession({
     }
   }
   return (
-    <div className="runtime-modal-backdrop">
-      <section
-        className="runtime-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="new-session-title"
-      >
-        <header>
-          <h2 id="new-session-title">新会话</h2>
-          <button aria-label="关闭" onClick={close}>
-            ×
-          </button>
-        </header>
-        <form onSubmit={create} className="runtime-form">
-          <label>
-            对话入口
-            <select value={targetId} onChange={(event) => setTargetId(event.target.value)}>
-              {endpoints.map((endpoint) => (
-                <option key={endpoint.targetId} value={endpoint.targetId}>
-                  {endpoint.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            连接
-            <select value={connectionId} onChange={(e) => setConnectionId(e.target.value)} required>
-              {available.map((connection) => (
-                <option key={connection.id} value={connection.id}>
-                  {connection.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            模型
-            <select value={modelId} onChange={(e) => setModelId(e.target.value)} required>
-              <option value="">{models.length ? "选择模型" : "请先在设置中添加模型"}</option>
-              {models.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            标题
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="新会话" />
-          </label>
-          <label>
-            工作目录
-            <input
-              value={cwd}
-              onChange={(e) => setCwd(e.target.value)}
-              placeholder="可选绝对路径；文件与进程工具需要此项"
-            />
-          </label>
-          <label className="runtime-checkbox">
-            <input
-              type="checkbox"
-              checked={automatic}
-              onChange={(e) => setAutomatic(e.target.checked)}
-            />
-            自动批准此会话的工具操作
-          </label>
-          {error && <p role="alert">{error}</p>}
-          <button className="runtime-primary" disabled={pending || !connectionId || !modelId}>
-            {pending ? "正在创建…" : "创建会话"}
-          </button>
-        </form>
-      </section>
-    </div>
+    <Modal
+      open
+      onClose={close}
+      title={"新会话"}
+      closeLabel="关闭"
+      className={cx("runtime-dialog")}
+      contentClassName={cx("dialog-content")}
+    >
+      <form onSubmit={create} className={cx("runtime-form")}>
+        <label>
+          对话入口
+          <Select
+            value={targetId}
+            onValueChange={(value) => setTargetId(value)}
+            label={"对话入口"}
+            options={[
+              ...(endpoints.map((endpoint) => ({
+                value: endpoint.targetId,
+                label: endpoint.name,
+              })) ?? []),
+            ]}
+          />
+        </label>
+        <label>
+          连接
+          <Select
+            value={connectionId}
+            onValueChange={(value) => setConnectionId(value)}
+            required
+            label={"连接"}
+            options={[
+              ...(available.map((connection) => ({
+                value: connection.id,
+                label: connection.name,
+              })) ?? []),
+            ]}
+          />
+        </label>
+        <label>
+          模型
+          <Select
+            value={modelId}
+            onValueChange={(value) => setModelId(value)}
+            required
+            label={"模型"}
+            options={[
+              { value: "", label: models.length ? "选择模型" : "请先在设置中添加模型" },
+              ...(models.map((model) => ({ value: model.id, label: model.name })) ?? []),
+            ]}
+          />
+        </label>
+        <label>
+          标题
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="新会话" />
+        </label>
+        <label>
+          工作目录
+          <Input
+            value={cwd}
+            onChange={(e) => setCwd(e.target.value)}
+            placeholder="可选绝对路径；文件与进程工具需要此项"
+          />
+        </label>
+        <Checkbox
+          className={cx("runtime-checkbox")}
+          checked={automatic}
+          onChange={(checked) => setAutomatic(checked)}
+          label={"自动批准此会话的工具操作"}
+        />
+        {error && <p role="alert">{error}</p>}
+        <Button
+          className={cx("runtime-primary")}
+          disabled={pending || !connectionId || !modelId}
+          type="submit"
+          variant="primary"
+        >
+          {pending ? "正在创建…" : "创建会话"}
+        </Button>
+      </form>
+    </Modal>
   );
 }

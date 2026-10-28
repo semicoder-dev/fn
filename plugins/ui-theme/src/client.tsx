@@ -1,8 +1,7 @@
-import "./style.css";
 import React from "react";
 import { Service, type Context } from "@deepseek-ai/cordis";
 import { client } from "@semicoder/fn-sdk/client";
-import { Sun } from "@semicoder/fn-sdk/ui";
+import { IconPersonalizationOutlineRegular } from "@semicoder/fn-ui";
 import { NavigationButton } from "@semicoder/fn-ui-navigation/view";
 import type {} from "@semicoder/fn-ui-settings/contract";
 import api from "@semicoder/fn-appearance/contract";
@@ -22,6 +21,8 @@ export default class Theme extends Service {
   private preview: ColorTheme | null = null;
   private media = matchMedia("(prefers-color-scheme: dark)");
   private tokens: string[] = [];
+  private restoreToken = (_key: string) => {};
+  private rememberToken = (_key: string) => {};
   private revision = 0;
   private closed = false;
   private state = {
@@ -50,23 +51,33 @@ export default class Theme extends Service {
     };
   };
   async *[Service.init]() {
-    const previous = document.documentElement.dataset.theme;
+    const previous = document.body.hasAttribute("data-ds-dark-theme");
+    const previousScheme = document.documentElement.style.colorScheme;
+    const previousTokens = new Map<string, string>();
+    this.restoreToken = (key) => {
+      const value = previousTokens.get(key);
+      value ? document.body.style.setProperty(key, value) : document.body.style.removeProperty(key);
+    };
+    this.rememberToken = (key) => {
+      if (!previousTokens.has(key))
+        previousTokens.set(key, document.body.style.getPropertyValue(key));
+    };
     const change = () => this.changed();
     this.media.addEventListener("change", change);
     yield () => {
       this.closed = true;
       this.revision++;
       this.media.removeEventListener("change", change);
-      for (const key of this.tokens) document.documentElement.style.removeProperty(key);
-      if (previous) document.documentElement.dataset.theme = previous;
-      else delete document.documentElement.dataset.theme;
+      for (const key of this.tokens) this.restoreToken(key);
+      document.body.toggleAttribute("data-ds-dark-theme", previous);
+      document.documentElement.style.colorScheme = previousScheme;
       this.listeners.clear();
     };
     this.remote.on("changed", () => void this.refresh());
     this.remote.onReconnect(() => void this.refresh());
     this.ctx.slots.register({ name: "fn.settings.navigation", id: "theme", order: 10 }, () => (
       <NavigationButton navigation={this.ctx.navigation} path="settings/appearance" label="外观">
-        <Sun size={18} />
+        <IconPersonalizationOutlineRegular />
       </NavigationButton>
     ));
     this.ctx.slots.register(
@@ -80,12 +91,16 @@ export default class Theme extends Service {
     const resolved =
       this.state.theme === "system" ? (this.media.matches ? "dark" : "light") : this.state.theme;
     this.state = { ...this.state, resolved };
-    const root = document.documentElement;
-    root.dataset.theme = this.state.theme;
-    for (const key of this.tokens) root.style.removeProperty(key);
+    const root = document.body;
+    root.toggleAttribute("data-ds-dark-theme", resolved === "dark");
+    document.documentElement.style.colorScheme = resolved;
+    for (const key of this.tokens) this.restoreToken(key);
     const tokens = colorTokens(this.preview ?? this.state.colorTheme, resolved);
     this.tokens = Object.keys(tokens);
-    for (const [key, value] of Object.entries(tokens)) root.style.setProperty(key, value);
+    for (const [key, value] of Object.entries(tokens)) {
+      this.rememberToken(key);
+      root.style.setProperty(key, value);
+    }
     for (const listener of this.listeners) listener();
   }
   private async refresh() {

@@ -23,6 +23,8 @@
 
 宿主只挂载 `root`，使用原版 `dsh-client-modules`、`ui-slots` 与 `ui-renderer`。FIA 适配认证资源传输和启动清单；模块索引用包名，`/client` 由上游正规化。React、Cordis 和基础 UI 共享单实例。没有自建 Slot 引擎或 Node HMR。
 
+基础 UI 是静态库 `@semicoder/fn-ui`，原样重导出锁定的 `dsh-client-ui-primitives` 0.2.1-rc.2；SDK 构建将其 JS 入口 external，宿主提供同一份模块。上游发行包未声明的浏览器依赖由 fn-ui 精确补齐。原主题 CSS 固定来源 SHA，附 MIT 许可证及逐文件校验，由 `fn-ui-base` 的 effect 装卸；CSS 子路径在构建时打入此插件，不能作为运行时裸 import。`fn-ui-theme` 负责主题状态、语义覆盖和 FIA 标题栏；未使用 Electron 专用的 darwin 菜单材质。功能页面与看板只提供局部 CSS Modules，旧 Base UI/Tailwind、SDK UI 和全局原生控件规则已经删除。
+
 默认 `fn-ui-layout` 声明 sidebar.top/bottom、main、toolbar、status、overlay。`fn-ui-settings` 声明设置分类和内容；`fn-ui-chat` 声明消息、卡片及输入操作。声明方发布具体的 layoutSlots/settingsSlots/chatSlots 依赖，贡献方 inject，避免异步加载顺序引发未声明插槽。替换布局需提供同样的插槽/服务，或者连同其贡献组合一起替换。样式通过插件 effect 添加和撤销；共享基础样式是 `fn-ui-base`。`fn-ui-session` 为上游 renderer 提供必要的可选 Session scope 适配器；仅传输 Session ID，不将 Agent 对象带入浏览器。
 
 FIA `APIRegistry` 按命名空间注册 contract/handlers，原子检查重复、实时更新 schema、撤销入口、取消并等待活动调用。`fn-rpc` 将其绑定到 Cordis effect。宿主仅静态声明 host 状态/恢复；前端依赖 `api:<namespace>`，后端撤销对应服务时贡献自动停用。`client(ctx, namespace, contract)` 使用泛型服务接口，没有全局业务 Bridge。

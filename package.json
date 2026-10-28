@@ -19,7 +19,7 @@
     "version:app": "bun scripts/release/version.ts",
     "version:sdk": "bun scripts/npm/version.ts",
     "npm:check": "bun scripts/npm/check.ts",
-    "npm:pack": "bun run sdk:styles && bun scripts/npm/pack.ts",
+    "npm:pack": "bun scripts/npm/pack.ts",
     "release:check": "bun scripts/release/check.ts",
     "check": "bun run framework:check && bun run runtime:seed && fia check",
     "test": "bun test ./tests ./packages/host/tests ./packages/sdk/tests ./plugins",
@@ -28,11 +28,10 @@
     "framework:check": "bun framework/fia/tools/task.ts check",
     "framework:pack": "bun framework/fia/tools/task.ts pack",
     "framework:verify": "bun framework/fia/tools/verify-standalone.ts",
-    "sdk:styles": "bun packages/sdk/styles.ts",
     "runtime:seed": "bun run plugins:build && bun scripts/runtime-seed.ts",
     "test:runtime": "bun test ./tests ./packages/host/tests ./packages/sdk/tests ./plugins",
     "upstream:verify": "bun scripts/upstream/verify.ts",
-    "plugins:build": "bun run sdk:styles && bun scripts/build-plugins.ts"
+    "plugins:build": "bun scripts/build-plugins.ts"
   },
   "dependencies": {
     "@deepseek-ai/cordis": "4.0.5",
@@ -48,6 +47,7 @@
     "@deepseek-ai/dsh-brand": "0.2.1-rc.2",
     "@deepseek-ai/dsh-client-modules": "0.2.1-rc.2",
     "@deepseek-ai/dsh-client-store": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.2.1-rc.2",
     "@deepseek-ai/dsh-client-ui-renderer": "0.2.1-rc.2",
     "@deepseek-ai/dsh-client-ui-slots": "0.2.1-rc.2",
     "@deepseek-ai/dsh-credentials": "0.2.1-rc.2",
@@ -71,8 +71,10 @@
     "@deepseek-ai/dsh-tools": "0.2.1-rc.2",
     "@deepseek-ai/dsh-typert-protocol": "0.2.1-rc.2",
     "@deepseek-ai/dsh-user-approval": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-util-code-language": "0.2.1-rc.2",
     "@deepseek-ai/dsh-util-crypto": "0.2.1-rc.2",
     "@deepseek-ai/dsh-util-values": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-util-workspace-path": "0.2.1-rc.2",
     "@deepseek-ai/dsh-working-directory": "0.2.1-rc.2",
     "@deepseek-ai/schemastery": "3.18.5",
     "@earendil-works/pi-ai": "1.1.0",
@@ -95,6 +97,7 @@
     "@semicoder/fn-tool-file": "workspace:*",
     "@semicoder/fn-tool-native": "workspace:*",
     "@semicoder/fn-tool-process": "workspace:*",
+    "@semicoder/fn-ui": "workspace:*",
     "@semicoder/fn-ui-base": "workspace:*",
     "@semicoder/fn-ui-chat": "workspace:*",
     "@semicoder/fn-ui-chat-cards": "workspace:*",
@@ -113,14 +116,12 @@
     "zustand": "4.5.7"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
     "@types/bun": "1.4.0",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "^5.0.0",
     "oxfmt": "^0.61.0",
     "oxlint": "^1.76.0",
-    "tailwindcss": "4.3.3",
     "typescript": "7.0.2",
     "vite": "^7.1.3"
   },
@@ -138,6 +139,7 @@
     "@deepseek-ai/dsh-brand": "0.2.1-rc.2",
     "@deepseek-ai/dsh-client-modules": "0.2.1-rc.2",
     "@deepseek-ai/dsh-client-store": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.2.1-rc.2",
     "@deepseek-ai/dsh-client-ui-renderer": "0.2.1-rc.2",
     "@deepseek-ai/dsh-client-ui-slots": "0.2.1-rc.2",
     "@deepseek-ai/dsh-credentials": "0.2.1-rc.2",
@@ -161,8 +163,10 @@
     "@deepseek-ai/dsh-tools": "0.2.1-rc.2",
     "@deepseek-ai/dsh-typert-protocol": "0.2.1-rc.2",
     "@deepseek-ai/dsh-user-approval": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-util-code-language": "0.2.1-rc.2",
     "@deepseek-ai/dsh-util-crypto": "0.2.1-rc.2",
     "@deepseek-ai/dsh-util-values": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-util-workspace-path": "0.2.1-rc.2",
     "@deepseek-ai/dsh-working-directory": "0.2.1-rc.2",
     "@deepseek-ai/schemastery": "3.18.5"
   }

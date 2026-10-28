@@ -1,3 +1,5 @@
+import { Button } from "@semicoder/fn-ui";
+import styles from "./style.module.css";
 import React, { useSyncExternalStore, type ReactNode } from "react";
 import type Navigation from "./client.tsx";
 export const useNavigation = (navigation: Navigation) =>
@@ -17,14 +19,13 @@ export function NavigationButton({
 }) {
   const current = useNavigation(navigation);
   return (
-    <button
-      className={
-        compact
-          ? `activity-button ${current.split("/")[0] === path.split("/")[0] ? "active" : ""}`
-          : current === path
-            ? "selected"
-            : ""
-      }
+    <Button
+      className={[
+        compact ? styles.compact : styles.navigation,
+        (compact ? current.split("/")[0] === path.split("/")[0] : current === path)
+          ? styles.active
+          : "",
+      ].join(" ")}
       title={label}
       aria-label={label}
       aria-current={current === path ? "page" : undefined}
@@ -32,6 +33,6 @@ export function NavigationButton({
     >
       {children}
       {!compact && label}
-    </button>
+    </Button>
   );
 }

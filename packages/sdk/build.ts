@@ -13,7 +13,7 @@ export const sharedClientModules = [
   "@semicoder/fia/api",
   "@semicoder/fia/client",
   "@semicoder/fn-sdk/client",
-  "@semicoder/fn-sdk/ui",
+  "@semicoder/fn-ui",
 ];
 export function parsePluginMetadata(value: unknown): PluginMetadata {
   if (value === undefined) return {};
@@ -78,7 +78,20 @@ export async function buildPlugin(directory: string): Promise<void> {
       target: "browser",
       format: "cjs",
       outdir: staging,
-      external: sharedClientModules,
+      // Bun's external package matching includes subpaths. Share the JS entry
+      // exactly while allowing the theme CSS export to be bundled into ui-base.
+      external: sharedClientModules.filter((name) => name !== "@semicoder/fn-ui"),
+      plugins: [
+        {
+          name: "fn-shared-ui",
+          setup(build) {
+            build.onResolve({ filter: /^@semicoder\/fn-ui$/ }, (args) => ({
+              path: args.path,
+              external: true,
+            }));
+          },
+        },
+      ],
       jsx: { development: false },
       naming: "[name].[ext]",
       publicPath: "__FN_ASSET_BASE__/",
@@ -91,6 +104,8 @@ export async function buildPlugin(directory: string): Promise<void> {
         result.outputs.filter((file) => file.path.endsWith(".css")).map((file) => file.text()),
       )
     ).join("\n");
+    if (/@import\s+["']@/.test(css))
+      throw new Error("Unresolved package CSS import in plugin output");
     const javascriptSource = (await javascript.text()).replace(
       /(["'])__FN_ASSET_BASE__\/([^"']+)\1/g,
       (_match, _quote, file: string) => `new URL(${JSON.stringify(file)},assetBase).href`,

@@ -1,0 +1,37 @@
+.settings-layout {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+}
+.settings-nav {
+  width: 192px;
+  flex-shrink: 0;
+  padding: 28px 12px;
+  border-right: 1px solid var(--dsw-alias-border-l1);
+  overflow: auto;
+}
+.settings-nav h1 {
+  font-size: 18px;
+  font-weight: 600;
+  padding: 0 12px;
+  margin: 0;
+}
+.settings-nav > p {
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+  margin: 8px 12px 28px;
+}
+.settings-main {
+  overflow: auto;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+@media (max-width: 800px) {
+  .settings-nav {
+    width: 156px;
+    padding: 24px 8px;
+  }
+}

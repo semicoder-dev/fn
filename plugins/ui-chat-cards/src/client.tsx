@@ -1,4 +1,3 @@
-import "./style.css";
 import React, { useEffect, useState } from "react";
 import type { Context } from "@deepseek-ai/cordis";
 import type { APIClient } from "@semicoder/fia/api";

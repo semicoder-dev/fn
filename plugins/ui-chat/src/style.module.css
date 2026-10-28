@@ -1,6 +1,6 @@
 .runtime-sessions button.selected {
-  background: var(--rt-panel);
-  border-color: var(--rt-line);
+  background: var(--dsw-alias-bg-layer-1);
+  border-color: var(--dsw-alias-border-l2);
 }
 .runtime-chat {
   display: flex;
@@ -10,7 +10,7 @@
 .runtime-sessions {
   width: 205px;
   flex-shrink: 0;
-  border-right: 1px solid var(--rt-line);
+  border-right: 1px solid var(--dsw-alias-border-l2);
   padding: 20px 12px;
   overflow: auto;
   display: flex;
@@ -19,8 +19,9 @@
 }
 .runtime-sessions button {
   text-align: left;
-  background: transparent;
-  border-color: transparent;
+  display: block;
+  height: auto;
+  min-height: 36px;
   padding: 10px;
 }
 .runtime-sessions .runtime-primary {
@@ -50,7 +51,7 @@
 }
 .runtime-conversation header {
   padding: 20px 30px;
-  border-bottom: 1px solid var(--rt-line);
+  border-bottom: 1px solid var(--dsw-alias-border-l2);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -60,7 +61,7 @@
   font-size: 17px;
 }
 .runtime-conversation header p {
-  color: var(--rt-muted);
+  color: var(--dsw-alias-label-secondary);
   font-size: 11px;
   margin: 0;
 }
@@ -75,7 +76,7 @@
 }
 .runtime-message-label {
   font-size: 11px;
-  color: var(--rt-muted);
+  color: var(--dsw-alias-label-secondary);
   margin-bottom: 7px;
 }
 .runtime-message-text {
@@ -85,11 +86,11 @@
 .runtime-message.user {
   padding: 15px 18px;
   border-radius: 12px;
-  background: var(--rt-side);
+  background: var(--dsw-specific-sidebar-fill);
 }
 .runtime-message.tool,
 .runtime-message.notice {
-  border-left: 2px solid var(--rt-line);
+  border-left: 2px solid var(--dsw-alias-border-l2);
   padding: 4px 14px;
   font-size: 12px;
 }
@@ -99,7 +100,7 @@
   font-family: ui-monospace, monospace;
 }
 .runtime-message details {
-  color: var(--rt-muted);
+  color: var(--dsw-alias-label-secondary);
   font-size: 12px;
   margin-bottom: 10px;
 }
@@ -109,10 +110,10 @@
 }
 .runtime-composer {
   margin: 8px 25px 22px;
-  border: 1px solid var(--rt-line);
+  border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 13px;
   padding: 9px 10px;
-  background: var(--rt-panel);
+  background: var(--dsw-alias-bg-layer-1);
 }
 .runtime-composer textarea {
   border: 0;
@@ -147,27 +148,27 @@
     600 55px/1.2 -apple-system,
     sans-serif;
   letter-spacing: -5px;
-  color: var(--rt-accent);
+  color: var(--dsw-alias-button-primary-fill);
   margin-bottom: 22px;
 }
 .runtime-welcome h1 {
   font-size: 24px;
 }
 .runtime-welcome p {
-  color: var(--rt-muted);
+  color: var(--dsw-alias-label-secondary);
   margin-bottom: 24px;
 }
 .runtime-empty {
   text-align: center;
   padding-top: 60px;
-  color: var(--rt-muted);
+  color: var(--dsw-alias-label-secondary);
 }
 .runtime-approval {
   padding: 15px 22px;
   margin: 0 25px 5px;
-  background: #f1e9d3;
+  background: var(--dsw-alias-bg-module-platform);
   border-radius: 10px;
-  color: #614e29;
+  color: var(--dsw-alias-label-secondary);
 }
 .runtime-approval p {
   font-size: 12px;
@@ -196,4 +197,8 @@
   .runtime-composer small {
     display: none;
   }
+}
+
+.runtime-conversation header > div:last-child {
+  max-width: 260px;
 }

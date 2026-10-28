@@ -11,7 +11,8 @@ fn 是运行在 Bun＋FIA 上的 Cordis 插件平台。当前源码正在进行*
 | `host/`、`packages/host/` | FIA 启动、配置装配、不可变运行目录、资源传输和故障恢复      |
 | `plugins/`                | 按能力拆分的后端和 UI 插件，名称为 `@semicoder/fn-<能力名>` |
 | `profiles/`               | 默认 bundle、顺序及上游 patch 配置                          |
-| `packages/sdk/`           | Cordis 插件构建、泛型客户端和基础 UI；不提供业务聚合服务    |
+| `packages/sdk/`           | Cordis 插件构建、公共契约和泛型客户端；不提供业务聚合服务   |
+| `packages/ui/`            | 原版 dsh 控件共享入口、固定主题资源和少量页面组合           |
 | `clients/apple/`          | Chat v4 的 SwiftUI 客户端、协议资源与签名辅助               |
 | `framework/fia/`          | 通用窗口、原生能力、动态 API、进程和更新框架                |
 | `scripts/`、`commands/`   | 构建、验证和开发工具                                        |

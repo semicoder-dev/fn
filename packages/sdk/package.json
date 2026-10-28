@@ -1,7 +1,7 @@
 {
   "name": "@semicoder/fn-sdk",
   "version": "0.4.0",
-  "description": "Cordis plugin contracts, generic UI primitives and build tools for fn",
+  "description": "Cordis plugin contracts and build tools for fn",
   "homepage": "https://semicoder.dev/fn",
   "bugs": {
     "url": "https://github.com/semicoder-dev/fn/issues"
@@ -14,30 +14,19 @@
   "files": [
     "src",
     "build.ts",
-    "README.md",
-    "styles.ts",
-    "dist"
+    "README.md"
   ],
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
     "./client": "./src/client.ts",
-    "./ui": "./src/ui.tsx",
-    "./build": "./build.ts",
-    "./theme.css": "./src/theme.css",
-    "./ui.css": "./dist/ui.css",
-    "./tailwind.css": "./src/tailwind.css"
+    "./build": "./build.ts"
   },
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org"
   },
   "dependencies": {
-    "@base-ui/react": "^1.9.0",
-    "@tailwindcss/postcss": "^4.3.3",
-    "lucide-react": "^1.55.0",
-    "postcss": "^8.5.28",
-    "tailwindcss": "^4.3.3",
     "zod": "4.6.5"
   },
   "peerDependencies": {

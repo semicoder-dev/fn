@@ -28,6 +28,7 @@ export interface ReloadSeedResult {
 const seedDirectories = [
   "packages/host",
   "packages/sdk",
+  "packages/ui",
   "packages/tool-support",
   "plugins",
   "profiles",

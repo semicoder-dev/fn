@@ -13,6 +13,7 @@
     "@semicoder/fn-plugin-manager": "workspace:*",
     "@semicoder/fn-plugin-market": "workspace:*",
     "@semicoder/fn-sdk": "workspace:*",
+    "@semicoder/fn-ui": "0.0.0",
     "@semicoder/fn-ui-layout": "workspace:*",
     "@semicoder/fn-ui-navigation": "workspace:*",
     "react": "19.2.7"

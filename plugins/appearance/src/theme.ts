@@ -12,8 +12,8 @@ const palette = z
 export type Palette = z.infer<typeof palette>;
 export const themePresets = {
   default: {
-    light: { accent: "#242424", background: "#FCFCFC", foreground: "#0D0D0D" },
-    dark: { accent: "#EDEDED", background: "#0E0E0E", foreground: "#EDEDED" },
+    light: { accent: "#0F1115", background: "#FFFFFF", foreground: "#0F1115" },
+    dark: { accent: "#F9FAFB", background: "#151517", foreground: "#F9FAFB" },
   },
   github: {
     light: { accent: "#0969DA", background: "#FFFFFF", foreground: "#1F2328" },
@@ -79,7 +79,7 @@ function readable(color: string, backgrounds: string[], ratio = 4.5) {
   return destination;
 }
 
-/** Runtime values inherit into SDK components, plugin scopes and their Portals. */
+/** Overrides are applied to body so original DSH controls and their portals inherit them. */
 export function colorTokens(theme: ColorTheme, mode: ColorMode): Record<string, string> {
   if (theme.preset === "default") return {};
   const { background: bg, foreground: fg, accent } = paletteFor(theme, mode);
@@ -97,48 +97,42 @@ export function colorTokens(theme: ColorTheme, mode: ColorMode): Record<string, 
   const onAccent =
     contrast(accent, "#ffffff") >= contrast(accent, "#000000") ? "#ffffff" : "#000000";
   const sidebar = dark ? mix(bg, "#000000", 0.3) : surface(0.025);
-  const tokens: Record<string, string> = {
-    bg,
-    text: fg,
-    heading: fg,
-    surface: surfaces[1]!,
-    "surface-muted": surface(0.03),
-    "surface-hover": surfaces[3]!,
-    popup: surfaces[2]!,
-    sidebar: contrast(sidebar, fg) >= 4.5 ? sidebar : bg,
-    "sidebar-hover": surface(0.12),
-    "sidebar-active": surface(0.16),
-    "sidebar-text": fg,
-    "sidebar-muted": muted,
-    "text-secondary": muted,
-    muted,
-    placeholder: muted,
-    line: mix(bg, fg, 0.18),
-    "line-soft": mix(bg, fg, 0.1),
-    "input-bg": surfaces[1]!,
-    "input-border": mix(bg, fg, 0.24),
-    accent,
-    "accent-hover": mix(accent, onAccent === "#ffffff" ? "#000000" : "#ffffff", 0.08),
-    "accent-border": mix(bg, accent, 0.5),
-    "on-accent": onAccent,
-    focus: readable("#3a83f7", surfaces, 3),
-    "button-secondary": surfaces[2]!,
-    "button-secondary-hover": surfaces[3]!,
-    selection: surface(0.16),
-    "art-bg": surfaces[2]!,
-    "art-text": muted,
-    shadow: dark ? "#0000005c" : "#00000020",
-    overlay: dark ? "#00000080" : "#00000040",
+  return {
+    "--dsw-alias-bg-base": bg,
+    "--dsw-alias-bg-layer-1": surfaces[0]!,
+    "--dsw-alias-bg-layer-2": surfaces[1]!,
+    "--dsw-alias-bg-layer-3": surfaces[2]!,
+    "--dsw-alias-bg-module-platform": surfaces[1]!,
+    "--dsw-alias-label-primary": fg,
+    "--dsw-alias-label-secondary": muted,
+    "--dsw-alias-label-tertiary": muted,
+    "--dsw-alias-label-caption": muted,
+    "--dsw-alias-label-primary-inverted": onAccent,
+    "--dsw-alias-brand-primary": accent,
+    "--dsw-alias-brand-text": fg,
+    "--dsw-alias-button-primary-fill": accent,
+    "--dsw-alias-button-primary-hover": mix(
+      accent,
+      onAccent === "#ffffff" ? "#000000" : "#ffffff",
+      0.08,
+    ),
+    "--dsw-alias-border-l1": mix(bg, fg, 0.1),
+    "--dsw-alias-border-l2": mix(bg, fg, 0.18),
+    "--dsw-alias-border-l3": mix(bg, fg, 0.22),
+    "--dsw-alias-border-l4": mix(bg, fg, 0.24),
+    "--dsw-alias-interactive-bg-hover": surfaces[2]!,
+    "--dsw-alias-interactive-bg-active": surfaces[3]!,
+    "--dsw-alias-interactive-bg-hover-solid": surfaces[2]!,
+    "--dsw-specific-sidebar-fill": contrast(sidebar, fg) >= 4.5 ? sidebar : bg,
+    "--dsw-specific-sidebar-nav-item-hover": surfaces[2]!,
+    "--dsw-specific-sidebar-nav-item-active": surfaces[3]!,
+    "--dsw-menu-surface-fill": surfaces[1]!,
+    "--dsw-alias-menu-group-header-fill": surfaces[1]!,
+    "--dsw-alias-menu-icon": fg,
+    "--dsw-specific-input-major": bg,
+    "--dsw-specific-selector": surfaces[1]!,
+    "--dsw-alias-state-error-primary": readable("#c42b1c", surfaces),
+    "--dsw-alias-state-success-primary": readable("#287d3c", surfaces),
+    "--dsw-alias-state-warn-label": readable("#8a6800", surfaces),
   };
-  for (const [name, color] of Object.entries({
-    success: "#287d3c",
-    warning: "#8a6800",
-    error: "#c42b1c",
-  })) {
-    const statusBackground = mix(bg, color, 0.09);
-    tokens[name] = readable(color, [...surfaces, statusBackground]);
-    tokens[`${name}-bg`] = statusBackground;
-    tokens[`${name}-line`] = mix(bg, tokens[name]!, 0.3);
-  }
-  return Object.fromEntries(Object.entries(tokens).map(([key, value]) => [`--m-${key}`, value]));
 }

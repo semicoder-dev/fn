@@ -10,7 +10,7 @@ import * as JSXDev from "react/jsx-dev-runtime";
 import * as FIAClient from "@semicoder/fia/client";
 import * as FIAApi from "@semicoder/fia/api";
 import * as Client from "@semicoder/fn-sdk/client";
-import * as UI from "@semicoder/fn-sdk/ui";
+import * as UI from "@semicoder/fn-ui";
 import type * as Modules from "@deepseek-ai/dsh-client-modules/client";
 import type {
   ClientBundleRegistration,
@@ -32,7 +32,7 @@ const shared: Record<string, unknown> = {
   "@semicoder/fia/api": FIAApi,
   "@semicoder/fia/client": FIAClient,
   "@semicoder/fn-sdk/client": Client,
-  "@semicoder/fn-sdk/ui": UI,
+  "@semicoder/fn-ui": UI,
 };
 let ctx: Cordis.Context | undefined,
   unmount: (() => void) | undefined,

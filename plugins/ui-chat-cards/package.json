@@ -12,6 +12,7 @@
     "@semicoder/fia": "workspace:*",
     "@semicoder/fn-chat-cards": "workspace:*",
     "@semicoder/fn-sdk": "workspace:*",
+    "@semicoder/fn-ui": "0.0.0",
     "@semicoder/fn-ui-chat": "workspace:*",
     "react": "19.2.7"
   },

@@ -1,3 +1,8 @@
+import { classes } from "@semicoder/fn-ui";
+import styles from "./style.module.css";
+const cx = (...values: (string | false | undefined)[]) => classes(styles, ...values);
+import { Checkbox } from "@semicoder/fn-ui";
+import { Select, Input, Button } from "@semicoder/fn-ui";
 import React, { useEffect, useState } from "react";
 import {
   validateResponse,
@@ -6,7 +11,6 @@ import {
 } from "@semicoder/fn-chat-cards/contract";
 import type { APIClient } from "@semicoder/fia/api";
 import type api from "@semicoder/fn-chat-cards/api";
-
 const labels: Record<string, string> = {
   pending: "等待回复",
   running: "处理中",
@@ -80,7 +84,7 @@ export default function Card({
     }
   }
   return (
-    <article className="runtime-card runtime-session-card" aria-label={record.card.title}>
+    <article className={cx("runtime-card runtime-session-card")} aria-label={record.card.title}>
       <h2>{record.card.title}</h2>
       <p>{record.card.summary}</p>
       {record.card.blocks.map((block, index) =>
@@ -101,81 +105,72 @@ export default function Card({
           </dl>
         ),
       )}
-      <fieldset disabled={!editable} className="runtime-form">
+      <fieldset disabled={!editable} className={cx("runtime-form")}>
         {record.card.inputs.map((field) => (
           <div key={field.id}>
             {!field.required && (
-              <label>
-                <input
-                  type="checkbox"
-                  checked={included.includes(field.id)}
-                  onChange={(event) =>
-                    setIncluded((current) =>
-                      event.target.checked
-                        ? [...current, field.id]
-                        : current.filter((id) => id !== field.id),
-                    )
-                  }
-                />
-                填写 {field.label}（可选）
-              </label>
+              <Checkbox
+                checked={included.includes(field.id)}
+                onChange={(checked) =>
+                  setIncluded((current) =>
+                    checked ? [...current, field.id] : current.filter((id) => id !== field.id),
+                  )
+                }
+                label={`填写 ${field.label}（可选）`}
+              />
             )}
             {(field.required || included.includes(field.id)) &&
               (field.type === "boolean" ? (
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={values[field.id] === true}
-                    onChange={(event) => set(field.id, event.target.checked)}
-                  />
-                  {field.label}
-                </label>
+                <Checkbox
+                  checked={values[field.id] === true}
+                  onChange={(checked) => set(field.id, checked)}
+                  label={field.label}
+                />
               ) : field.type === "multiSelect" ? (
                 <fieldset>
                   <legend>{field.label}</legend>
                   {field.options?.map((option) => (
-                    <label key={option.id}>
-                      <input
-                        type="checkbox"
-                        checked={
-                          Array.isArray(values[field.id]) &&
-                          (values[field.id] as string[]).includes(option.id)
-                        }
-                        onChange={(event) => {
-                          const chosen = Array.isArray(values[field.id])
-                            ? (values[field.id] as string[])
-                            : [];
-                          set(
-                            field.id,
-                            event.target.checked
-                              ? [...chosen, option.id]
-                              : chosen.filter((id) => id !== option.id),
-                          );
-                        }}
-                      />
-                      {option.label}
-                    </label>
+                    <Checkbox
+                      key={option.id}
+                      checked={
+                        Array.isArray(values[field.id]) &&
+                        (values[field.id] as string[]).includes(option.id)
+                      }
+                      onChange={(checked) => {
+                        const chosen = Array.isArray(values[field.id])
+                          ? (values[field.id] as string[])
+                          : [];
+                        set(
+                          field.id,
+                          checked
+                            ? [...chosen, option.id]
+                            : chosen.filter((id) => id !== option.id),
+                        );
+                      }}
+                      label={option.label}
+                    />
                   ))}
                 </fieldset>
               ) : field.type === "select" ? (
                 <label>
                   {field.label}
-                  <select
+                  <Select
                     value={String(values[field.id] ?? "")}
-                    onChange={(event) => set(field.id, event.target.value)}
-                  >
-                    <option value="">请选择</option>
-                    {field.options?.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                    onValueChange={(value) => set(field.id, value)}
+                    label={field.label}
+                    options={[
+                      { value: "", label: "请选择" },
+                      ...(field.options?.map((option) => ({
+                        value: option.id,
+                        label: option.label,
+                      })) ?? []),
+                    ]}
+                  />
                 </label>
               ) : (
                 <label>
                   {field.label}
-                  <input
+                  <Input
                     type={field.type === "number" ? "number" : "text"}
                     min={field.minimum}
                     max={field.maximum}
@@ -187,21 +182,23 @@ export default function Card({
               ))}
           </div>
         ))}
-        <div className="runtime-actions">
+        <div className={cx("runtime-actions")}>
           {record.card.actions.map((action) => (
-            <button
+            <Button
               key={action.id}
-              className={
+              className={cx(
                 action.style === "primary"
                   ? "runtime-primary"
                   : action.style === "danger"
                     ? "runtime-danger"
-                    : undefined
-              }
+                    : undefined,
+              )}
               onClick={() => void submit(action.id)}
+              type="button"
+              variant={action.style === "primary" ? "primary" : "ghost"}
             >
               {action.label}
-            </button>
+            </Button>
           ))}
         </div>
       </fieldset>

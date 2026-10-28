@@ -1,8 +1,7 @@
-import "./style.css";
 import React, { useEffect, useState } from "react";
 import type { Context } from "@deepseek-ai/cordis";
 import { client, readAllPages } from "@semicoder/fn-sdk/client";
-import { SlidersHorizontal } from "@semicoder/fn-sdk/ui";
+import { IconApiOutlineRegular } from "@semicoder/fn-ui";
 import connectionApi from "@semicoder/fn-connections/contract";
 import authApi from "@semicoder/fn-connections/login-contract";
 import modelApi from "@semicoder/fn-models/contract";
@@ -70,7 +69,7 @@ export function apply(ctx: Context) {
   };
   ctx.slots.register({ name: "fn.settings.navigation", id: "models", order: 0 }, () => (
     <NavigationButton navigation={ctx.navigation} path="settings/models" label="模型服务">
-      <SlidersHorizontal size={18} />
+      <IconApiOutlineRegular />
     </NavigationButton>
   ));
   ctx.slots.register(

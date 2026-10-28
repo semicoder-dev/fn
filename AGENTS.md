@@ -4,6 +4,8 @@
 
 共享内核、React 和 SDK 单实例；自有插件命名 @semicoder/fn-<能力名>。配置由 profiles/ 的 bundle/patch 组合，使用原版 Cordis Loader/Include 和 dsh Slots。纯服务/前端均可，实例 ID 独立于包名。所有任务通过 fn-activity 判断空闲，插件变化等待空闲后重启，不引入 Node HMR。
 
+UI 统一从 @semicoder/fn-ui 使用原版 dsh 控件，宿主共享静态模块；功能 CSS 使用 CSS Modules 与 --dsw 语义 token，不新增全局控件规则、Base UI 或 Tailwind。主题仅由 ui-base/ui-theme 管理，packages/ui/upstream 资源原样保留，禁止格式化改写；升级先验证来源 SHA 和依赖闭包。运行 styles:check，并实际验收菜单/弹窗焦点、明暗和窄窗口。
+
 FIA 原生能力、动态 API、通用构建和取消属于 framework/fia/。禁止旁路服务器；自定义资源通过 defineBackend.http 的 /api 相对路由。浏览器使用 FIA open --browser，窗口与标题栏由 FIA 管理；首次成功或故障页挂载后调用 native.ready。各服务独立持久化到 plugins-v1，不读取旧数据，不恢复公开 KV/网页工具接口。Apple 活跃代码集中在 clients/apple/，只使用 Chat v4。
 
 ## fn 项目协作

@@ -1,8 +1,13 @@
+import { classes } from "@semicoder/fn-ui";
+const styles: Record<string, string> = {};
+const cx = (...values: (string | false | undefined)[]) => classes(styles, ...values);
+import { Modal } from "@semicoder/fn-ui";
+import { Button, Input, Textarea } from "@semicoder/fn-ui";
 import React, { useEffect, useState } from "react";
 import type { Context } from "@deepseek-ai/cordis";
 import type { APIClient, z } from "@semicoder/fia/api";
 import { client, readAllPages } from "@semicoder/fn-sdk/client";
-import { Package } from "@semicoder/fn-sdk/ui";
+import { IconCordisPluginOutlineRegular } from "@semicoder/fn-ui";
 import type {} from "@semicoder/fn-ui-layout/contract";
 import { NavigationButton } from "@semicoder/fn-ui-navigation/view";
 import api, { statusSchema, pluginInfo } from "@semicoder/fn-plugin-manager/contract";
@@ -17,7 +22,10 @@ export const inject = [
   "navigation",
   "platform",
 ];
-type Remote = { plugins: APIClient<typeof api>; market: APIClient<typeof marketApi> };
+type Remote = {
+  plugins: APIClient<typeof api>;
+  market: APIClient<typeof marketApi>;
+};
 type Status = z.infer<typeof statusSchema>;
 function useStatus(remote: Remote) {
   const [status, setStatus] = useState<Status>();
@@ -54,7 +62,7 @@ function UpdateBanner({ remote }: { remote: Remote }) {
   const status = useStatus(remote);
   if (!status || (!status.installing && !status.pending && !status.error)) return null;
   return (
-    <div className={status.error ? "runtime-error" : "runtime-banner"} role="status">
+    <div className={cx(status.error ? "runtime-error" : "runtime-banner")} role="status">
       <span>
         {status.error ??
           (status.installing
@@ -64,7 +72,9 @@ function UpdateBanner({ remote }: { remote: Remote }) {
               : "插件已准备，正在重新连接…")}
       </span>
       {status.error && status.pending && (
-        <button onClick={() => void remote.plugins.call("activate", {})}>重试应用</button>
+        <Button onClick={() => void remote.plugins.call("activate", {})} type="button">
+          重试应用
+        </Button>
       )}
     </div>
   );
@@ -146,44 +156,58 @@ function PluginsPage({ remote }: { remote: Remote }) {
     return remote.plugins.call("configure", next);
   };
   return (
-    <section className="runtime-settings product-apps">
-      <div className="product-heading">
+    <section className={cx("runtime-settings product-apps")}>
+      <div className={cx("product-heading")}>
         <div>
           <h1>应用中心</h1>
-          <p className="runtime-muted">发现、安装和管理你的插件。</p>
+          <p className={cx("runtime-muted")}>发现、安装和管理你的插件。</p>
         </div>
-        <div className="runtime-actions">
-          <button onClick={() => setMarketsOpen(true)}>市场源</button>
-          <button onClick={() => setInstallOpen(true)}>从地址安装</button>
+        <div className={cx("runtime-actions")}>
+          <Button onClick={() => setMarketsOpen(true)} type="button">
+            市场源
+          </Button>
+          <Button onClick={() => setInstallOpen(true)} type="button">
+            从地址安装
+          </Button>
         </div>
       </div>
-      <div className="product-tabs">
-        <button className={tab === "market" ? "selected" : ""} onClick={() => setTab("market")}>
+      <div className={cx("product-tabs")}>
+        <Button
+          className={cx(tab === "market" ? "selected" : "")}
+          onClick={() => setTab("market")}
+          type="button"
+        >
           插件市场
-        </button>
-        <button
-          className={tab === "installed" ? "selected" : ""}
+        </Button>
+        <Button
+          className={cx(tab === "installed" ? "selected" : "")}
           onClick={() => setTab("installed")}
+          type="button"
         >
           已安装 · {packages.length}
-        </button>
-        <button className={tab === "profile" ? "selected" : ""} onClick={() => setTab("profile")}>
+        </Button>
+        <Button
+          className={cx(tab === "profile" ? "selected" : "")}
+          onClick={() => setTab("profile")}
+          type="button"
+        >
           默认组合
-        </button>
-        <button
+        </Button>
+        <Button
           disabled={working}
           onClick={() => void action(() => remote.market.call("refresh", {}))}
+          type="button"
         >
           检查更新
-        </button>
+        </Button>
       </div>
       {error && (
-        <p role="alert" className="product-alert">
+        <p role="alert" className={cx("product-alert")}>
           {error}
         </p>
       )}
       {tab !== "profile" && (
-        <input
+        <Input
           aria-label="搜索插件"
           placeholder="搜索名称、描述或包名"
           value={query}
@@ -192,7 +216,7 @@ function PluginsPage({ remote }: { remote: Remote }) {
       )}
       {tab === "market" && (
         <>
-          <div className="product-list">
+          <div className={cx("product-list")}>
             {catalog
               .filter((entry) =>
                 `${entry.name} ${entry.description} ${entry.packageName}`
@@ -200,15 +224,18 @@ function PluginsPage({ remote }: { remote: Remote }) {
                   .includes(query.toLowerCase()),
               )
               .map((entry) => (
-                <article className="product-row" key={`${entry.marketId}:${entry.packageName}`}>
-                  <div className="product-row-main">
+                <article
+                  className={cx("product-row")}
+                  key={`${entry.marketId}:${entry.packageName}`}
+                >
+                  <div className={cx("product-row-main")}>
                     <strong>{entry.name}</strong>
                     <p>{entry.description}</p>
                     <small>
                       v{entry.version} · {entry.marketName}
                     </small>
                   </div>
-                  <button
+                  <Button
                     disabled={
                       busy || ["installed", "incompatible", "conflict"].includes(entry.state)
                     }
@@ -217,6 +244,7 @@ function PluginsPage({ remote }: { remote: Remote }) {
                         remote.market.call("install", { marketId: entry.marketId, id: entry.id }),
                       )
                     }
+                    type="button"
                   >
                     {
                       {
@@ -227,12 +255,14 @@ function PluginsPage({ remote }: { remote: Remote }) {
                         conflict: "来源冲突",
                       }[entry.state]
                     }
-                  </button>
+                  </Button>
                 </article>
               ))}
           </div>
           {!catalog.length && (
-            <p className="product-empty">市场暂无插件。可以添加市场源或从地址安装可信插件。</p>
+            <p className={cx("product-empty")}>
+              市场暂无插件。可以添加市场源或从地址安装可信插件。
+            </p>
           )}
           {markets
             .filter((market) => market.enabled && market.error)
@@ -244,14 +274,14 @@ function PluginsPage({ remote }: { remote: Remote }) {
         </>
       )}
       {tab === "installed" && (
-        <div className="product-list">
+        <div className={cx("product-list")}>
           {packages
             .filter((plugin) =>
               `${plugin.name} ${plugin.packageName}`.toLowerCase().includes(query.toLowerCase()),
             )
             .map((plugin) => (
-              <article className="product-row" key={plugin.id}>
-                <div className="product-row-main">
+              <article className={cx("product-row")} key={plugin.id}>
+                <div className={cx("product-row-main")}>
                   <strong>
                     {plugin.name} <small>{enabled(plugin.packageName) ? "已启用" : "已停用"}</small>
                   </strong>
@@ -260,56 +290,60 @@ function PluginsPage({ remote }: { remote: Remote }) {
                     v{plugin.version} · {plugin.packageName}
                   </small>
                 </div>
-                <div className="runtime-actions">
-                  <button
+                <div className={cx("runtime-actions")}>
+                  <Button
                     disabled={busy || !plugin.origin}
                     onClick={() =>
                       void action(() => remote.plugins.call("update", { id: plugin.id }))
                     }
+                    type="button"
                   >
                     更新
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     disabled={busy}
                     onClick={() => void action(async () => toggle(plugin.packageName))}
+                    type="button"
                   >
                     {enabled(plugin.packageName) ? "停用" : "启用"}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     disabled={busy}
                     onClick={() =>
                       void action(() => remote.plugins.call("remove", { id: plugin.id }))
                     }
+                    type="button"
                   >
                     卸载
-                  </button>
+                  </Button>
                 </div>
               </article>
             ))}
-          {!packages.length && <p className="product-empty">尚未安装扩展插件。</p>}
+          {!packages.length && <p className={cx("product-empty")}>尚未安装扩展插件。</p>}
         </div>
       )}
       {tab === "profile" && (
         <>
           <p>默认组合也由插件构成。修改后等待任务空闲，重新启动后台并恢复窗口。</p>
-          <button
+          <Button
             disabled={busy || !profile}
             onClick={() => setEditor(JSON.stringify(profile, null, 2))}
+            type="button"
           >
             编辑组合配置
-          </button>
-          <div className="product-list">
+          </Button>
+          <div className={cx("product-list")}>
             {profile &&
               (["plugins", "client"] as const).flatMap((side) =>
                 profile[side].map((row) => (
-                  <article className="product-row" key={`${side}:${row.id}`}>
-                    <div className="product-row-main">
+                  <article className={cx("product-row")} key={`${side}:${row.id}`}>
+                    <div className={cx("product-row-main")}>
                       <strong>{row.id}</strong>
                       <small>
                         {side === "client" ? "前端" : "后端"} · {row.name}
                       </small>
                     </div>
-                    <button
+                    <Button
                       disabled={busy}
                       onClick={() =>
                         void action(async () => {
@@ -318,22 +352,30 @@ function PluginsPage({ remote }: { remote: Remote }) {
                           await remote.plugins.call("configure", next);
                         })
                       }
+                      type="button"
                     >
                       {row.disabled ? "启用" : "停用"}
-                    </button>
+                    </Button>
                   </article>
                 )),
               )}
           </div>
         </>
       )}
-      <p className="runtime-muted product-section">
+      <p className={cx("runtime-muted product-section")}>
         插件可执行本机代码，请只安装可信来源。更新等待任务空闲后重启后台；页面会重新加载，请先保存草稿。
       </p>
       {installOpen && (
-        <div className="runtime-modal-backdrop">
+        <Modal
+          open
+          onClose={() => setInstallOpen(false)}
+          title={"从地址安装"}
+          closeLabel="关闭"
+          className={cx("runtime-dialog")}
+          contentClassName={cx("dialog-content")}
+        >
           <form
-            className="runtime-modal runtime-form"
+            className={cx("runtime-form")}
             onSubmit={(event) => {
               event.preventDefault();
               void action(async () => {
@@ -342,80 +384,91 @@ function PluginsPage({ remote }: { remote: Remote }) {
               });
             }}
           >
-            <h2>从地址安装</h2>
             <label>
               归档路径、HTTPS 地址或 Git 来源
-              <input value={source} onChange={(event) => setSource(event.target.value)} required />
+              <Input value={source} onChange={(event) => setSource(event.target.value)} required />
             </label>
-            <button disabled={busy}>安装</button>
-            <button type="button" onClick={() => setInstallOpen(false)}>
-              关闭
-            </button>
+            <Button disabled={busy} type="submit">
+              安装
+            </Button>
           </form>
-        </div>
+        </Modal>
       )}
       {marketsOpen && (
-        <div className="runtime-modal-backdrop">
-          <section className="runtime-modal">
-            <h2>市场源</h2>
-            {markets.map((market) => (
-              <article key={market.id}>
-                <strong>{market.name}</strong>
-                <p>{market.url}</p>
-                <button
-                  onClick={() =>
-                    void action(() =>
-                      remote.market.call("change", { id: market.id, enabled: !market.enabled }),
-                    )
-                  }
-                >
-                  {market.enabled ? "停用" : "启用"}
-                </button>
-                <button
-                  onClick={() => void action(() => remote.market.call("remove", { id: market.id }))}
-                >
-                  删除
-                </button>
-              </article>
-            ))}
-            <form
-              className="runtime-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void action(async () => {
-                  await remote.market.call("add", { name: sourceName, url: sourceURL });
-                  setSourceName("");
-                  setSourceURL("");
-                });
-              }}
-            >
-              <label>
-                名称
-                <input
-                  value={sourceName}
-                  onChange={(event) => setSourceName(event.target.value)}
-                  required
-                />
-              </label>
-              <label>
-                HTTPS 地址
-                <input
-                  type="url"
-                  value={sourceURL}
-                  onChange={(event) => setSourceURL(event.target.value)}
-                  required
-                />
-              </label>
-              <button>添加市场源</button>
-            </form>
-            <button onClick={() => setMarketsOpen(false)}>关闭</button>
-          </section>
-        </div>
+        <Modal
+          open
+          onClose={() => setMarketsOpen(false)}
+          title={"市场源"}
+          closeLabel="关闭"
+          className={cx("runtime-dialog")}
+          contentClassName={cx("dialog-content")}
+        >
+          {markets.map((market) => (
+            <article key={market.id}>
+              <strong>{market.name}</strong>
+              <p>{market.url}</p>
+              <Button
+                onClick={() =>
+                  void action(() =>
+                    remote.market.call("change", { id: market.id, enabled: !market.enabled }),
+                  )
+                }
+                type="button"
+              >
+                {market.enabled ? "停用" : "启用"}
+              </Button>
+              <Button
+                onClick={() => void action(() => remote.market.call("remove", { id: market.id }))}
+                type="button"
+              >
+                删除
+              </Button>
+            </article>
+          ))}
+
+          <form
+            className={cx("runtime-form")}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void action(async () => {
+                await remote.market.call("add", { name: sourceName, url: sourceURL });
+                setSourceName("");
+                setSourceURL("");
+              });
+            }}
+          >
+            <label>
+              名称
+              <Input
+                value={sourceName}
+                onChange={(event) => setSourceName(event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              HTTPS 地址
+              <Input
+                type="url"
+                value={sourceURL}
+                onChange={(event) => setSourceURL(event.target.value)}
+                required
+              />
+            </label>
+            <Button type="submit">添加市场源</Button>
+          </form>
+        </Modal>
       )}
       {editor !== null && (
-        <div className="runtime-modal-backdrop">
+        <Modal
+          open
+          onClose={() => setEditor(null)}
+          title={"插件组合"}
+          closeLabel="关闭"
+          className={cx("runtime-dialog")}
+          contentClassName={cx("dialog-content")}
+        >
           <form
-            className="runtime-modal runtime-form"
+            className={cx("runtime-form")}
             onSubmit={(event) => {
               event.preventDefault();
               void action(async () => {
@@ -424,20 +477,18 @@ function PluginsPage({ remote }: { remote: Remote }) {
               });
             }}
           >
-            <h2>插件组合</h2>
             <p>实例 ID 与包名独立。同一包可配置多个实例；客户端布局可整体替换。</p>
-            <textarea
+            <Textarea
               aria-label="插件组合 JSON"
               rows={18}
               value={editor}
               onChange={(event) => setEditor(event.target.value)}
             />
-            <button disabled={busy}>验证并应用</button>
-            <button type="button" onClick={() => setEditor(null)}>
-              关闭
-            </button>
+            <Button disabled={busy} type="submit">
+              验证并应用
+            </Button>
           </form>
-        </div>
+        </Modal>
       )}
     </section>
   );
@@ -446,7 +497,7 @@ export function apply(ctx: Context) {
   const remote = { plugins: client(ctx, "plugins", api), market: client(ctx, "market", marketApi) };
   ctx.slots.register({ name: "fn.sidebar.bottom", id: "plugins", order: 0 }, () => (
     <NavigationButton navigation={ctx.navigation} path="plugins" label="应用中心" compact>
-      <Package size={21} />
+      <IconCordisPluginOutlineRegular />
     </NavigationButton>
   ));
   ctx.slots.register({ name: "fn.main", key: "plugins", inject: () => ({ remote }) }, PluginsPage);

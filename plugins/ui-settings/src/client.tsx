@@ -1,8 +1,10 @@
-import "./style.css";
+import { classes } from "@semicoder/fn-ui";
+import styles from "./style.module.css";
+const cx = (...values: (string | false | undefined)[]) => classes(styles, ...values);
 import React from "react";
 import type { Context } from "@deepseek-ai/cordis";
 import type { PropsRenderSlots } from "@deepseek-ai/dsh-client-ui-slots";
-import { Settings } from "@semicoder/fn-sdk/ui";
+import { IconSettingsOutlineRegular } from "@semicoder/fn-ui";
 import type {} from "@semicoder/fn-sdk/client";
 import type {} from "@semicoder/fn-ui-layout/contract";
 import type {} from "./contract.ts";
@@ -17,13 +19,13 @@ function SettingsPage({
 }) {
   const path = useNavigation(navigation);
   return (
-    <div className="settings-layout">
-      <aside className="settings-nav">
+    <div className={cx("settings-layout")}>
+      <aside className={cx("settings-nav")}>
         <h1>设置</h1>
         <p>管理你的工作空间</p>
         {renderSlot("fn.settings.navigation", {})}
       </aside>
-      <section className="settings-main">
+      <section className={cx("settings-main")}>
         {renderSlot("fn.settings.content", {}, { entryKey: path.split("/")[1] ?? "models" })}
       </section>
     </div>
@@ -32,7 +34,7 @@ function SettingsPage({
 export function apply(ctx: Context) {
   ctx.slots.register({ name: "fn.sidebar.bottom", id: "settings", order: 100 }, () => (
     <NavigationButton navigation={ctx.navigation} path="settings/models" label="设置" compact>
-      <Settings size={21} />
+      <IconSettingsOutlineRegular />
     </NavigationButton>
   ));
   ctx.slots.register(

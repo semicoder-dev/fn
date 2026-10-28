@@ -239,7 +239,8 @@ test("source fingerprints exclude generated files and retain separate backend/de
     "packages/host/tests",
     "packages/host/node_modules/pkg",
     "packages/sdk/src",
-    "packages/sdk/dist",
+    "packages/ui/src",
+    "packages/ui/dist",
     "host",
     "plugins",
     "resources",
@@ -259,7 +260,7 @@ test("source fingerprints exclude generated files and retain separate backend/de
   for (const path of [
     "packages/host/tests/test.ts",
     "packages/host/node_modules/pkg/index.ts",
-    "packages/sdk/dist/ui.css",
+    "packages/ui/dist/generated.css",
     "resources/runtime-seed.json",
   ])
     await write(path);
@@ -279,6 +280,7 @@ test("source fingerprints exclude generated files and retain separate backend/de
   expect(runtimeWatchIgnores).toEqual([
     "packages/host",
     "packages/sdk",
+    "packages/ui",
     "packages/tool-support",
     "plugins",
     "profiles",

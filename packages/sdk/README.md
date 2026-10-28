@@ -2,7 +2,7 @@
 
 **本地全插件化候选，未发布。** 当前 package.json 仍是 0.4.0，内容不等同公开 npm 0.4.0。使用 `bun run npm:pack` 生成并验证本地归档；正式包必须待后续授权重新定版。
 
-SDK 只提供构建工具、泛型客户端与基础 UI。没有应用聚合 Context、KV、web fetch/search、Agent loop 或 Session 副本。
+SDK 只提供构建工具与泛型客户端。没有应用聚合 Context、KV、web fetch/search、Agent loop 或 Session 副本。
 
 ## npm 包
 
@@ -42,7 +42,7 @@ export function apply(ctx: Context) {
 
 `fn-rpc` 的类型从 `@semicoder/fn-rpc` 导入；消费者须声明实际使用的插件 peer。命名空间由实例配置选择，避免多实例碰撞；同一包名不等于一个实例。注册绑定 Cordis effect，卸载关闭入口并取消在途调用。
 
-前端通过 `client(ctx, 'example', contract)` 调用，inject `platform`、`api:example` 和所用插槽的声明服务。`./client` 提供 `client`、`readAllPages`；`./ui` 提供 React 基础组件；`theme.css`、`ui.css`、`tailwind.css` 为可选样式资源。`ui-base` 默认统一加载基础样式。
+前端通过 `client(ctx, 'example', contract)` 调用，inject `platform`、`api:example` 和所用插槽的声明服务。`./client` 提供 `client`、`readAllPages`。UI 从独立的 `@semicoder/fn-ui` 导入，原样复用 dsh 控件；声明该包的 peer 并由宿主共享。SDK 不再提供 `./ui`、主题或 Tailwind 导出。`fn-ui-base` 统一加载上游主题，插件只使用 CSS Modules 与 `--dsw-*` 语义变量。
 
 ```tsx
 import type { Context } from "@deepseek-ai/cordis";
@@ -62,6 +62,6 @@ bun run agent plugin build /path/to/plugin
 bun run agent plugin pack /path/to/plugin
 ```
 
-构建工具也可从 `@semicoder/fn-sdk/build` 调用 inspectPlugin/buildPlugin/packPlugin。输出原版客户端模块 factory，React/Cordis/FIA/基础 UI 保持 external。CSS 随插件生命周期注入与撤销。TypeScript 后端由 Bun 直接运行。
+构建工具也可从 `@semicoder/fn-sdk/build` 调用 inspectPlugin/buildPlugin/packPlugin。输出原版客户端模块 factory，React/Cordis/FIA/`@semicoder/fn-ui` 保持 external。CSS 随插件生命周期注入与撤销。TypeScript 后端由 Bun 直接运行。
 
 插件均是可信本地扩展，能直接执行本机代码；Cordis 的作用域用于组织服务与事件，不承担沙箱。后台任务应向 fn-activity 登记。页面关闭不负责取消 Agent，注销/禁用及显式取消必须释放真正的资源。

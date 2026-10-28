@@ -1,8 +1,10 @@
-import { Alert, Button, PageHeader, Panel } from "@semicoder/fn-sdk/ui";
+import { classes } from "@semicoder/fn-ui";
+import styles from "./style.module.css";
+const cx = (...values: (string | false | undefined)[]) => classes(styles, ...values);
+import { Notice, Button, PageHeader, Surface } from "@semicoder/fn-ui";
 import React, { useEffect, useRef, useState } from "react";
 import type { UpdateState } from "@semicoder/fia/client";
 import type Updates from "@semicoder/fn-app-update/types";
-
 const messages: Record<UpdateState["phase"], string> = {
   disabled: "当前构建未启用自动更新",
   idle: "应用会自动检查更新",
@@ -71,34 +73,44 @@ export default function UpdateSettings({ updates }: { updates: Updates }) {
   const working =
     pending || !state || ["checking", "downloading", "applying"].includes(state.phase);
   return (
-    <div className="settings-page">
+    <div className={cx("settings-page")}>
       <PageHeader title="应用更新" description={`当前版本 ${version || "读取中…"}`} />
-      <Panel className="update-card" aria-busy={working}>
-        <h2 className="settings-section-title" role="status">
+      <Surface className={cx("update-card")} aria-busy={working}>
+        <h2 className={cx("settings-section-title")} role="status">
           {state ? messages[state.phase] : "正在读取更新状态…"}
         </h2>
         {state?.version && ["available", "downloaded", "requiresInstall"].includes(state.phase) && (
           <p>新版本 {state.version}</p>
         )}
-        <div className="update-actions">
+        <div className={cx("update-actions")}>
           <Button
+            variant="primary"
             disabled={working || state?.phase === "disabled"}
             onClick={() => void act(() => native.updates.check())}
           >
             检查更新
           </Button>
           {state?.phase === "available" && (
-            <Button disabled={working} onClick={() => void act(() => native.updates.download())}>
+            <Button
+              variant="primary"
+              disabled={working}
+              onClick={() => void act(() => native.updates.download())}
+            >
               下载更新
             </Button>
           )}
           {state?.phase === "downloaded" && (
-            <Button disabled={working} onClick={() => void act(() => native.updates.apply())}>
+            <Button
+              variant="primary"
+              disabled={working}
+              onClick={() => void act(() => native.updates.apply())}
+            >
               安装更新
             </Button>
           )}
           {state?.phase === "requiresInstall" && state.downloadURL && (
             <Button
+              variant="primary"
               disabled={working}
               onClick={() => void act(() => native.system.openURL({ url: state.downloadURL! }))}
             >
@@ -106,16 +118,16 @@ export default function UpdateSettings({ updates }: { updates: Updates }) {
             </Button>
           )}
         </div>
-        <p className="settings-note">
+        <p className={cx("settings-note")}>
           {state?.phase === "disabled"
             ? "开发和预览构建默认关闭正式更新，避免被发行版覆盖。正式版会在启动时及每 24 小时自动检查更新。"
             : "启动时和每 24 小时自动检查更新。更新下载完成后会请你确认；安装前请保存草稿，等待模型、插件和登录任务结束。"}
         </p>
-        <p className="settings-note">
+        <p className={cx("settings-note")}>
           更新失败时保留当前版本；新版本启动失败时自动恢复上一版代码。已保存的数据会保留。
         </p>
-        {(error || state?.message) && <Alert>{error || state?.message}</Alert>}
-      </Panel>
+        {(error || state?.message) && <Notice>{error || state?.message}</Notice>}
+      </Surface>
     </div>
   );
 }

@@ -8,7 +8,8 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "4.0.5",
-    "@semicoder/fn-sdk": "workspace:*"
+    "@semicoder/fn-sdk": "workspace:*",
+    "@semicoder/fn-ui": "0.0.0"
   },
   "fn": {
     "name": "UI 基础样式"

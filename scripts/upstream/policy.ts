@@ -42,6 +42,9 @@ export const entryPackages = [
     "client-modules",
     "client-store",
     "client-ui-slots",
+    "client-ui-primitives",
+    "util-code-language",
+    "util-workspace-path",
     "client-ui-renderer",
   ].map((name) => `@deepseek-ai/dsh-${name}`),
 ].sort();

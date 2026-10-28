@@ -1,12 +1,13 @@
+import { classes } from "@semicoder/fn-ui";
+import styles from "./style.module.css";
+const cx = (...values: (string | false | undefined)[]) => classes(styles, ...values);
 import React from "react";
 import type { Context } from "@deepseek-ai/cordis";
-import { UIProvider } from "@semicoder/fn-sdk/ui";
 import type {} from "@semicoder/fn-sdk/client";
 import type { PropsRenderSlots } from "@deepseek-ai/dsh-client-ui-slots";
 import { useNavigation } from "@semicoder/fn-ui-navigation/view";
 import type Navigation from "@semicoder/fn-ui-navigation/types";
 import type {} from "./contract.ts";
-import "./style.css";
 export const inject = ["uiSession", "uiBase", "slots", "navigation"];
 const children = {
   "fn.sidebar.top": { kind: "list", scope: "root" },
@@ -19,25 +20,27 @@ const children = {
 function Layout({
   renderSlot,
   navigation,
-}: PropsRenderSlots<keyof typeof children> & { navigation: Navigation }) {
+}: PropsRenderSlots<keyof typeof children> & {
+  navigation: Navigation;
+}) {
   const path = useNavigation(navigation);
   return (
-    <UIProvider>
-      <div className="runtime-shell app-shell">
-        <nav className="activity-bar" aria-label="主导航">
-          <div className="activity-apps">{renderSlot("fn.sidebar.top", {})}</div>
-          <div className="activity-bottom">{renderSlot("fn.sidebar.bottom", {})}</div>
+    <>
+      <div className={cx("runtime-shell app-shell")}>
+        <nav className={cx("activity-bar")} aria-label="主导航">
+          <div className={cx("activity-apps")}>{renderSlot("fn.sidebar.top", {})}</div>
+          <div className={cx("activity-bottom")}>{renderSlot("fn.sidebar.bottom", {})}</div>
         </nav>
-        <main className="runtime-main">
+        <main className={cx("runtime-main")}>
           {renderSlot("fn.toolbar", {})}
           {renderSlot("fn.status", {})}
-          <div className="fn-layout-content">
+          <div className={cx("fn-layout-content")}>
             {renderSlot("fn.main", {}, { entryKey: path.split("/")[0] })}
           </div>
         </main>
         {renderSlot("fn.overlay", {})}
       </div>
-    </UIProvider>
+    </>
   );
 }
 export function apply(ctx: Context) {

@@ -13,6 +13,7 @@
     "@semicoder/fn-connections": "workspace:*",
     "@semicoder/fn-models": "workspace:*",
     "@semicoder/fn-sdk": "workspace:*",
+    "@semicoder/fn-ui": "0.0.0",
     "@semicoder/fn-ui-navigation": "workspace:*",
     "@semicoder/fn-ui-settings": "workspace:*",
     "react": "19.2.7"

@@ -1,5 +1,5 @@
 .update-card {
-  padding: var(--m-space-6);
+  padding: 24px;
 }
 .update-card > p {
   line-height: 1.8;

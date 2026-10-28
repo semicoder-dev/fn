@@ -24,22 +24,14 @@ try {
   const unpacked = join(temporary, "package");
   const pkg = await Bun.file(join(unpacked, "package.json")).json();
   assert(validatePackage(pkg).version === release.version, "Packed SDK version differs");
-  const allowed = new Set(["package.json", "README.md", "src", "build.ts", "styles.ts", "dist"]);
+  const allowed = new Set(["package.json", "README.md", "src", "build.ts"]);
   for (const entry of await readdir(unpacked, { withFileTypes: true })) {
     assert(
       allowed.has(entry.name) && !entry.isSymbolicLink(),
       `Unexpected SDK archive entry: ${entry.name}`,
     );
   }
-  for (const name of [
-    ".",
-    "./client",
-    "./build",
-    "./ui",
-    "./theme.css",
-    "./ui.css",
-    "./tailwind.css",
-  ]) {
+  for (const name of [".", "./client", "./build"]) {
     const target = pkg.exports?.[name];
     assert(
       typeof target === "string" && target.startsWith("./") && !target.split("/").includes(".."),
