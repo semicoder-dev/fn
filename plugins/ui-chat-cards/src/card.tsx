@@ -2,7 +2,7 @@ import { classes } from "@semicoder/fn-ui";
 import styles from "./style.module.css";
 const cx = (...values: (string | false | undefined)[]) => classes(styles, ...values);
 import { Checkbox } from "@semicoder/fn-ui";
-import { Select, Input, Button } from "@semicoder/fn-ui";
+import { Select, Input, Button, Tag, Notice } from "@semicoder/fn-ui";
 import React, { useEffect, useState } from "react";
 import {
   validateResponse,
@@ -47,6 +47,11 @@ export default function Card({
     }
   }, [record.answer]);
   const editable = enabled && !pending && record.state === "pending" && record.expiresAt > now;
+  const status = pending
+    ? "等待宿主确认"
+    : record.state === "pending" && record.expiresAt <= now
+      ? "已过期"
+      : labels[record.state];
   const set = (id: string, value: CardValues[string]) =>
     setValues((current) => ({ ...current, [id]: value }));
   async function submit(actionId: string) {
@@ -84,30 +89,43 @@ export default function Card({
     }
   }
   return (
-    <article className={cx("runtime-card runtime-session-card")} aria-label={record.card.title}>
-      <h2>{record.card.title}</h2>
-      <p>{record.card.summary}</p>
-      {record.card.blocks.map((block, index) =>
-        block.type === "divider" ? (
-          <hr key={index} />
-        ) : block.type === "text" ? (
-          <p key={index} style={{ whiteSpace: "pre-wrap" }}>
-            {block.text}
-          </p>
-        ) : (
-          <dl key={index}>
-            {block.fields.map((field, i) => (
-              <React.Fragment key={i}>
-                <dt>{field.label}</dt>
-                <dd>{field.value}</dd>
-              </React.Fragment>
-            ))}
-          </dl>
-        ),
-      )}
+    <article className={cx("runtime-session-card")} aria-label={record.card.title}>
+      <header className={cx("card-heading")}>
+        <h2>{record.card.title}</h2>
+        <Tag
+          tone={
+            record.state === "failed"
+              ? "danger"
+              : record.state === "completed"
+                ? "success"
+                : "neutral"
+          }
+        >
+          {status}
+        </Tag>
+      </header>
+      <p className={cx("card-summary")}>{record.card.summary}</p>
+      <div className={cx("card-body")}>
+        {record.card.blocks.map((block, index) =>
+          block.type === "divider" ? (
+            <hr key={index} />
+          ) : block.type === "text" ? (
+            <p key={index}>{block.text}</p>
+          ) : (
+            <dl key={index}>
+              {block.fields.map((field, i) => (
+                <React.Fragment key={i}>
+                  <dt>{field.label}</dt>
+                  <dd>{field.value}</dd>
+                </React.Fragment>
+              ))}
+            </dl>
+          ),
+        )}
+      </div>
       <fieldset disabled={!editable} className={cx("runtime-form")}>
         {record.card.inputs.map((field) => (
-          <div key={field.id}>
+          <div key={field.id} className={cx("card-field")}>
             {!field.required && (
               <Checkbox
                 checked={included.includes(field.id)}
@@ -127,7 +145,7 @@ export default function Card({
                   label={field.label}
                 />
               ) : field.type === "multiSelect" ? (
-                <fieldset>
+                <fieldset className={cx("card-options")}>
                   <legend>{field.label}</legend>
                   {field.options?.map((option) => (
                     <Checkbox
@@ -182,7 +200,7 @@ export default function Card({
               ))}
           </div>
         ))}
-        <div className={cx("runtime-actions")}>
+        <div className={cx("card-actions")}>
           {record.card.actions.map((action) => (
             <Button
               key={action.id}
@@ -195,6 +213,7 @@ export default function Card({
               )}
               onClick={() => void submit(action.id)}
               type="button"
+              size="sm"
               variant={action.style === "primary" ? "primary" : "ghost"}
             >
               {action.label}
@@ -202,14 +221,9 @@ export default function Card({
           ))}
         </div>
       </fieldset>
-      <small>
-        {pending
-          ? "等待宿主确认"
-          : record.state === "pending" && record.expiresAt <= now
-            ? "已过期"
-            : labels[record.state]}
-      </small>
-      {(error || record.error) && <p role="alert">{error || record.error}</p>}
+      {(error || record.error) && (
+        <Notice className={cx("card-error")}>{error || record.error}</Notice>
+      )}
     </article>
   );
 }

@@ -22,8 +22,9 @@ function SettingsPage({
     <div className={cx("settings-layout")}>
       <aside className={cx("settings-nav")}>
         <h1>设置</h1>
-        <p>管理你的工作空间</p>
-        {renderSlot("fn.settings.navigation", {})}
+        <nav className={cx("settings-links")} aria-label="设置分类">
+          {renderSlot("fn.settings.navigation", {})}
+        </nav>
       </aside>
       <section className={cx("settings-main")}>
         {renderSlot("fn.settings.content", {}, { entryKey: path.split("/")[1] ?? "models" })}

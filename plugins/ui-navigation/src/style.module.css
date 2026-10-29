@@ -1,27 +1,21 @@
 .navigation {
   width: 100%;
   justify-content: flex-start;
-  gap: 10px;
-  margin: 3px 0;
+  gap: 8px;
+  min-height: 40px;
+  padding: 9px 12px;
+  font-weight: 400;
+  border-radius: var(--dsw-radius-md);
 }
 .compact {
   width: 36px;
   height: 36px;
   padding: 0;
-  position: relative;
+  border-radius: var(--dsw-radius-md);
   flex-shrink: 0;
 }
 .active {
   background: var(--dsw-specific-sidebar-nav-item-active);
-}
-.compact.active::before {
-  position: absolute;
-  content: "";
-  left: -6px;
-  width: 2px;
-  height: 18px;
-  border-radius: 2px;
-  background: var(--dsw-alias-brand-primary);
 }
 .navigation svg,
 .compact svg {

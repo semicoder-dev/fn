@@ -5,12 +5,8 @@ import { Document } from "@semicoder/fn-host/document";
 import type {} from "@semicoder/fn-activity";
 import type {} from "@semicoder/fn-rpc";
 import api from "./contract.ts";
-import {
-  appearanceSchema,
-  defaultColorTheme,
-  type AppearanceConfig,
-  type AppearanceUpdate,
-} from "./theme.ts";
+import { type AppearanceConfig, type AppearanceUpdate } from "./theme.ts";
+import { parsePreferences } from "./preferences.ts";
 export default class Appearance extends Service {
   static inject = ["rpc", "activity"];
   private document!: Document<AppearanceConfig>;
@@ -20,8 +16,8 @@ export default class Appearance extends Service {
   async *[Service.init]() {
     this.document = await Document.open(
       join(this.ctx.host.dataDirectory, "appearance", "preferences.json"),
-      { theme: "system", colorTheme: defaultColorTheme() },
-      (value) => appearanceSchema.parse(value),
+      { theme: "system" },
+      parsePreferences,
     );
     yield () => this.document.close();
     await this.applyNative(this.document.value.theme);

@@ -2,23 +2,23 @@
 .runtime-settings {
   box-sizing: border-box;
   width: 100%;
-  max-width: 1040px;
-  padding: 32px;
+  max-width: 960px;
+  padding: 28px 32px;
   margin: 0 auto;
   overflow: auto;
 }
 .settings-page h1,
 .runtime-settings h1 {
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1.4;
-  font-weight: 600;
+  font-weight: 500;
   margin: 0 0 8px;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.2px;
 }
 .settings-page h2,
 .runtime-settings h2 {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   margin: 0 0 8px;
 }
 .settings-page p,
@@ -37,7 +37,7 @@
 }
 .settings-section-title {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
 }
 .runtime-form {
   display: grid;
@@ -58,9 +58,9 @@
   justify-self: start;
 }
 .runtime-card {
-  padding: 20px;
-  background: var(--dsw-alias-bg-layer-1);
-  border: 1px solid var(--dsw-alias-border-l2);
+  padding: 16px;
+  background: var(--dsw-alias-settings-card-fill);
+  border: 0.5px solid var(--dsw-alias-settings-card-stroke);
   border-radius: var(--dsw-radius-md);
   margin-bottom: 16px;
 }
@@ -126,23 +126,23 @@
   background: var(--dsw-alias-interactive-bg-active);
 }
 .product-list {
-  border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: var(--dsw-radius-md);
-  overflow: hidden;
-  margin: 16px 0 24px;
+  min-width: 0;
+  margin: 12px 0 24px;
 }
 .product-row {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 20px;
-  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  padding: 16px 0;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
 }
 .product-row:last-child {
   border-bottom: 0;
 }
 .product-row.selected {
   background: var(--dsw-alias-bg-module-platform);
+  border-radius: var(--dsw-radius-md);
+  padding-inline: 12px;
 }
 .product-row-main {
   flex: 1;
@@ -155,7 +155,7 @@
 }
 .product-row-main small {
   display: block;
-  margin-top: 6px;
+  margin-top: 4px;
   overflow-wrap: anywhere;
   color: var(--dsw-alias-label-secondary);
   font-size: 12px;
@@ -224,6 +224,15 @@ button.product-row-main {
     flex-wrap: wrap;
   }
   .product-row {
-    padding: 16px;
+    padding: 14px 0;
+  }
+}
+@media (max-width: 560px) {
+  .settings-page,
+  .runtime-settings {
+    padding: 20px 16px;
+  }
+  .product-heading {
+    gap: 12px;
   }
 }

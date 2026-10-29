@@ -2,7 +2,15 @@ import { classes } from "@semicoder/fn-ui";
 import styles from "./style.module.css";
 const cx = (...values: (string | false | undefined)[]) => classes(styles, ...values);
 import { Modal } from "@semicoder/fn-ui";
-import { Button, Select, Input, Textarea } from "@semicoder/fn-ui";
+import {
+  Button,
+  Select,
+  Input,
+  Textarea,
+  PageHeader,
+  Tag,
+  IconPlusOutlineRegular,
+} from "@semicoder/fn-ui";
 import React, { useEffect, useState } from "react";
 import type { APIClient } from "@semicoder/fia/api";
 import type { ClientPlatform } from "@semicoder/fn-sdk/client";
@@ -185,36 +193,44 @@ export default function ModelsPage({
     setKey("");
     setEditing(null);
   }
+  const filteredModels = saved.filter((model) =>
+    `${model.name} ${model.id} ${connections.find((connection) => connection.id === model.connectionId)?.name ?? ""}`
+      .toLowerCase()
+      .includes(query.trim().toLowerCase()),
+  );
   return (
-    <section className={cx("runtime-settings product-models")}>
-      <div className={cx("product-heading")}>
-        <div>
-          <h1>模型服务</h1>
-          <p className={cx("runtime-muted")}>管理账号、服务商和应用可用的模型。</p>
-        </div>
-        <Button onClick={() => choose("openai")} type="button">
-          添加连接
-        </Button>
-      </div>
+    <section className={cx("settings-page product-models")}>
+      <PageHeader
+        title="模型服务"
+        description="连接服务商，选择聊天和插件可用的模型。"
+        actions={
+          <Button variant="primary" size="sm" onClick={() => choose("openai")} type="button">
+            <IconPlusOutlineRegular /> 添加连接
+          </Button>
+        }
+      />
       {error && (
         <p role="alert" className={cx("product-alert")}>
           {error}
         </p>
       )}
-      <h2>
-        账号与连接 <small>{connections.length}</small>
-      </h2>
+      <div className={cx("section-heading")}>
+        <h2>账号与连接</h2>
+        <span className={cx("section-count")}>{connections.length}</span>
+      </div>
       {!connections.length && (
-        <p className={cx("runtime-muted")}>连接 API Key 或订阅账号，查看可用模型并添加到列表。</p>
+        <p className={cx("product-empty")}>还没有连接。添加 API Key 或订阅账号，即可选择模型。</p>
       )}
-      <div className={cx("product-list")}>
+      <div className={cx("product-list connection-list")}>
         {connections.map((connection) => (
           <article
             className={cx(`product-row ${selected === connection.id ? "selected" : ""}`)}
             key={connection.id}
           >
             <Button
-              className={cx("product-row-main")}
+              className={cx("product-row-main connection-select")}
+              variant="ghost"
+              aria-pressed={selected === connection.id}
               onClick={() => setSelected(connection.id)}
               type="button"
             >
@@ -222,12 +238,14 @@ export default function ModelsPage({
               <small>
                 {catalog.find((item) => item.id === connection.provider)?.name ??
                   connection.provider}{" "}
-                · {connection.auth === "oauth" ? "订阅登录" : "API Key"} ·{" "}
-                {connection.configured ? "已连接" : "未连接"}
+                · {connection.auth === "oauth" ? "订阅登录" : "API Key"}
               </small>
             </Button>
             <div className={cx("runtime-actions")}>
+              <Tag>{connection.configured ? "已连接" : "未连接"}</Tag>
               <Button
+                variant="ghost"
+                size="sm"
                 disabled={pending}
                 onClick={() => {
                   setEditing(connection.id);
@@ -257,7 +275,10 @@ export default function ModelsPage({
       </div>
       {current?.configured && (
         <article className={cx("runtime-card product-catalog")}>
-          <h2>{current.name}的模型目录</h2>
+          <div className={cx("section-heading")}>
+            <h2>{current.name}</h2>
+            <span className={cx("section-count")}>{models.length} 个模型</span>
+          </div>
           <label>
             选择模型
             <Select
@@ -271,7 +292,6 @@ export default function ModelsPage({
             />
           </label>
           <p>
-            {models.length} 个模型，
             {catalog.find((item) => item.id === current.provider)?.dynamic
               ? "来自当前连接的账号目录"
               : "来自服务商预设或此连接的自定义配置"}
@@ -322,11 +342,12 @@ export default function ModelsPage({
         .map((attempt) => (
           <LoginInteraction key={attempt.id} attempt={attempt} action={action} clients={clients} />
         ))}
-      <div className={cx("product-heading product-section")}>
+      <div className={cx("section-heading saved-heading")}>
         <h2>
-          已添加的模型 <small>{saved.length}</small>
+          已添加的模型 <span className={cx("section-count")}>{saved.length}</span>
         </h2>
         <Input
+          className={cx("model-search")}
           aria-label="搜索已添加模型"
           placeholder="搜索模型或服务商"
           value={query}
@@ -334,75 +355,73 @@ export default function ModelsPage({
         />
       </div>
       <div className={cx("product-list")}>
-        {saved
-          .filter((model) =>
-            `${model.name} ${model.id} ${connections.find((c) => c.id === model.connectionId)?.name ?? ""}`
-              .toLowerCase()
-              .includes(query.toLowerCase()),
-          )
-          .map((model) => {
-            const connection = connections.find(
-              (connection) => connection.id === model.connectionId,
-            );
-            return (
-              <article className={cx("product-row")} key={`${model.connectionId}:${model.id}`}>
-                <span className={cx("product-avatar")}>
-                  {connection?.provider.slice(0, 1).toUpperCase()}
-                </span>
-                <div className={cx("product-row-main")}>
-                  <strong>{model.name}</strong>
-                  <small>
-                    {connection?.name ?? "连接已移除"} · {model.id}
-                  </small>
-                </div>
-                <span className={cx("product-badge")}>
-                  {connection?.auth === "oauth" ? "订阅" : "API Key"}
-                </span>
-                <Button
-                  disabled={pending}
-                  onClick={() =>
-                    void run(() =>
-                      modelsApi.call("select", {
-                        connectionId: model.connectionId,
-                        modelId: model.id,
-                        selected: false,
-                      }),
-                    )
-                  }
-                  type="button"
-                >
-                  删除
-                </Button>
-              </article>
-            );
-          })}
-        {!saved.length && (
-          <p className={cx("product-empty")}>尚未添加模型。在账号目录中选择模型后添加。</p>
+        {filteredModels.map((model) => {
+          const connection = connections.find((connection) => connection.id === model.connectionId);
+          return (
+            <article className={cx("product-row")} key={`${model.connectionId}:${model.id}`}>
+              <span className={cx("product-avatar")}>
+                {connection?.provider.slice(0, 1).toUpperCase()}
+              </span>
+              <div className={cx("product-row-main")}>
+                <strong>{model.name}</strong>
+                <small>
+                  {connection?.name ?? "连接已移除"} · {model.id}
+                </small>
+              </div>
+              <Tag>{connection?.auth === "oauth" ? "订阅" : "API Key"}</Tag>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={`移除模型 ${model.name}`}
+                disabled={pending}
+                onClick={() =>
+                  void run(() =>
+                    modelsApi.call("select", {
+                      connectionId: model.connectionId,
+                      modelId: model.id,
+                      selected: false,
+                    }),
+                  )
+                }
+                type="button"
+              >
+                删除
+              </Button>
+            </article>
+          );
+        })}
+        {!filteredModels.length && (
+          <p className={cx("product-empty")}>
+            {saved.length
+              ? "没有匹配的模型，试试其他名称或服务商。"
+              : "尚未添加模型。在上方账号目录中选择模型后添加。"}
+          </p>
         )}
       </div>
-      <div className={cx("product-section")}>
-        <h2>从常用服务商开始</h2>
-        <p className={cx("runtime-muted")}>
-          内置 Pi 的 {catalog.length} 个服务商预设，自动匹配模型与调用协议。
-        </p>
-      </div>
-      <div className={cx("product-provider-grid")}>
-        {catalog.map((item) => (
-          <Button key={item.id} onClick={() => choose(item.id)} type="button">
-            <strong>{item.name}</strong>
-            <small>
-              {item.dynamic ? "账号模型目录" : `${item.modelCount} 个预设模型`} ·{" "}
-              {item.methods
-                .map((method) => (method.subscription ? "订阅" : method.label))
-                .join(" / ")}
-            </small>
+      <details className={cx("provider-section")}>
+        <summary>
+          <span>服务商预设</span>
+          <span className={cx("section-count")}>{catalog.length} 个服务商及自定义服务</span>
+        </summary>
+        <p className={cx("runtime-muted")}>选择服务商添加连接，自动匹配模型与调用协议。</p>
+        <div className={cx("product-provider-grid")}>
+          {catalog.map((item) => (
+            <Button variant="ghost" key={item.id} onClick={() => choose(item.id)} type="button">
+              <strong>{item.name}</strong>
+              <small>
+                {item.dynamic ? "账号模型目录" : `${item.modelCount} 个预设模型`} ·{" "}
+                {item.methods
+                  .map((method) => (method.subscription ? "订阅" : method.label))
+                  .join(" / ")}
+              </small>
+            </Button>
+          ))}
+          <Button variant="ghost" onClick={() => choose("custom")} type="button">
+            <strong>自定义服务</strong>
+            <small>兼容协议、端点与模型 ID</small>
           </Button>
-        ))}
-        <Button onClick={() => choose("custom")} type="button">
-          <strong>自定义服务</strong>
-          <small>兼容协议、端点与模型 ID</small>
-        </Button>
-      </div>
+        </div>
+      </details>
       {editing && (
         <Modal
           open
@@ -534,7 +553,11 @@ export default function ModelsPage({
                 </label>
               </details>
             )}
-            {error && <p role="alert">{error}</p>}
+            {error && (
+              <p role="alert" className={cx("product-alert")}>
+                {error}
+              </p>
+            )}
             <Button
               className={cx("runtime-primary")}
               disabled={pending}
@@ -552,8 +575,9 @@ export default function ModelsPage({
           </form>
 
           {editing !== "new" && (
-            <div className={cx("runtime-actions")}>
+            <div className={cx("runtime-actions connection-danger")}>
               <Button
+                variant="outline"
                 disabled={pending}
                 onClick={() => void run(() => authApi.call("logout", { connectionId: editing }))}
                 type="button"
@@ -561,6 +585,8 @@ export default function ModelsPage({
                 断开账号
               </Button>
               <Button
+                variant="ghost"
+                className={cx("runtime-danger")}
                 disabled={pending}
                 onClick={() =>
                   void run(async () => {
@@ -636,6 +662,7 @@ function LoginInteraction({
       })}
       {prompt && (
         <form
+          className={cx("runtime-form")}
           onSubmit={(event) => {
             event.preventDefault();
             void action(() =>

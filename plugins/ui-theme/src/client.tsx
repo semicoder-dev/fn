@@ -6,11 +6,8 @@ import { NavigationButton } from "@semicoder/fn-ui-navigation/view";
 import type {} from "@semicoder/fn-ui-settings/contract";
 import api from "@semicoder/fn-appearance/contract";
 import {
-  colorTokens,
-  defaultColorTheme,
   type AppearanceConfig,
   type AppearanceUpdate,
-  type ColorTheme,
   type ThemeMode,
 } from "@semicoder/fn-appearance/theme";
 import AppearanceSettings from "./page.tsx";
@@ -18,26 +15,16 @@ export default class Theme extends Service {
   static inject = ["settingsSlots", "api:appearance", "platform", "slots", "navigation"];
   private remote;
   private listeners = new Set<() => void>();
-  private preview: ColorTheme | null = null;
   private media = matchMedia("(prefers-color-scheme: dark)");
-  private tokens: string[] = [];
-  private restoreToken = (_key: string) => {};
-  private rememberToken = (_key: string) => {};
   private revision = 0;
   private closed = false;
   private state = {
     theme: "system" as ThemeMode,
-    colorTheme: defaultColorTheme(),
     resolved: "light" as "light" | "dark",
     ready: false,
     pending: false,
     error: "",
     choose: (theme: ThemeMode) => this.save({ theme }),
-    saveColors: (colorTheme: ColorTheme) => this.save({ colorTheme }),
-    previewColors: (colorTheme: ColorTheme | null) => {
-      this.preview = colorTheme;
-      this.changed();
-    },
   };
   constructor(ctx: Context) {
     super(ctx, "theme");
@@ -53,22 +40,12 @@ export default class Theme extends Service {
   async *[Service.init]() {
     const previous = document.body.hasAttribute("data-ds-dark-theme");
     const previousScheme = document.documentElement.style.colorScheme;
-    const previousTokens = new Map<string, string>();
-    this.restoreToken = (key) => {
-      const value = previousTokens.get(key);
-      value ? document.body.style.setProperty(key, value) : document.body.style.removeProperty(key);
-    };
-    this.rememberToken = (key) => {
-      if (!previousTokens.has(key))
-        previousTokens.set(key, document.body.style.getPropertyValue(key));
-    };
     const change = () => this.changed();
     this.media.addEventListener("change", change);
     yield () => {
       this.closed = true;
       this.revision++;
       this.media.removeEventListener("change", change);
-      for (const key of this.tokens) this.restoreToken(key);
       document.body.toggleAttribute("data-ds-dark-theme", previous);
       document.documentElement.style.colorScheme = previousScheme;
       this.listeners.clear();
@@ -94,13 +71,6 @@ export default class Theme extends Service {
     const root = document.body;
     root.toggleAttribute("data-ds-dark-theme", resolved === "dark");
     document.documentElement.style.colorScheme = resolved;
-    for (const key of this.tokens) this.restoreToken(key);
-    const tokens = colorTokens(this.preview ?? this.state.colorTheme, resolved);
-    this.tokens = Object.keys(tokens);
-    for (const [key, value] of Object.entries(tokens)) {
-      this.rememberToken(key);
-      root.style.setProperty(key, value);
-    }
     for (const listener of this.listeners) listener();
   }
   private async refresh() {
@@ -124,7 +94,6 @@ export default class Theme extends Service {
       const value: AppearanceConfig = await this.remote.call("set", patch);
       this.revision++;
       Object.assign(this.state, value);
-      if (patch.colorTheme) this.preview = null;
       return true;
     } catch (error) {
       this.state.error = "主题保存失败：" + String(error);

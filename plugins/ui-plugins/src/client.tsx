@@ -1,9 +1,18 @@
 import { classes } from "@semicoder/fn-ui";
-const styles: Record<string, string> = {};
+import styles from "./style.module.css";
 const cx = (...values: (string | false | undefined)[]) => classes(styles, ...values);
 import { Modal } from "@semicoder/fn-ui";
-import { Button, Input, Textarea } from "@semicoder/fn-ui";
-import React, { useEffect, useState } from "react";
+import {
+  Button,
+  Input,
+  Textarea,
+  PageHeader,
+  SegmentedControl,
+  Tag,
+  IconPlusOutlineRegular,
+  IconRefreshOutlineRegular,
+} from "@semicoder/fn-ui";
+import React, { useEffect, useId, useState } from "react";
 import type { Context } from "@deepseek-ai/cordis";
 import type { APIClient, z } from "@semicoder/fia/api";
 import { client, readAllPages } from "@semicoder/fn-sdk/client";
@@ -80,6 +89,7 @@ function UpdateBanner({ remote }: { remote: Remote }) {
   );
 }
 function PluginsPage({ remote }: { remote: Remote }) {
+  const tabsId = useId();
   const [tab, setTab] = useState("market"),
     [query, setQuery] = useState("");
   const [packages, setPackages] = useState<z.infer<typeof pluginInfo>[]>([]),
@@ -155,50 +165,49 @@ function PluginsPage({ remote }: { remote: Remote }) {
         if (row.name === name || row.name === `${name}/client`) row.disabled = disabled;
     return remote.plugins.call("configure", next);
   };
+  const search = query.trim().toLowerCase();
+  const visibleCatalog = catalog.filter((entry) =>
+    `${entry.name} ${entry.description} ${entry.packageName}`.toLowerCase().includes(search),
+  );
+  const visiblePackages = packages.filter((plugin) =>
+    `${plugin.name} ${plugin.description} ${plugin.packageName}`.toLowerCase().includes(search),
+  );
   return (
     <section className={cx("runtime-settings product-apps")}>
-      <div className={cx("product-heading")}>
-        <div>
-          <h1>应用中心</h1>
-          <p className={cx("runtime-muted")}>发现、安装和管理你的插件。</p>
-        </div>
-        <div className={cx("runtime-actions")}>
-          <Button onClick={() => setMarketsOpen(true)} type="button">
-            市场源
-          </Button>
-          <Button onClick={() => setInstallOpen(true)} type="button">
-            从地址安装
-          </Button>
-        </div>
-      </div>
-      <div className={cx("product-tabs")}>
+      <PageHeader
+        title="应用中心"
+        description="发现、安装和管理你的插件。"
+        actions={
+          <div className={cx("header-actions")}>
+            <Button variant="ghost" size="sm" onClick={() => setMarketsOpen(true)} type="button">
+              市场源
+            </Button>
+            <Button variant="primary" size="sm" onClick={() => setInstallOpen(true)} type="button">
+              <IconPlusOutlineRegular /> 从地址安装
+            </Button>
+          </div>
+        }
+      />
+      <div className={cx("page-toolbar")}>
+        <SegmentedControl
+          id={tabsId}
+          label="应用中心分类"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: "market", label: "插件市场" },
+            { value: "installed", label: `已安装 · ${packages.length}` },
+            { value: "profile", label: "默认组合" },
+          ]}
+        />
         <Button
-          className={cx(tab === "market" ? "selected" : "")}
-          onClick={() => setTab("market")}
-          type="button"
-        >
-          插件市场
-        </Button>
-        <Button
-          className={cx(tab === "installed" ? "selected" : "")}
-          onClick={() => setTab("installed")}
-          type="button"
-        >
-          已安装 · {packages.length}
-        </Button>
-        <Button
-          className={cx(tab === "profile" ? "selected" : "")}
-          onClick={() => setTab("profile")}
-          type="button"
-        >
-          默认组合
-        </Button>
-        <Button
+          variant="ghost"
+          size="sm"
           disabled={working}
           onClick={() => void action(() => remote.market.call("refresh", {}))}
           type="button"
         >
-          检查更新
+          <IconRefreshOutlineRegular /> 检查更新
         </Button>
       </div>
       {error && (
@@ -206,36 +215,39 @@ function PluginsPage({ remote }: { remote: Remote }) {
           {error}
         </p>
       )}
-      {tab !== "profile" && (
-        <Input
-          aria-label="搜索插件"
-          placeholder="搜索名称、描述或包名"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      )}
-      {tab === "market" && (
-        <>
-          <div className={cx("product-list")}>
-            {catalog
-              .filter((entry) =>
-                `${entry.name} ${entry.description} ${entry.packageName}`
-                  .toLowerCase()
-                  .includes(query.toLowerCase()),
-              )
-              .map((entry) => (
+      <div id={`${tabsId}-${tab}-panel`} role="tabpanel" aria-labelledby={`${tabsId}-${tab}`}>
+        {tab !== "profile" && (
+          <Input
+            className={cx("plugin-search")}
+            aria-label="搜索插件"
+            placeholder="搜索名称、描述或包名"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        )}
+        {tab === "market" && (
+          <>
+            <div className={cx("product-list")}>
+              {visibleCatalog.map((entry) => (
                 <article
                   className={cx("product-row")}
                   key={`${entry.marketId}:${entry.packageName}`}
                 >
+                  <span className={cx("plugin-icon")} aria-hidden="true">
+                    <IconCordisPluginOutlineRegular />
+                  </span>
                   <div className={cx("product-row-main")}>
                     <strong>{entry.name}</strong>
-                    <p>{entry.description}</p>
+                    {entry.description && (
+                      <p className={cx("plugin-description")}>{entry.description}</p>
+                    )}
                     <small>
                       v{entry.version} · {entry.marketName}
                     </small>
                   </div>
                   <Button
+                    variant="outline"
+                    size="sm"
                     disabled={
                       busy || ["installed", "incompatible", "conflict"].includes(entry.state)
                     }
@@ -258,40 +270,50 @@ function PluginsPage({ remote }: { remote: Remote }) {
                   </Button>
                 </article>
               ))}
-          </div>
-          {!catalog.length && (
-            <p className={cx("product-empty")}>
-              市场暂无插件。可以添加市场源或从地址安装可信插件。
-            </p>
-          )}
-          {markets
-            .filter((market) => market.enabled && market.error)
-            .map((market) => (
-              <p role="alert" key={market.id}>
-                {market.name}：{market.error}
-              </p>
-            ))}
-        </>
-      )}
-      {tab === "installed" && (
-        <div className={cx("product-list")}>
-          {packages
-            .filter((plugin) =>
-              `${plugin.name} ${plugin.packageName}`.toLowerCase().includes(query.toLowerCase()),
-            )
-            .map((plugin) => (
+              {!visibleCatalog.length && (
+                <div className={cx("product-empty empty-state")}>
+                  <IconCordisPluginOutlineRegular aria-hidden="true" />
+                  <strong>{catalog.length ? "没有匹配的插件" : "市场暂无插件"}</strong>
+                  <p>
+                    {catalog.length
+                      ? "试试其他名称、描述或包名。"
+                      : "添加市场源，或从地址安装你信任的插件。"}
+                  </p>
+                </div>
+              )}
+            </div>
+            {markets
+              .filter((market) => market.enabled && market.error)
+              .map((market) => (
+                <p role="alert" className={cx("product-alert")} key={market.id}>
+                  {market.name}：{market.error}
+                </p>
+              ))}
+          </>
+        )}
+        {tab === "installed" && (
+          <div className={cx("product-list")}>
+            {visiblePackages.map((plugin) => (
               <article className={cx("product-row")} key={plugin.id}>
+                <span className={cx("plugin-icon")} aria-hidden="true">
+                  <IconCordisPluginOutlineRegular />
+                </span>
                 <div className={cx("product-row-main")}>
-                  <strong>
-                    {plugin.name} <small>{enabled(plugin.packageName) ? "已启用" : "已停用"}</small>
-                  </strong>
-                  <p>{plugin.description}</p>
+                  <div className={cx("title-row")}>
+                    <strong>{plugin.name}</strong>
+                    <Tag>{enabled(plugin.packageName) ? "已启用" : "已停用"}</Tag>
+                  </div>
+                  {plugin.description && (
+                    <p className={cx("plugin-description")}>{plugin.description}</p>
+                  )}
                   <small>
                     v{plugin.version} · {plugin.packageName}
                   </small>
                 </div>
                 <div className={cx("runtime-actions")}>
                   <Button
+                    variant="ghost"
+                    size="sm"
                     disabled={busy || !plugin.origin}
                     onClick={() =>
                       void action(() => remote.plugins.call("update", { id: plugin.id }))
@@ -301,6 +323,8 @@ function PluginsPage({ remote }: { remote: Remote }) {
                     更新
                   </Button>
                   <Button
+                    variant="outline"
+                    size="sm"
                     disabled={busy}
                     onClick={() => void action(async () => toggle(plugin.packageName))}
                     type="button"
@@ -308,6 +332,9 @@ function PluginsPage({ remote }: { remote: Remote }) {
                     {enabled(plugin.packageName) ? "停用" : "启用"}
                   </Button>
                   <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cx("runtime-danger")}
                     disabled={busy}
                     onClick={() =>
                       void action(() => remote.plugins.call("remove", { id: plugin.id }))
@@ -319,51 +346,81 @@ function PluginsPage({ remote }: { remote: Remote }) {
                 </div>
               </article>
             ))}
-          {!packages.length && <p className={cx("product-empty")}>尚未安装扩展插件。</p>}
-        </div>
-      )}
-      {tab === "profile" && (
-        <>
-          <p>默认组合也由插件构成。修改后等待任务空闲，重新启动后台并恢复窗口。</p>
-          <Button
-            disabled={busy || !profile}
-            onClick={() => setEditor(JSON.stringify(profile, null, 2))}
-            type="button"
-          >
-            编辑组合配置
-          </Button>
-          <div className={cx("product-list")}>
-            {profile &&
-              (["plugins", "client"] as const).flatMap((side) =>
-                profile[side].map((row) => (
-                  <article className={cx("product-row")} key={`${side}:${row.id}`}>
-                    <div className={cx("product-row-main")}>
-                      <strong>{row.id}</strong>
-                      <small>
-                        {side === "client" ? "前端" : "后端"} · {row.name}
-                      </small>
-                    </div>
-                    <Button
-                      disabled={busy}
-                      onClick={() =>
-                        void action(async () => {
-                          const next = structuredClone(profile);
-                          next[side].find((entry) => entry.id === row.id)!.disabled = !row.disabled;
-                          await remote.plugins.call("configure", next);
-                        })
-                      }
-                      type="button"
-                    >
-                      {row.disabled ? "启用" : "停用"}
-                    </Button>
-                  </article>
-                )),
-              )}
+            {!visiblePackages.length && (
+              <div className={cx("product-empty empty-state")}>
+                <IconCordisPluginOutlineRegular aria-hidden="true" />
+                <strong>{packages.length ? "没有匹配的插件" : "尚未安装扩展插件"}</strong>
+                <p>
+                  {packages.length
+                    ? "试试其他名称、描述或包名。"
+                    : "前往插件市场，添加需要的功能。"}
+                </p>
+                {!packages.length && (
+                  <Button variant="outline" size="sm" onClick={() => setTab("market")}>
+                    浏览插件市场
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
-        </>
-      )}
-      <p className={cx("runtime-muted product-section")}>
-        插件可执行本机代码，请只安装可信来源。更新等待任务空闲后重启后台；页面会重新加载，请先保存草稿。
+        )}
+        {tab === "profile" && (
+          <>
+            <div className={cx("profile-heading")}>
+              <p className={cx("runtime-muted")}>
+                管理默认启用的功能。更改在任务空闲后生效，后台将重新启动。
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy || !profile}
+                onClick={() => setEditor(JSON.stringify(profile, null, 2))}
+                type="button"
+              >
+                编辑组合配置
+              </Button>
+            </div>
+            {profile &&
+              (["plugins", "client"] as const).map((side) => (
+                <section className={cx("profile-group")} key={side}>
+                  <h2>
+                    {side === "client" ? "界面插件" : "后台插件"}{" "}
+                    <span>{profile[side].length}</span>
+                  </h2>
+                  <div className={cx("product-list")}>
+                    {profile[side].map((row) => (
+                      <article className={cx("product-row profile-row")} key={row.id}>
+                        <div className={cx("product-row-main")}>
+                          <strong>{row.id}</strong>
+                          <small>{row.name}</small>
+                        </div>
+                        <Tag>{row.disabled ? "已停用" : "已启用"}</Tag>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={busy}
+                          onClick={() =>
+                            void action(async () => {
+                              const next = structuredClone(profile);
+                              next[side].find((entry) => entry.id === row.id)!.disabled =
+                                !row.disabled;
+                              await remote.plugins.call("configure", next);
+                            })
+                          }
+                          type="button"
+                        >
+                          {row.disabled ? "启用" : "停用"}
+                        </Button>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              ))}
+          </>
+        )}
+      </div>
+      <p className={cx("runtime-muted page-note")}>
+        插件可执行本机代码，请只安装可信来源。更新将在任务空闲后重启后台，请先保存草稿。
       </p>
       {installOpen && (
         <Modal
@@ -386,9 +443,19 @@ function PluginsPage({ remote }: { remote: Remote }) {
           >
             <label>
               归档路径、HTTPS 地址或 Git 来源
-              <Input value={source} onChange={(event) => setSource(event.target.value)} required />
+              <Input
+                value={source}
+                onChange={(event) => setSource(event.target.value)}
+                placeholder="https://… / 本地归档路径 / Git 来源"
+                required
+              />
             </label>
-            <Button disabled={busy} type="submit">
+            {error && (
+              <p role="alert" className={cx("product-alert")}>
+                {error}
+              </p>
+            )}
+            <Button variant="primary" disabled={busy} type="submit">
               安装
             </Button>
           </form>
@@ -403,28 +470,49 @@ function PluginsPage({ remote }: { remote: Remote }) {
           className={cx("runtime-dialog")}
           contentClassName={cx("dialog-content")}
         >
-          {markets.map((market) => (
-            <article key={market.id}>
-              <strong>{market.name}</strong>
-              <p>{market.url}</p>
-              <Button
-                onClick={() =>
-                  void action(() =>
-                    remote.market.call("change", { id: market.id, enabled: !market.enabled }),
-                  )
-                }
-                type="button"
-              >
-                {market.enabled ? "停用" : "启用"}
-              </Button>
-              <Button
-                onClick={() => void action(() => remote.market.call("remove", { id: market.id }))}
-                type="button"
-              >
-                删除
-              </Button>
-            </article>
-          ))}
+          <div className={cx("source-list")}>
+            {markets.map((market) => (
+              <article className={cx("source-row")} key={market.id}>
+                <div className={cx("source-main")}>
+                  <div className={cx("title-row")}>
+                    <strong>{market.name}</strong>
+                    <Tag>{market.enabled ? "已启用" : "已停用"}</Tag>
+                  </div>
+                  <p>{market.url}</p>
+                  {market.error && <p className={cx("runtime-danger")}>{market.error}</p>}
+                </div>
+                <div className={cx("header-actions")}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() =>
+                      void action(() =>
+                        remote.market.call("change", { id: market.id, enabled: !market.enabled }),
+                      )
+                    }
+                    type="button"
+                  >
+                    {market.enabled ? "停用" : "启用"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cx("runtime-danger")}
+                    disabled={busy}
+                    onClick={() =>
+                      void action(() => remote.market.call("remove", { id: market.id }))
+                    }
+                    type="button"
+                  >
+                    删除
+                  </Button>
+                </div>
+              </article>
+            ))}
+            {!markets.length && <p className={cx("runtime-muted")}>尚未添加市场源。</p>}
+          </div>
+          <h2 className={cx("dialog-section-title")}>添加市场源</h2>
 
           <form
             className={cx("runtime-form")}
@@ -454,7 +542,14 @@ function PluginsPage({ remote }: { remote: Remote }) {
                 required
               />
             </label>
-            <Button type="submit">添加市场源</Button>
+            {error && (
+              <p role="alert" className={cx("product-alert")}>
+                {error}
+              </p>
+            )}
+            <Button variant="primary" disabled={busy} type="submit">
+              添加市场源
+            </Button>
           </form>
         </Modal>
       )}
@@ -477,14 +572,23 @@ function PluginsPage({ remote }: { remote: Remote }) {
               });
             }}
           >
-            <p>实例 ID 与包名独立。同一包可配置多个实例；客户端布局可整体替换。</p>
+            <p className={cx("runtime-muted")}>
+              实例 ID 与包名独立。同一包可配置多个实例；客户端布局可整体替换。
+            </p>
             <Textarea
+              className={cx("profile-editor")}
               aria-label="插件组合 JSON"
+              spellCheck={false}
               rows={18}
               value={editor}
               onChange={(event) => setEditor(event.target.value)}
             />
-            <Button disabled={busy} type="submit">
+            {error && (
+              <p role="alert" className={cx("product-alert")}>
+                {error}
+              </p>
+            )}
+            <Button variant="primary" disabled={busy} type="submit">
               验证并应用
             </Button>
           </form>

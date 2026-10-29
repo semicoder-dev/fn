@@ -3,7 +3,17 @@ import styles from "./style.module.css";
 const cx = (...values: (string | false | undefined)[]) => classes(styles, ...values);
 import { Checkbox } from "@semicoder/fn-ui";
 import { Modal } from "@semicoder/fn-ui";
-import { Button, Textarea, Select, Input } from "@semicoder/fn-ui";
+import {
+  Button,
+  Textarea,
+  Select,
+  Input,
+  IconNewChatOutlineRegular,
+  IconPaperPlaneOutlineRegular,
+  IconStopFillRegular,
+  IconArchiveOutlineRegular,
+  IconUnarchiveOutlineRegular,
+} from "@semicoder/fn-ui";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { Context } from "@deepseek-ai/cordis";
 import type { APIClient, z } from "@semicoder/fia/api";
@@ -108,6 +118,18 @@ function Conversation({
   }, [sessionId, selection]);
   const active = sessions.find((session) => session.id === sessionId),
     text = drafts[sessionId] ?? "";
+  const visibleSessions = sessions.filter((session) => session.archived === archived);
+  const activeDescription = active
+    ? [
+        endpoints.find((endpoint) => endpoint.targetId === active.targetId)?.name ??
+          active.targetId,
+        connections.find((connection) => connection.id === active.connectionId)?.name ??
+          active.connectionId,
+        active.archived ? "已归档" : undefined,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : "";
   const refresh = useCallback(async () => {
     const call = ++revision.current;
     try {
@@ -243,7 +265,7 @@ function Conversation({
     }
   }
   return (
-    <div style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0 }}>
+    <div className={cx("chat-page")}>
       {error && (
         <div role="alert" className={cx("runtime-error")}>
           <span>{error}</span>
@@ -253,48 +275,59 @@ function Conversation({
         </div>
       )}
       <div className={cx("runtime-chat")}>
-        <aside className={cx("runtime-sessions")}>
-          <Button
-            className={cx("runtime-primary")}
-            onClick={() => setCreating(true)}
-            type="button"
-            variant="primary"
-          >
-            ＋ 新会话
-          </Button>
-          <Button onClick={() => setArchived(!archived)} type="button">
-            {archived ? "返回当前会话" : "查看已归档"}
-          </Button>
-          {sessions
-            .filter((session) => session.archived === archived)
-            .map((session) => (
+        <aside className={cx("runtime-sessions")} aria-label="会话列表">
+          <div className={cx("sessions-toolbar")}>
+            <h2>会话</h2>
+            <Button
+              onClick={() => setCreating(true)}
+              type="button"
+              size="sm"
+              icon={<IconNewChatOutlineRegular />}
+              aria-label="新建会话"
+              title="新建会话"
+            />
+          </div>
+          <div className={cx("sessions-group")}>
+            <span>{archived ? "已归档" : "最近会话"}</span>
+            <Button onClick={() => setArchived(!archived)} type="button" size="sm">
+              {archived ? "返回" : "归档"}
+            </Button>
+          </div>
+          <div className={cx("sessions-list")}>
+            {!visibleSessions.length && (
+              <p className={cx("sessions-empty")}>
+                {archived ? "没有已归档会话" : "新建一个会话，开始工作。"}
+              </p>
+            )}
+            {visibleSessions.map((session) => (
               <Button
                 key={session.id}
-                className={cx(session.id === sessionId ? "selected" : "")}
+                className={cx("session-row", session.id === sessionId && "selected")}
+                aria-current={session.id === sessionId ? "page" : undefined}
                 onClick={() => setSessionId(session.id)}
                 type="button"
+                title={session.title}
               >
-                <strong>{session.title}</strong>
-                <small>
-                  {endpoints.find((endpoint) => endpoint.targetId === session.targetId)?.name ??
-                    session.targetId}{" "}
-                  · {session.status === "running" ? "运行中" : "空闲"}
-                </small>
+                <span className={cx("session-row-content")}>
+                  <strong>{session.title}</strong>
+                  <small>
+                    {endpoints.find((endpoint) => endpoint.targetId === session.targetId)?.name ??
+                      session.targetId}
+                    {session.status === "running" ? " · 运行中" : ""}
+                  </small>
+                </span>
               </Button>
             ))}
+          </div>
         </aside>
         <section className={cx("runtime-conversation")}>
           {active ? (
             <>
-              <header>
-                <div>
+              <header className={cx("conversation-header")}>
+                <div className={cx("conversation-heading")}>
                   <h1>{active.title}</h1>
-                  <p>
-                    {connections.find((connection) => connection.id === active.connectionId)?.name}{" "}
-                    · {active.modelId}
-                  </p>
+                  <p title={activeDescription}>{activeDescription}</p>
                 </div>
-                <SessionModel remote={remote} session={active} action={action} />
                 <Button
                   onClick={() =>
                     void action(async () => {
@@ -306,36 +339,50 @@ function Conversation({
                     })
                   }
                   type="button"
+                  size="sm"
+                  icon={
+                    active.archived ? (
+                      <IconUnarchiveOutlineRegular />
+                    ) : (
+                      <IconArchiveOutlineRegular />
+                    )
+                  }
                 >
                   {active.archived ? "恢复会话" : "归档"}
                 </Button>
               </header>
               <div className={cx("runtime-messages")}>
-                {!items.length && (
-                  <div className={cx("runtime-empty")}>发送消息，开始这次对话。</div>
-                )}
-                {items.map((item) => (
-                  <React.Fragment key={item.id}>
-                    {renderSlot("fn.chat.message", { item })}
-                  </React.Fragment>
-                ))}
-                {renderSlot("fn.chat.cards", {
-                  sessionId: active.id,
-                  enabled: endpoints.some((endpoint) => endpoint.targetId === active.targetId),
-                })}
-                {stream && (
-                  <article className={cx("runtime-message assistant")}>
-                    <small>助手 · 正在生成</small>
-                    {stream.reasoning && (
-                      <details>
-                        <summary>思考过程</summary>
-                        <pre>{stream.reasoning}</pre>
-                      </details>
-                    )}
-                    <div className={cx("runtime-message-text")}>{stream.text}</div>
-                  </article>
-                )}
-                {active.status === "running" && <p role="status">正在处理…</p>}
+                <div className={cx("message-column")}>
+                  {!items.length && (
+                    <div className={cx("runtime-empty")}>发送消息，开始这次对话。</div>
+                  )}
+                  {items.map((item) => (
+                    <React.Fragment key={item.id}>
+                      {renderSlot("fn.chat.message", { item })}
+                    </React.Fragment>
+                  ))}
+                  {renderSlot("fn.chat.cards", {
+                    sessionId: active.id,
+                    enabled: endpoints.some((endpoint) => endpoint.targetId === active.targetId),
+                  })}
+                  {stream && (
+                    <article className={cx("runtime-message assistant")}>
+                      <div className={cx("runtime-message-label")}>助手 · 正在生成</div>
+                      {stream.reasoning && (
+                        <details>
+                          <summary>思考过程</summary>
+                          <pre>{stream.reasoning}</pre>
+                        </details>
+                      )}
+                      <div className={cx("runtime-message-text")}>{stream.text}</div>
+                    </article>
+                  )}
+                  {active.status === "running" && (
+                    <p className={cx("conversation-status")} role="status">
+                      正在处理…
+                    </p>
+                  )}
+                </div>
               </div>
               {approvals
                 .filter((approval) => approval.sessionId === active.id)
@@ -343,26 +390,31 @@ function Conversation({
                   <div className={cx("runtime-approval")} key={approval.id}>
                     <strong>允许执行 {approval.toolName}？</strong>
                     <p>{approval.reason}</p>
-                    <Button
-                      onClick={() =>
-                        void action(() =>
-                          remote.approvals.call("reply", { id: approval.id, allow: false }),
-                        )
-                      }
-                      type="button"
-                    >
-                      拒绝
-                    </Button>
-                    <Button
-                      onClick={() =>
-                        void action(() =>
-                          remote.approvals.call("reply", { id: approval.id, allow: true }),
-                        )
-                      }
-                      type="button"
-                    >
-                      允许一次
-                    </Button>
+                    <div className={cx("approval-actions")}>
+                      <Button
+                        onClick={() =>
+                          void action(() =>
+                            remote.approvals.call("reply", { id: approval.id, allow: false }),
+                          )
+                        }
+                        type="button"
+                        size="sm"
+                      >
+                        拒绝
+                      </Button>
+                      <Button
+                        onClick={() =>
+                          void action(() =>
+                            remote.approvals.call("reply", { id: approval.id, allow: true }),
+                          )
+                        }
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                      >
+                        允许一次
+                      </Button>
+                    </div>
                   </div>
                 ))}
               <form className={cx("runtime-composer")} onSubmit={send}>
@@ -380,38 +432,48 @@ function Conversation({
                     }
                   }}
                 />
-                <div>
-                  <small>
-                    {active.policy === "controlled" ? "写入与外部操作需要批准" : "已启用自动执行"} ·
-                    ⌘ Enter 发送
-                  </small>
-                  {renderSlot("fn.chat.input-actions", { session: active })}
-                  {active.status === "running" && (
+                <div className={cx("composer-toolbar")}>
+                  <div className={cx("composer-model")}>
+                    <SessionModel remote={remote} session={active} action={action} />
+                  </div>
+                  <div className={cx("composer-actions")}>
+                    {renderSlot("fn.chat.input-actions", { session: active })}
+                    {active.status === "running" && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        icon={<IconStopFillRegular />}
+                        onClick={() =>
+                          void action(() => remote.sessions.call("cancel", { id: active.id }))
+                        }
+                      >
+                        停止
+                      </Button>
+                    )}
                     <Button
-                      type="button"
-                      onClick={() =>
-                        void action(() => remote.sessions.call("cancel", { id: active.id }))
-                      }
+                      disabled={!online || sending || !text.trim()}
+                      type="submit"
+                      variant="primary"
+                      size="sm"
+                      icon={<IconPaperPlaneOutlineRegular />}
                     >
-                      停止
+                      {sending ? "正在提交…" : "发送"}
                     </Button>
-                  )}
-                  <Button
-                    className={cx("runtime-primary")}
-                    disabled={!online || sending || !text.trim()}
-                    type="submit"
-                    variant="primary"
-                  >
-                    {sending ? "正在提交…" : "发送"}
-                  </Button>
+                  </div>
                 </div>
               </form>
+              <p className={cx("composer-hint")}>
+                {active.policy === "controlled" ? "写入与外部操作需要批准" : "已启用自动执行"} · ⌘
+                Enter 发送
+              </p>
             </>
           ) : (
             <div className={cx("runtime-welcome")}>
-              <div className={cx("runtime-mark")}>fn</div>
-              <h1>为每件事留一个会话</h1>
-              <p>选择模型连接，继续你的工作。</p>
+              <div className={cx("welcome-heading")}>
+                <span className={cx("runtime-mark")}>fn</span>
+                <h1>开始新的工作</h1>
+              </div>
+              <p>新建会话，或从左侧继续之前的对话。</p>
               <Button
                 onClick={() =>
                   connections.some((connection) => connection.configured)
@@ -419,6 +481,8 @@ function Conversation({
                     : navigation.go("settings/models")
                 }
                 type="button"
+                variant="primary"
+                icon={<IconNewChatOutlineRegular />}
               >
                 {connections.some((connection) => connection.configured)
                   ? "新建会话"
@@ -534,7 +598,7 @@ function SessionModel({
     };
   }, [session.connectionId]);
   return (
-    <div>
+    <div className={cx("session-model")}>
       <Select
         value={session.modelId}
         disabled={session.status === "running" || !models.length}
@@ -685,8 +749,9 @@ function NewSession({
           <Input
             value={cwd}
             onChange={(e) => setCwd(e.target.value)}
-            placeholder="可选绝对路径；文件与进程工具需要此项"
+            placeholder="可选，填写本机绝对路径"
           />
+          <span className={cx("field-note")}>文件与进程工具将在此目录中工作。</span>
         </label>
         <Checkbox
           className={cx("runtime-checkbox")}
@@ -695,14 +760,14 @@ function NewSession({
           label={"自动批准此会话的工具操作"}
         />
         {error && <p role="alert">{error}</p>}
-        <Button
-          className={cx("runtime-primary")}
-          disabled={pending || !connectionId || !modelId}
-          type="submit"
-          variant="primary"
-        >
-          {pending ? "正在创建…" : "创建会话"}
-        </Button>
+        <div className={cx("dialog-actions")}>
+          <Button type="button" onClick={close} disabled={pending}>
+            取消
+          </Button>
+          <Button disabled={pending || !connectionId || !modelId} type="submit" variant="primary">
+            {pending ? "正在创建…" : "创建会话"}
+          </Button>
+        </div>
       </form>
     </Modal>
   );

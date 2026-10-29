@@ -4,7 +4,6 @@ import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { Context } from "@deepseek-ai/cordis";
 import { buildPlugin } from "../packages/sdk/build.ts";
-import { colorTokens, contrast, defaultColorTheme } from "../plugins/appearance/src/theme.ts";
 
 test("shared UI JS stays external while theme CSS is bundled and disposed with its plugin", async () => {
   const root = await mkdtemp(join(tmpdir(), "fn-ui-contract-"));
@@ -84,28 +83,5 @@ export function apply(ctx) { ctx.provide('fixtureUi', Button); }`,
   } finally {
     await ctx.fiber.dispose();
     await rm(root, { recursive: true, force: true });
-  }
-});
-
-test("theme overrides preserve original defaults and readable custom surfaces", () => {
-  for (const mode of ["light", "dark"] as const) {
-    expect(colorTokens(defaultColorTheme(), mode)).toEqual({});
-    for (const pair of [
-      ["#FFFFFF", "#767676"],
-      ["#222222", "#FFFFFF"],
-    ]) {
-      const theme = defaultColorTheme();
-      theme.preset = "custom";
-      theme.custom[mode] = { background: pair[0]!, foreground: pair[1]!, accent: "#0969DA" };
-      const tokens = colorTokens(theme, mode);
-      for (const surface of [
-        "--dsw-alias-bg-layer-1",
-        "--dsw-alias-bg-layer-2",
-        "--dsw-alias-bg-layer-3",
-        "--dsw-menu-surface-fill",
-      ])
-        for (const label of ["--dsw-alias-label-primary", "--dsw-alias-label-secondary"])
-          expect(contrast(tokens[surface]!, tokens[label]!)).toBeGreaterThanOrEqual(4.5);
-    }
   }
 });

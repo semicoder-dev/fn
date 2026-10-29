@@ -1,0 +1,136 @@
+.header-actions,
+.page-toolbar,
+.profile-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.page-toolbar,
+.profile-heading {
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.plugin-search {
+  width: 100%;
+}
+.plugin-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--dsw-alias-label-secondary);
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-lg);
+}
+.plugin-icon svg {
+  width: 24px;
+  height: 24px;
+}
+.title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+.plugin-description {
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-height: 200px;
+  justify-content: center;
+}
+.empty-state > svg {
+  width: 32px;
+  height: 32px;
+  color: var(--dsw-alias-label-caption);
+  margin-bottom: 8px;
+}
+.empty-state strong {
+  color: var(--dsw-alias-label-primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+.empty-state p {
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+.profile-heading p {
+  flex: 1;
+  min-width: 220px;
+  margin: 0;
+}
+.profile-group {
+  margin-top: 24px;
+}
+.profile-group h2 > span {
+  margin-left: 8px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+}
+.profile-row {
+  padding-block: 12px;
+}
+.profile-editor {
+  font-family: var(--ds-font-family-code);
+  font-size: 12px;
+}
+.page-note {
+  border-top: 0.5px solid var(--dsw-alias-border-l2);
+  padding-top: 20px;
+  margin-top: 28px;
+}
+.source-list {
+  margin: 0 0 24px;
+}
+.source-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+}
+.source-main {
+  flex: 1;
+  min-width: 0;
+}
+.source-main strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.source-main p {
+  margin: 4px 0 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.runtime-danger {
+  color: var(--dsw-alias-state-error-primary);
+}
+.dialog-section-title {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 500;
+}
+@media (max-width: 640px) {
+  .page-toolbar {
+    align-items: flex-start;
+  }
+  .source-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .source-main {
+    flex-basis: 100%;
+  }
+}

@@ -18,17 +18,15 @@ export function NavigationButton({
   compact?: boolean;
 }) {
   const current = useNavigation(navigation);
+  const active = compact ? current.split("/")[0] === path.split("/")[0] : current === path;
   return (
     <Button
-      className={[
-        compact ? styles.compact : styles.navigation,
-        (compact ? current.split("/")[0] === path.split("/")[0] : current === path)
-          ? styles.active
-          : "",
-      ].join(" ")}
+      className={[compact ? styles.compact : styles.navigation, active ? styles.active : ""].join(
+        " ",
+      )}
       title={label}
       aria-label={label}
-      aria-current={current === path ? "page" : undefined}
+      aria-current={active ? "page" : undefined}
       onClick={() => navigation.go(path)}
     >
       {children}

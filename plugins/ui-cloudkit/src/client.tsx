@@ -1,7 +1,14 @@
 import { classes } from "@semicoder/fn-ui";
-const styles: Record<string, string> = {};
+import styles from "./style.module.css";
 const cx = (...values: (string | false | undefined)[]) => classes(styles, ...values);
-import { Button } from "@semicoder/fn-ui";
+import {
+  Button,
+  Notice,
+  PageHeader,
+  SettingsSection,
+  SettingsRow,
+  IconNewChatOutlineRegular,
+} from "@semicoder/fn-ui";
 import React, { useEffect, useState } from "react";
 import type { Context } from "@deepseek-ai/cordis";
 import { client } from "@semicoder/fn-sdk/client";
@@ -40,31 +47,38 @@ function SyncSettings({ remote }: { remote: APIClient<typeof api> }) {
     void remote.call(method, {}).catch((error) => setError(String(error)));
   };
   return (
-    <section className={cx("runtime-settings")}>
-      <h1>聊天同步</h1>
-      <p>通过 iCloud，让桌面和手机连接同一个会话。</p>
-      <article className={cx("runtime-card")}>
-        <h2>fn Chat</h2>
-        <p>{status?.status ?? "读取状态中…"}</p>
-        {status?.lastSync && <p>上次同步 {new Date(status.lastSync).toLocaleString()}</p>}
-        <div className={cx("runtime-actions")}>
-          <Button onClick={() => action("connect")} type="button">
+    <section className={cx("settings-page")}>
+      <PageHeader title="聊天同步" description="通过 iCloud，在桌面和手机之间同步会话。" />
+      <SettingsSection title="iCloud" description="连接设备上登录的 iCloud 账号。">
+        <SettingsRow label="连接状态" description={status?.status ?? "读取状态中…"}>
+          <Button variant="outline" onClick={() => action("connect")} type="button">
             连接 iCloud
           </Button>
-          <Button onClick={() => action("sync")} type="button">
+        </SettingsRow>
+        <SettingsRow
+          label="会话同步"
+          description={
+            status?.lastSync
+              ? `上次同步 ${new Date(status.lastSync).toLocaleString()}`
+              : "尚无同步记录"
+          }
+        >
+          <Button variant="outline" onClick={() => action("sync")} type="button">
             立即同步
           </Button>
-        </div>
-        {error && <p role="alert">{error}</p>}
-        <p>只有通过手机创建的会话参与同步。此开发组合使用独立的 Chat v4 数据空间。</p>
-      </article>
+        </SettingsRow>
+      </SettingsSection>
+      {error && <Notice className={cx("sync-error")}>{error}</Notice>}
+      <p className={cx("settings-note")}>只有通过手机创建的会话参与同步。</p>
     </section>
   );
 }
 export function apply(ctx: Context) {
   const remote = client(ctx, "cloudkit", api);
   ctx.slots.register({ name: "fn.settings.navigation", id: "cloudkit", order: 30 }, () => (
-    <NavigationButton navigation={ctx.navigation} path="settings/chat" label="聊天同步" />
+    <NavigationButton navigation={ctx.navigation} path="settings/chat" label="聊天同步">
+      <IconNewChatOutlineRegular />
+    </NavigationButton>
   ));
   ctx.slots.register(
     { name: "fn.settings.content", key: "chat", inject: () => ({ remote }) },
