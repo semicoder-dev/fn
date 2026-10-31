@@ -24,6 +24,7 @@ export default class PluginMarket extends Service {
     super(ctx, "market");
   }
   private changed() {
+    if (this.controller.signal.aborted) return;
     this.ctx.rpc.emit("market", "changed", {});
   }
   private get installed() {
@@ -134,6 +135,7 @@ export default class PluginMarket extends Service {
     });
   }
   refresh(id?: string): Promise<void> {
+    if (this.controller.signal.aborted) return Promise.resolve();
     if (id && !this.document.value.some((source) => source.id === id))
       throw new Error("市场源不存在");
     return Promise.all(
@@ -150,6 +152,7 @@ export default class PluginMarket extends Service {
                 AbortSignal.any([this.controller.signal, AbortSignal.timeout(15000)]),
                 this.fetcher,
               );
+              this.controller.signal.throwIfAborted();
               const value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
               if (value.schemaVersion !== 3)
                 throw new Error("该市场使用旧插件协议，请添加 新版插件市场源");
@@ -159,6 +162,7 @@ export default class PluginMarket extends Service {
                 if (record) Object.assign(record, { index, error: null, updatedAt: Date.now() });
               });
             } catch (error) {
+              if (this.controller.signal.aborted) return;
               await this.document.update((draft) => {
                 const record = draft.find((item) => item.id === source.id);
                 if (record)
