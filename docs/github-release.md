@@ -1,8 +1,20 @@
 # fn 应用发布
 
-> 当前准备 fn 0.6.0/build 13、SDK 0.5.0 全插件化发行；下方公开发行证据仅对应其固定提交。后续发行前须完成 `runtime-validation.md` 的真实环境事项，新市场不能用旧归档替代。Chat 用途未定稿，已从本阶段首版发行排除；Chat v4、手机与 CloudKit 真机事项延后到单独发布聊天时验收，不阻塞无聊天版本。发行必须使用默认 seed，不得复用实验归档。
+> 当前公开 fn 0.6.0/build 13、SDK 0.5.0，使用默认全插件化组合。Chat/手机/CloudKit 聊天仍属实验范围，不随本版发行。下方各版证据只对应其固定提交；标签和附件不移动、不覆盖。
 
-fn **0.5.2 / build 12** 已公开；官网为 `https://semicoder.dev/fn`，安装页为其 `/docs/installation`，更新源为 `https://semicoder-dev.github.io/fn/updates/latest.json`。公开标签及附件不移动、不覆盖。
+fn **0.6.0 / build 13** 已公开；官网为 `https://semicoder.dev/fn`，安装页为其 `/docs/installation`，更新源为 `https://semicoder-dev.github.io/fn/updates/latest.json`。公开标签及附件不移动、不覆盖。
+
+## 0.6.0 全插件化发行（2026-10-31）
+
+`v0.6.0` 固定 `8e255e5c481d1c2f3f2ec9f090071fee37175770`，已合入并推送 main，原分支保留。主干 CI [41168837335](https://github.com/semicoder-dev/fn/actions/runs/41168837335)、正式签名公证 [41169637096](https://github.com/semicoder-dev/fn/actions/runs/41169637096) 成功。完整检查含 FIA 90 JS/48 Swift，最终应用 116 测试/862 断言、build --dmg、FIA 与 SDK 独立消费通过。发行验收发现并修复退出期间市场刷新通知竞态，真实打包退出复验无该错误。
+
+- [公开 DMG](https://github.com/semicoder-dev/fn/releases/download/v0.6.0/fn-0.6.0-13-mac-arm64.dmg)：74,796,413 字节，SHA-256 `05dd07c0bd7534e2865fb974b9d34444503a4dde1216e7f516c64fa4ac7de8e8`。五附件匿名大小/摘要、Developer ID 深度签名、公证票据、Gatekeeper 均通过。
+- seed `45de87afaee87ebb8d783122`，runtime ID `11e3481b76cd53cf598476602c529ebb88e35575f3eb505dda7183d49c4dfed8`；默认 profile、289 包无六个 Chat 专属包，内嵌 SDK 5 文件与公开 0.5.0 逐字节一致。本次 seed 无额外 .node/.dylib 文件；Bun/Host 由应用签名覆盖。
+- 签名更新清单、69 个在线文件的大小/摘要与镜像代码逐字节一致；旧 build 12 首尾文件抽检未改写。此次固定运行时改变，必须完整 DMG。
+- 公开安装包从真实官方 schema 3 市场安装看板和模型目录 0.1.0，兼容/摘要、后台切换、实际看板写入、models.dev 联网目录、卸载重装与数据保留通过。隔离旧数据目录标记未改写，新连接目录为空；未访问用户数据。
+- SDK 0.5.0 单独通过 OIDC 公开，见 [npm 发行](npm-release.md)。官方插件源码 `83e067c`，市场 `91fdd82`；旧 schema 2 索引和历史资产保留。github-pages / npm 各仅追加当次精确标签许可，保护规则不放宽。
+
+0.6 与 SDK 0.4、旧插件和旧数据契约不兼容。`plugins-v1` 不读取、迁移或删除 `cordis-v1`，旧用户需重新配置连接和安装新版插件。Chat 及手机不在范围，FIA npm 和 agent-webtool 版本不变；新 OAuth、强制过期刷新、第二真实账号仍未逐一实测。官网来源为 Semicoder `65f71c3`，[部署流程 41170515739](https://github.com/semicoder-dev/semicoder/actions/runs/41170515739) 的质量、预发布和生产全部成功。两环境独立全站 smoke 与 17 篇 fn 内容、下载链接/摘要核对通过，生产含 HTTPS/www 跳转；浏览器安装页、章节导航和无 Chat 说明通过。生产审批在预发布验收后按本次授权执行，保护规则未变。
 
 ## 0.5.2 插件安装提速（2026-10-22）
 

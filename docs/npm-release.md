@@ -1,6 +1,14 @@
 # fn SDK npm 发布
 
-> 当前准备 SDK 0.5.0 与 fn 0.6.0/build 13 的全插件化发行。SDK 0.4 及更早契约不兼容；新市场使用 schema 3。Chat、手机与 CloudKit 聊天同步不在本次范围，真实公开状态以本次工作流和独立验收记录为准。
+> 当前公开 SDK 0.5.0，面向 fn 0.6。SDK 0.4 及更早契约不兼容；Chat 专属能力不属于 SDK 默认发行。以下各版记录按当时状态理解。
+
+## 0.5.0 全插件化 SDK（2026-10-31）
+
+`sdk-v0.5.0` 固定 `a4bf705f7bbb65c9f90c127bce3a116b38cbf584`，[OIDC 41168375135](https://github.com/semicoder-dev/fn/actions/runs/41168375135) 成功。公开归档与 CI、本地逐字节一致，SHA-256 `ca3959be9b0ea2a774f25d2dea10c021b570c12b7a48aa4b67cdd193b443ea0d`；SLSA 的仓库、标签、提交、SHA-512 均核对。npm 处理期间短暂返回旧 latest，待版本实际可下载后才验收和切换消费。
+
+全新目录/缓存从 registry 安装、双端插件构建/打包、原版 Slots 和样式清理通过。SDK 只提供包契约、构建与泛型客户端；不再导出聚合应用 API、UI/主题、KV、web 或 Agent/Session 副本。官方看板和模型目录精确消费 0.5.0；宿主的 UI/服务契约由独立固定归档提供。
+
+npm Environment 仅新增精确 sdk-v0.5.0 tag 许可，Trusted Publisher 不变。SDK 与应用签名发布独立；FIA npm 0.18.0 未更新，不能把公开旧框架当作 fn 共仓构建产物。
 
 2026-10-21：SDK **0.4.0** 已通过 [OIDC 39527538926](https://github.com/semicoder-dev/fn/actions/runs/39527538926) 正式公开，`sdk-v0.4.0` 固定 `ba159de`。npm latest 为 0.4.0；公开归档、候选与正式 CI 产物逐字节一致，SHA-256 `791f3e1910fdd241f171cc22312362ef55d1106899c3ee9833ef8c41e5296022`。干净目录从 registry 安装，Cordis 后端 TypeScript、前端单例共享、分页、卡片、类型与应用构建/打包通过。0.4 为新契约，需要 fn 0.5，不兼容旧运行时。
 
