@@ -1,8 +1,19 @@
 # fn 应用发布
 
-> 当前公开 fn 0.6.0/build 13、SDK 0.5.0，使用默认全插件化组合。Chat/手机/CloudKit 聊天仍属实验范围，不随本版发行。下方各版证据只对应其固定提交；标签和附件不移动、不覆盖。
+> 当前公开 fn 0.6.1/build 14、SDK 0.5.0，使用默认全插件化组合。Chat/手机/CloudKit 聊天仍属实验范围，不随本版发行。下方各版证据只对应其固定提交；标签和附件不移动、不覆盖。
 
-fn **0.6.0 / build 13** 已公开；官网为 `https://semicoder.dev/fn`，安装页为其 `/docs/installation`，更新源为 `https://semicoder-dev.github.io/fn/updates/latest.json`。公开标签及附件不移动、不覆盖。
+fn **0.6.1 / build 14** 已公开；官网为 `https://semicoder.dev/fn`，安装页为其 `/docs/installation`，更新源为 `https://semicoder-dev.github.io/fn/updates/latest.json`。公开标签及附件不移动、不覆盖。
+
+## 0.6.1 插件热更新（2026-10-31）
+
+`v0.6.1` 固定 `d65cc44a3c25cb9cfa77b2f619f53efeed1ca44f`，已合入并推送 main，原特性分支保留。[主干 CI 41176816649](https://github.com/semicoder-dev/fn/actions/runs/41176816649) 和 [正式签名公证/发布 41176819217](https://github.com/semicoder-dev/fn/actions/runs/41176819217) 均成功。完整 check（FIA 90 JS/48 Swift）、124 应用测试/906 断言、DMG 构建与 FIA/SDK 独立消费通过。
+
+- [公开 DMG](https://github.com/semicoder-dev/fn/releases/download/v0.6.1/fn-0.6.1-14-mac-arm64.dmg)：74,772,690 字节，SHA-256 `7f271d0e201e36a7cb23651239dd6baa0f8fbb517536c1e1e4cfc1743f8f48bc`。五附件匿名摘要、Developer ID 深签名、Apple 公证票据和 Gatekeeper 均通过。
+- seed `2b7288f8401c998354bcb0d0`，runtime ID `852114ab3c1dbc3e15df62bb0a5403765f3e66afff669edf10cedfce55888a46`；SDK 5 文件与公开 0.5.0 逐字节一致，无额外 .node/.dylib。签名更新清单及 69 个在线文件与镜像一致；旧 build 13 首尾文件抽检保留。
+- 普通插件安装/更新/启停/卸载局部生效，原生和浏览器双标签的未变化页面/插件草稿、焦点保留；异常更新恢复旧组合，显式不可热更新走重启。公开应用从实际 0.6.0 隔离数据升级，官方两插件和完整看板状态保留；两次公开包安装/更新/卸载测试插件保持后台 epoch 和业务数据，正常退出。首轮自动脚本未等新组合 ready 确认就安装，后续补等待后通过，未改发行代码。
+- 用户确认 SDK 保持原始 0.5.0，避免已有精确 peer 阻止升级；新增 hotReload 声明的 SDK 构建支持暂缓。官方插件/市场、手机、agent-webtool 与 FIA npm 不变。github-pages 仅增加精确 v0.6.1 标签许可。
+
+升级须完整 DMG，从 0.6.0 保留插件、连接和业务数据；0.5.x 及更早版本仍按独立旧数据目录规则重新配置。Chat/手机/CloudKit 聊天不在本次发行；未替换用户日常应用。官网 `1320794` 已同步下载、热更新和兼容说明，本地质量/51 单元/12 Workers/40 页面构建通过。[部署流程 41177926986](https://github.com/semicoder-dev/semicoder/actions/runs/41177926986) 的质量、预发布、生产全部成功；两环境独立全站与 17 篇 fn 内容、下载链接/摘要及浏览器安装页、导航验收通过，生产 HTTPS/www 跳转通过。生产在预发布验收后按本次授权批准，保护不变。
 
 ## 0.6.0 全插件化发行（2026-10-31）
 
