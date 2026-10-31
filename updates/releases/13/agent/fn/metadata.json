@@ -1,0 +1,1 @@
+{"description":"Manage fn applications, model connections and durable agent sessions.","commands":{"plugin":{"description":"Inspect, build and pack Cordis plugins","entry":"commands/plugin.js"}}}
