@@ -1,5 +1,20 @@
 # Fn 本地验收
 
+## 2026-11-01 正式发行验收
+
+Fn `22615f4` / 0.7.0 build 15，SDK 0.6.0、UI 0.1.0，官方应用 `372dca7` / 0.2.0。下方为实施期记录；本节汇总最终发行验证。
+
+- 根 check、20 测试/151 断言、完整主干 CI 41217985870 通过。FIA 91 CLI、3 XCTest/48 Swift、独立源码/归档/消费者构建与原生退出通过。
+- 公开 SDK/UI 下载与 CI 逐字节一致；独立目录安装公开 npm 后，三个应用 check、15 测试/73 断言、pack 通过。签名包内置 CLI 的 init/check/build/pack 在 workspace 外通过。
+- 正式应用市场与三包 0.2.0 已公开，匿名下载摘要一致。签名候选从真实市场安装三包、浏览器笔记保存、原生看板创建和单行布局通过；退出无测试进程遗留，重启后应用默认关闭，布局及笔记正文保留。
+- 签名候选 Developer ID、Apple 公证票据、Gatekeeper、DMG 摘要与 12 个签名更新文件对照通过。正式模式实际隐藏手机入口且不连接 CloudKit；本轮不发布手机正式包。
+- UI 首包手动发布同一 CI 归档；SDK 实际 OIDC/provenance 已验证，UI 首次真实 OIDC 尚未验证，见 [npm 发行记录](npm-release.md)。真实 token 到期续期、额度耗尽及第二账号仍沿用自动测试覆盖，未声称完成真实条件验收。
+
+正式发行 [41219449863](https://github.com/semicoder-dev/fn/actions/runs/41219449863) 成功。五附件匿名下载、DMG 45,799,189 字节、SHA-256 `c439990bc3efd8d0256c11d5375d0fcb6ce440ae9b1362cc51e00d1f0585ccc9`；深签名、公证和 Gatekeeper 通过。12 个在线签名更新文件与公开包一致，旧 build 14 文件抽检未改写。runtime ID `9e9b01d32a05b36e6dcb1833a9547ae1fcc0526f99251208ef4cd3b987122cb8`；公开包原生桌面、已安装应用默认关闭、看板数据恢复通过。官网源码 `d6cb076`，两环境上线结果记于 workspace 发行记录。
+
+## 实施期验收记录
+
+
 2026-10-31，基于 `codex/fn-application-platform` 未提交工作树。主要使用独立身份 `com.semicoder.fn.qa` 和隔离数据；开发入口补验使用当前 Fn Dev。未替换日常正式应用，没有升版、提交、推送、发布或部署。
 
 ## 已完成实现
