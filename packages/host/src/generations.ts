@@ -1,6 +1,7 @@
 import {
   profileSchema,
   resolveProfile,
+  reconcileSeedProfile,
   profileEntries,
   children,
   type ProfileSource,
@@ -869,7 +870,12 @@ export class GenerationManager {
         await atomicJson(join(directory, "generation.json"), {
           ...candidate.manifest,
           id,
-          profile: profileSchema.parse(source.manifest.profile),
+          profile: reconcileSeedProfile(
+            source.manifest.profile,
+            source.manifest.coreVersions,
+            seed.coreVersions,
+            seed.profile ?? { plugins: [], client: [] },
+          ),
         });
         candidate = await this.generation(id);
         // buildCandidate preflights every plugin and the runtime together.

@@ -2,7 +2,12 @@ import { applyEntryPatches } from "@deepseek-ai/cordis-plugin-include";
 import { readFile, realpath } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type { Profile } from "./index.ts";
-import { profileSchema, profileSourceSchema, type ProfileSource } from "./profile-schema.ts";
+import {
+  children,
+  profileSchema,
+  profileSourceSchema,
+  type ProfileSource,
+} from "./profile-schema.ts";
 export {
   profileSchema,
   profileSourceSchema,
@@ -75,4 +80,37 @@ export async function resolveProfile(
     client: [{ insert: source.client ?? [] }],
   });
   return composeProfile(result, source.patches);
+}
+
+/** Keep user configuration while removing unavailable core packages and enabling newly added defaults. */
+export function reconcileSeedProfile(
+  current: Profile,
+  previousVersions: Record<string, string>,
+  nextVersions: Record<string, string>,
+  defaults: Profile,
+): Profile {
+  const packageName = (name: string) =>
+    name
+      .split("/")
+      .slice(0, name.startsWith("@") ? 2 : 1)
+      .join("/");
+  const removed = new Set(Object.keys(previousVersions).filter((name) => !(name in nextVersions)));
+  const clean = (rows: Profile["plugins"]): Profile["plugins"] =>
+    rows
+      .filter((row) => !removed.has(packageName(row.name)))
+      .map((row) => {
+        const copy = structuredClone(row);
+        if (copy.group && Array.isArray(copy.config)) copy.config = clean(copy.config);
+        else if (children(copy).length) copy.config.plugins = clean(children(copy));
+        return copy;
+      });
+  const result = { plugins: clean(current.plugins), client: clean(current.client) };
+  for (const side of ["plugins", "client"] as const) {
+    for (const row of defaults[side]) {
+      const name = packageName(row.name);
+      if (name in nextVersions && !(name in previousVersions))
+        result[side].push(structuredClone(row));
+    }
+  }
+  return profileSchema.parse(result);
 }

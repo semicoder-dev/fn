@@ -26,11 +26,6 @@
       "config": {}
     },
     {
-      "id": "chat-cards",
-      "name": "@semicoder/fn-chat-cards",
-      "config": {}
-    },
-    {
       "id": "models",
       "name": "@semicoder/fn-models",
       "config": {}
@@ -39,39 +34,6 @@
       "id": "appearance",
       "name": "@semicoder/fn-appearance",
       "config": {}
-    },
-    {
-      "id": "chat",
-      "name": "@semicoder/fn-chat",
-      "config": {}
-    },
-    {
-      "id": "chat-cloudkit",
-      "name": "@semicoder/fn-chat-cloudkit",
-      "config": {}
-    },
-    {
-      "id": "chat-default",
-      "name": "@semicoder/fn-chat/target",
-      "config": {
-        "id": "chat",
-        "name": "Chat",
-        "systemPrompt": "You are a helpful assistant.",
-        "plugins": [
-          {
-            "id": "file",
-            "name": "@semicoder/fn-tool-file"
-          },
-          {
-            "id": "process",
-            "name": "@semicoder/fn-tool-process"
-          },
-          {
-            "id": "native",
-            "name": "@semicoder/fn-tool-native"
-          }
-        ]
-      }
     },
     {
       "id": "plugin-manager",
@@ -112,14 +74,6 @@
       "name": "@semicoder/fn-ui-models/client"
     },
     {
-      "id": "ui-chat",
-      "name": "@semicoder/fn-ui-chat/client"
-    },
-    {
-      "id": "ui-chat-cards",
-      "name": "@semicoder/fn-ui-chat-cards/client"
-    },
-    {
       "id": "ui-plugins",
       "name": "@semicoder/fn-ui-plugins/client"
     },
@@ -134,10 +88,6 @@
     {
       "id": "ui-updates",
       "name": "@semicoder/fn-ui-updates/client"
-    },
-    {
-      "id": "ui-cloudkit",
-      "name": "@semicoder/fn-ui-cloudkit/client"
     }
   ]
 }

@@ -1,6 +1,6 @@
 # fn SDK npm 发布
 
-> 当前工作树为未发布全插件化候选。应用/SDK 版本号未改；下方公开发行证据仅对应其固定提交。后续发行前须完成 `runtime-validation.md` 的真实环境事项，配套 Chat v4 与新市场，不可用旧归档替代。
+> 当前准备 SDK 0.5.0 与 fn 0.6.0/build 13 的全插件化发行。SDK 0.4 及更早契约不兼容；新市场使用 schema 3。Chat、手机与 CloudKit 聊天同步不在本次范围，真实公开状态以本次工作流和独立验收记录为准。
 
 2026-10-21：SDK **0.4.0** 已通过 [OIDC 39527538926](https://github.com/semicoder-dev/fn/actions/runs/39527538926) 正式公开，`sdk-v0.4.0` 固定 `ba159de`。npm latest 为 0.4.0；公开归档、候选与正式 CI 产物逐字节一致，SHA-256 `791f3e1910fdd241f171cc22312362ef55d1106899c3ee9833ef8c41e5296022`。干净目录从 registry 安装，Cordis 后端 TypeScript、前端单例共享、分页、卡片、类型与应用构建/打包通过。0.4 为新契约，需要 fn 0.5，不兼容旧运行时。
 

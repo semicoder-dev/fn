@@ -232,6 +232,8 @@ export const runtimeWatchIgnores = [
 
 export async function runRuntimeDevelopment(root: string, args: string[]): Promise<number> {
   root = resolve(root);
+  const experimentalChat = args.includes("--experimental-chat");
+  args = args.filter((arg) => arg !== "--experimental-chat");
   parseDevelopmentOptions(args);
   let stopped = false;
   let command: Bun.Subprocess | undefined;
@@ -272,7 +274,7 @@ export async function runRuntimeDevelopment(root: string, args: string[]): Promi
     }
   }
   async function build() {
-    await run(["run", "runtime:seed"]);
+    await run(["run", "runtime:seed", ...(experimentalChat ? ["--experimental-chat"] : [])]);
     const metadata = JSON.parse(await readFile(join(root, "resources/runtime-seed.json"), "utf8"));
     if (typeof metadata.id !== "string") throw new Error("Runtime seed metadata is missing its id");
     return metadata.id as string;

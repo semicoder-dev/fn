@@ -1,6 +1,6 @@
 # fn 应用发布
 
-> 当前工作树为未发布全插件化候选。应用/SDK 版本号未改；下方公开发行证据仅对应其固定提交。后续发行前须完成 `runtime-validation.md` 的真实环境事项，配套 Chat v4 与新市场，不可用旧归档替代。
+> 当前准备 fn 0.6.0/build 13、SDK 0.5.0 全插件化发行；下方公开发行证据仅对应其固定提交。后续发行前须完成 `runtime-validation.md` 的真实环境事项，新市场不能用旧归档替代。Chat 用途未定稿，已从本阶段首版发行排除；Chat v4、手机与 CloudKit 真机事项延后到单独发布聊天时验收，不阻塞无聊天版本。发行必须使用默认 seed，不得复用实验归档。
 
 fn **0.5.2 / build 12** 已公开；官网为 `https://semicoder.dev/fn`，安装页为其 `/docs/installation`，更新源为 `https://semicoder-dev.github.io/fn/updates/latest.json`。公开标签及附件不移动、不覆盖。
 

@@ -1,6 +1,6 @@
 # @semicoder/fn-sdk
 
-**本地全插件化候选，未发布。** 当前 package.json 仍是 0.4.0，内容不等同公开 npm 0.4.0。使用 `bun run npm:pack` 生成并验证本地归档；正式包必须待后续授权重新定版。
+**SDK 0.5.0，面向 fn 0.6。** 全插件化契约与 SDK 0.4 不兼容。使用 `bun run npm:pack` 生成并验证归档；包是否公开以 npm 实际版本为准。
 
 SDK 只提供构建工具与泛型客户端。没有应用聚合 Context、KV、web fetch/search、Agent loop 或 Session 副本。
 
@@ -15,7 +15,7 @@ SDK 只提供构建工具与泛型客户端。没有应用聚合 Context、KV、
   "files": ["src", "dist"],
   "peerDependencies": {
     "@deepseek-ai/cordis": "4.0.5",
-    "@semicoder/fn-sdk": "0.4.0"
+    "@semicoder/fn-sdk": "0.5.0"
   },
   "fn": { "name": "示例", "clientSource": "./src/client.tsx" }
 }
@@ -52,7 +52,7 @@ export function apply(ctx: Context) {
 }
 ```
 
-Slot 类型直接来自 `@deepseek-ai/dsh-client-ui-slots`，布局声明类型由所属插件导出。后台 Session/模型/工具类型分别来自所属 fn 插件和原版 dsh。`fn-chat-cards` 提供持久卡片与回复处理，原生手机消费 Chat v4 展示协议，不运行桌面 React。
+Slot 类型直接来自 `@deepseek-ai/dsh-client-ui-slots`，布局声明类型由所属插件导出。后台 Session/模型/工具类型分别来自所属 fn 插件和原版 dsh。`fn-chat-cards` 仅在 Chat 实验组合中提供持久卡片与回复处理，暂不随默认宿主发行；原生手机消费 Chat v4 展示协议，不运行桌面 React。
 
 ## 构建
 

@@ -1,4 +1,5 @@
 import { resolveProfile } from "../packages/host/src/profile.ts";
+import { experimentalChatPackages } from "./runtime-profile.ts";
 import { createHash, randomUUID } from "node:crypto";
 import {
   cp,
@@ -67,7 +68,10 @@ async function link(directory: string, name: string, target: string): Promise<vo
 export async function buildRuntimeSeed(
   output = join(root, "resources/runtime-seed"),
   signingIdentity?: string,
+  experimentalChat = false,
 ): Promise<SeedManifest> {
+  if (signingIdentity && experimentalChat)
+    throw new Error("Experimental Chat cannot be included in a distribution seed");
   await verifyUpstream();
   const upstream = JSON.parse(
     await readFile(join(root, "upstream.lock.json"), "utf8"),
@@ -78,6 +82,8 @@ export async function buildRuntimeSeed(
     const found = nodes.get(source);
     if (found) return found;
     const manifest = await readManifest(source);
+    if (!experimentalChat && experimentalChatPackages.has(manifest.name))
+      throw new Error(`Default runtime must not depend on experimental Chat: ${manifest.name}`);
     const context = createHash("sha256").update(relative(root, source)).digest("hex").slice(0, 12);
     const destination =
       workspaceDirectories.get(source) ??
@@ -103,7 +109,13 @@ export async function buildRuntimeSeed(
     return node;
   };
   const runtime = await visit(join(root, "packages/host"));
-  for (const directory of workspaceDirectories.keys()) await visit(directory);
+  const includedWorkspaces = new Map<string, string>();
+  for (const [directory, destination] of workspaceDirectories) {
+    const manifest = await readManifest(directory);
+    if (!experimentalChat && experimentalChatPackages.has(manifest.name)) continue;
+    includedWorkspaces.set(directory, destination);
+    await visit(directory);
+  }
   const sdk = await visit(join(root, "packages/sdk"));
   if (
     !sdk.manifest.exports ||
@@ -119,7 +131,7 @@ export async function buildRuntimeSeed(
   const coreVersions = Object.fromEntries(upstream.packages.map((pkg) => [pkg.name, pkg.version]));
   coreVersions[runtime.manifest.name] = runtime.manifest.version;
   coreVersions[sdk.manifest.name] = sdk.manifest.version;
-  for (const directory of workspaceDirectories.keys()) {
+  for (const directory of includedWorkspaces.keys()) {
     const node = nodes.get(directory)!;
     coreVersions[node.manifest.name] = node.manifest.version;
   }
@@ -194,7 +206,7 @@ export async function buildRuntimeSeed(
       name: "fn-runtime-generation",
       private: true,
       type: "module",
-      workspaces: [...workspaceDirectories.values()],
+      workspaces: [...includedWorkspaces.values()],
       dependencies,
       overrides,
     };
@@ -216,7 +228,7 @@ export async function buildRuntimeSeed(
     });
     lock.workspaces = { "": { name: rootPackage.name, dependencies } };
     const workspaceNames = new Set<string>();
-    for (const [source, destination] of workspaceDirectories) {
+    for (const [source, destination] of includedWorkspaces) {
       const node = nodes.get(source)!;
       lock.workspaces[destination] = workspaceRecord(node.manifest);
       workspaceNames.add(node.manifest.name);
@@ -263,7 +275,15 @@ export async function buildRuntimeSeed(
       console.log(`Signed ${signed.length} native runtime dependencies before archiving`);
     }
     const profile = await resolveProfile(
-      JSON.parse(await readFile(join(root, "profiles/default.json"), "utf8")),
+      JSON.parse(
+        await readFile(
+          join(
+            root,
+            experimentalChat ? "profiles/chat-experimental.json" : "profiles/default.json",
+          ),
+          "utf8",
+        ),
+      ),
       join(root, "profiles"),
     );
     await writeFile(join(staging, "profile.json"), `${JSON.stringify(profile, null, 2)}\n`);
@@ -360,11 +380,14 @@ async function archiveRuntimeSeed(directory: string, seed: SeedManifest): Promis
 if (import.meta.main) {
   const args = process.argv.slice(2);
   const distribution = args.includes("--distribution");
-  const paths = args.filter((arg) => arg !== "--distribution");
+  const experimentalChat = args.includes("--experimental-chat");
+  if (distribution && experimentalChat)
+    throw new Error("Experimental Chat cannot be included in a distribution seed");
+  const paths = args.filter((arg) => !["--distribution", "--experimental-chat"].includes(arg));
   if (paths.length > 1 || paths.some((arg) => arg.startsWith("-")))
-    throw new Error("runtime-seed.ts [output] [--distribution]");
+    throw new Error("runtime-seed.ts [output] [--distribution | --experimental-chat]");
   const identity = distribution ? process.env.FN_SIGNING_IDENTITY : undefined;
   if (distribution && !identity)
     throw new Error("FN_SIGNING_IDENTITY is required for the distribution seed");
-  await buildRuntimeSeed(paths[0] ? resolve(paths[0]) : undefined, identity);
+  await buildRuntimeSeed(paths[0] ? resolve(paths[0]) : undefined, identity, experimentalChat);
 }

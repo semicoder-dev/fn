@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { resolveProfile, profileSchema } from "../src/profile.ts";
+import { resolveProfile, profileSchema, reconcileSeedProfile } from "../src/profile.ts";
 test("upstream patches compose ordered bundles and replace a layout without mutating the bundle", async () => {
   const root = await mkdtemp(join(tmpdir(), "fn-bundles-"));
   const bundle = { client: [{ id: "layout", name: "@semicoder/fn-ui-layout/client" }] };
@@ -71,4 +71,54 @@ test("instance IDs are local to a scope, and malformed nested entries fail befor
       client: [],
     }),
   ).toThrow("nested");
+});
+
+test("seed changes remove withdrawn core entries, preserve custom plugins and re-enable opt-in defaults", () => {
+  const common = { "@semicoder/fn-models": "0.0.0" };
+  const experimental = {
+    ...common,
+    "@semicoder/fn-chat": "0.0.0",
+    "@semicoder/fn-ui-chat": "0.0.0",
+  };
+  const chat = { id: "chat", name: "@semicoder/fn-chat", config: {} };
+  const ui = { id: "ui-chat", name: "@semicoder/fn-ui-chat/client" };
+  const models = { id: "models", name: "@semicoder/fn-models", disabled: true };
+  const own = { id: "my-plugin", name: "my-plugin", config: { keep: "unchanged" } };
+  const current = {
+    plugins: [
+      models,
+      chat,
+      own,
+      { id: "group", name: "cordis:group", group: true, config: [{ ...chat, id: "custom-chat" }] },
+    ],
+    client: [ui],
+  };
+  const snapshot = structuredClone(current);
+  const normal = reconcileSeedProfile(current, experimental, common, {
+    plugins: [models],
+    client: [],
+  });
+  expect(normal).toEqual({
+    plugins: [models, own, { id: "group", name: "cordis:group", group: true, config: [] }],
+    client: [],
+  });
+  expect(current).toEqual(snapshot);
+  const enabled = reconcileSeedProfile(normal, common, experimental, {
+    plugins: [models, chat],
+    client: [ui],
+  });
+  expect(enabled.plugins).toContainEqual(chat);
+  expect(enabled.plugins).toContainEqual(models);
+  expect(enabled.plugins).toContainEqual(own);
+  expect(enabled.client).toEqual([ui]);
+  const manuallyDisabled = {
+    ...enabled,
+    plugins: enabled.plugins.filter((row) => row.id !== "chat"),
+  };
+  expect(
+    reconcileSeedProfile(manuallyDisabled, experimental, experimental, {
+      plugins: [chat],
+      client: [ui],
+    }),
+  ).toEqual(manuallyDisabled);
 });

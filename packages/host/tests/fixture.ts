@@ -4,7 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { openHost, type HostEnvironment, type Profile } from "../src/index.ts";
-import source from "../../../profiles/default.json";
+import source from "../../../profiles/chat-experimental.json";
 import { resolveProfile } from "../src/profile.ts";
 const defaults = await resolveProfile(source, resolve(import.meta.dir, "../../../profiles"));
 const callbacks = new Map<string, Plugin>();

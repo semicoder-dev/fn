@@ -202,7 +202,7 @@ export default function ModelsPage({
     <section className={cx("settings-page product-models")}>
       <PageHeader
         title="模型服务"
-        description="连接服务商，选择聊天和插件可用的模型。"
+        description="连接服务商，为插件配置可用的模型。"
         actions={
           <Button variant="primary" size="sm" onClick={() => choose("openai")} type="button">
             <IconPlusOutlineRegular /> 添加连接

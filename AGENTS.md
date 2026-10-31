@@ -1,6 +1,6 @@
 # fn 插件宿主开发规范
 
-当前源码为未发布全插件化候选，产品功能放在 plugins/。host/ 仅负责 FIA、启动、配置、运行目录和恢复；frontend/ 只负责原版模块/Loader/renderer 启动，不导入产品页面。动态契约在插件独立 contract 导出中定义，由 fn-rpc 绑定 FIA APIRegistry；host/api.ts 仅保留宿主状态/恢复。不要创建新全局业务 Bridge、集中 FnRuntime 或万能 ctx.app/clientApp。
+当前源码为 fn 0.6 全插件化架构，产品功能放在 plugins/。host/ 仅负责 FIA、启动、配置、运行目录和恢复；frontend/ 只负责原版模块/Loader/renderer 启动，不导入产品页面。动态契约在插件独立 contract 导出中定义，由 fn-rpc 绑定 FIA APIRegistry；host/api.ts 仅保留宿主状态/恢复。不要创建新全局业务 Bridge、集中 FnRuntime 或万能 ctx.app/clientApp。
 
 共享内核、React 和 SDK 单实例；自有插件命名 @semicoder/fn-<能力名>。配置由 profiles/ 的 bundle/patch 组合，使用原版 Cordis Loader/Include 和 dsh Slots。纯服务/前端均可，实例 ID 独立于包名。所有任务通过 fn-activity 判断空闲，插件变化等待空闲后重启，不引入 Node HMR。
 
