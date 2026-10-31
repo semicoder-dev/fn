@@ -65,36 +65,43 @@ export default defineConfig({
           ...(identity
             ? { releaseIdentity: identity, notarizationProfile: "fn-notary" }
             : {}),
-          application: {
-            ...(beta
+          application:
+            beta || productionProfile || cloudIdentity
               ? {
-                  production: {
-                    entitlements: betaEntitlements!,
-                    provisioningProfile: betaProfile!,
-                    cloudKitContainers: ["iCloud.com.semicoder.fn.production"],
-                  },
+                  ...(beta
+                    ? {
+                        production: {
+                          entitlements: betaEntitlements!,
+                          provisioningProfile: betaProfile!,
+                          cloudKitContainers: [
+                            "iCloud.com.semicoder.fn.production",
+                          ],
+                        },
+                      }
+                    : productionProfile
+                      ? {
+                          production: {
+                            entitlements: productionEntitlements!,
+                            provisioningProfile: productionProfile,
+                            cloudKitContainers: [
+                              "iCloud.com.semicoder.fn.production",
+                            ],
+                          },
+                        }
+                      : {}),
+                  ...(cloudIdentity && !beta
+                    ? {
+                        development: {
+                          entitlements: cloudEntitlements!,
+                          provisioningProfile: cloudProfile!,
+                          cloudKitContainers: [
+                            "iCloud.com.semicoder.fn.development",
+                          ],
+                        },
+                      }
+                    : {}),
                 }
-              : productionProfile
-                ? {
-                    production: {
-                      entitlements: productionEntitlements!,
-                      provisioningProfile: productionProfile,
-                      cloudKitContainers: [
-                        "iCloud.com.semicoder.fn.production",
-                      ],
-                    },
-                  }
-                : {}),
-            ...(cloudIdentity && !beta
-              ? {
-                  development: {
-                    entitlements: cloudEntitlements!,
-                    provisioningProfile: cloudProfile!,
-                    cloudKitContainers: ["iCloud.com.semicoder.fn.development"],
-                  },
-                }
-              : {}),
-          },
+              : undefined,
           ...(cloudIdentity && !beta
             ? { developmentIdentity: cloudIdentity }
             : {}),

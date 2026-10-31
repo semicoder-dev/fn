@@ -106,7 +106,7 @@ try {
     assets: { name: string }[];
   }[];
   let release = releases.find((r) => r.tag_name === tag);
-  const dmg = `fn-${pkg.version}-${config.build}-mac-arm64.dmg`;
+  const dmg = `Fn-${pkg.version}-${config.build}-mac-arm64.dmg`;
   const names = [
     dmg,
     dmg + ".sha256",
