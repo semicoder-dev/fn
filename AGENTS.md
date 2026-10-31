@@ -2,7 +2,7 @@
 
 当前源码为 fn 0.6 全插件化架构，产品功能放在 plugins/。host/ 仅负责 FIA、启动、配置、运行目录和恢复；frontend/ 只负责原版模块/Loader/renderer 启动，不导入产品页面。动态契约在插件独立 contract 导出中定义，由 fn-rpc 绑定 FIA APIRegistry；host/api.ts 仅保留宿主状态/恢复。不要创建新全局业务 Bridge、集中 FnRuntime 或万能 ctx.app/clientApp。
 
-共享内核、React 和 SDK 单实例；自有插件命名 @semicoder/fn-<能力名>。配置由 profiles/ 的 bundle/patch 组合，使用原版 Cordis Loader/Include 和 dsh Slots。纯服务/前端均可，实例 ID 独立于包名。所有任务通过 fn-activity 判断空闲，插件变化等待空闲后重启，不引入 Node HMR。
+共享内核、React 和 SDK 单实例；自有插件命名 @semicoder/fn-<能力名>。配置由 profiles/ 的 bundle/patch 组合，使用原版 Cordis Loader/Include 和 dsh Slots。纯服务/前端均可，实例 ID 独立于包名。所有任务通过 fn-activity 判断空闲；普通外部插件使用不可变版本目录和 Cordis 作用域增量激活，前端保留根节点和未变化实例。共享内核/基础组合、显式 hotReload:false、不能安全释放或激活的变更走重启和恢复，不引入 Node 运行时或其内部 HMR API。
 
 UI 统一从 @semicoder/fn-ui 使用原版 dsh 控件，宿主共享静态模块；功能 CSS 使用 CSS Modules 与 --dsw 语义 token，不新增全局控件规则、Base UI 或 Tailwind。主题仅由 ui-base/ui-theme 管理，packages/ui/upstream 资源原样保留，禁止格式化改写；升级先验证来源 SHA 和依赖闭包。运行 styles:check，并实际验收菜单/弹窗焦点、明暗和窄窗口。
 

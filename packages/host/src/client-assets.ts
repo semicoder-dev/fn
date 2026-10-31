@@ -8,6 +8,7 @@ import type { WebBootGraph } from "@deepseek-ai/dsh-client-modules/client";
 export interface ClientBoot {
   namespaces?: string[];
   epoch: string;
+  generationId: string;
   profile: Profile["client"];
   boot: WebBootGraph;
   bootstrap: string;
@@ -57,6 +58,7 @@ export async function clientAssets(
   return {
     payload: {
       epoch,
+      generationId,
       profile: profile.client,
       boot,
       bootstrap: entries.find((entry) => entry.id === modulesId)!.url,

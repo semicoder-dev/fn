@@ -3,7 +3,17 @@ export default defineAPI({
   methods: {
     ready: {
       description: "Confirm the current composition after its root UI rendered",
-      input: z.object({ epoch: z.string() }),
+      input: z.object({ epoch: z.string(), generationId: z.string(), clientId: z.string() }),
+      output: z.null(),
+    },
+    updateFailed: {
+      description: "Report a failed page composition during live activation",
+      input: z.object({
+        epoch: z.string(),
+        generationId: z.string(),
+        clientId: z.string(),
+        error: z.string().max(2000),
+      }),
       output: z.null(),
     },
     status: {
@@ -23,6 +33,10 @@ export default defineAPI({
     },
   },
   events: {
+    composition: {
+      description: "A new plugin composition is ready for incremental client activation",
+      payload: z.object({ generationId: z.string() }),
+    },
     apis: {
       description: "Available plugin API namespaces changed",
       payload: z.object({ namespaces: z.array(z.string()) }),

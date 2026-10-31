@@ -1,3 +1,5 @@
+import { planHotUpdate } from "../packages/host/src/hot-update.ts";
+import { ActivationClients } from "./activation-clients.ts";
 import { defineBackend, type BackendContext } from "@semicoder/fia/backend";
 import { createAPIRegistry, implementAPI } from "@semicoder/fia/api";
 import { join } from "node:path";
@@ -23,6 +25,11 @@ let seed: (expectedId?: string) => Promise<string>;
 let error: string | null = null;
 let stopping = false;
 let restarting = false;
+let updating = false;
+let hotUpdates = 0;
+let initialReady = false;
+const clients = new ActivationClients();
+const assetHistory = new Map<string, NonNullable<typeof assets>>();
 let recovering = false;
 const activity = () =>
   instance?.ctx.get("activity") as
@@ -47,13 +54,25 @@ registry.register(
     ready: async (input) => {
       if (input.epoch !== epoch || !instance || restarting || stopping)
         throw new Error("Host generation changed");
-      await manager.confirmActivation();
-      await instance.ctx.parallel("host/ready");
+      if (input.generationId !== active.id) throw new Error("Host composition changed");
+      clients.touch(input.clientId, input.generationId);
+      if (!updating) {
+        await manager.confirmActivation();
+        if (!initialReady) {
+          initialReady = true;
+          await instance.ctx.parallel("host/ready");
+        }
+      }
+      return null;
+    },
+    updateFailed: (input) => {
+      if (input.epoch !== epoch) throw new Error("Host process changed");
+      clients.touch(input.clientId, input.generationId, input.error);
       return null;
     },
     status: () => ({ ready: !!instance, epoch, error, namespaces: registry.namespaces }),
     recover: ({ mode }) => {
-      if (!manager || recovering || restarting || stopping || activity()?.busy())
+      if (!manager || recovering || restarting || updating || stopping || activity()?.busy())
         throw new Error("等待任务空闲后恢复");
       if (activity() && !activity()!.drain()) throw new Error("等待任务空闲后恢复");
       recovering = true;
@@ -94,15 +113,19 @@ export default defineBackend({
         return assets && instance
           ? Response.json({ ...assets.payload, namespaces: registry.namespaces })
           : Response.json({ error: error ?? "后台正在启动" }, { status: 503 });
-      if (path.startsWith("/plugin-assets/"))
-        return assets?.fetch(request) ?? new Response("Not ready", { status: 503 });
+      if (path.startsWith("/plugin-assets/")) {
+        const generation = path.split("/")[2]!;
+        return (
+          assetHistory.get(generation)?.fetch(request) ?? new Response("Not found", { status: 404 })
+        );
+      }
       return new Response("Not found", { status: 404 });
     },
   },
   async start(platform) {
     context = platform;
     registry.subscribe((namespaces) => {
-      if (!stopping) platform.emit("host.apis", { namespaces });
+      if (!stopping && !updating) platform.emit("host.apis", { namespaces });
     });
     const dataDirectory = join(platform.app.dataDirectory, "plugins-v1");
     seed = async (expectedId) => {
@@ -123,6 +146,47 @@ export default defineBackend({
       seedDirectory: join(dataDirectory, "runtime", "unmaterialized"),
       busy: () => activity()?.busy() ?? false,
       restart,
+      hotActivate: async (next, previous) => {
+        const plan = planHotUpdate(previous, next);
+        if (plan.reason || hotUpdates >= 32 || !instance || typeof instance.update !== "function")
+          return false;
+        const work = activity();
+        if (work && !work.drain()) return false;
+        updating = true;
+        const candidateAssets = await clientAssets(
+          next.directory,
+          next.id,
+          epoch,
+          next.manifest.profile,
+        );
+        // Failure after this point requires a clean process. GenerationManager restores its durable pointer.
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+          await Promise.race([
+            instance.update(next.directory, next.manifest.profile, plan.changed),
+            new Promise<never>((_, reject) => {
+              timer = setTimeout(() => reject(new Error("插件释放或启动超时")), 15_000);
+            }),
+          ]);
+        } finally {
+          clearTimeout(timer);
+        }
+        active = next;
+        if (instance.ctx.host.installation) instance.ctx.host.installation.active = next;
+        assets = candidateAssets;
+        assetHistory.set(next.id, candidateAssets);
+        const acknowledged = clients.wait(next.id);
+        platform.emit("host.composition", { generationId: next.id });
+        await acknowledged;
+        hotUpdates++;
+        return true;
+      },
+      activated: async () => {
+        updating = false;
+        const work = activity();
+        if (work) work.accepting = true;
+        await instance?.ctx.parallel("host/ready");
+      },
     });
     try {
       if (!(await manager.current())) manager.options.seedDirectory = await seed();
@@ -153,6 +217,7 @@ export default defineBackend({
           await loaded.close();
           throw error;
         }
+        assetHistory.set(generation.id, assets!);
         instance = loaded;
       }
       try {

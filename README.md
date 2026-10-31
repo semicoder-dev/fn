@@ -1,6 +1,6 @@
 # fn
 
-fn 是运行在 Bun＋FIA 上的 Cordis 插件平台。当前源码面向 **fn 0.6.0 / build 13** 和 **SDK 0.5.0**，采用全插件化架构。实际公开版本与下载产物以 [正式安装入口](https://semicoder.dev/fn/docs/installation) 和 GitHub Releases 为准；iPhone 内测仍为 0.3.0（4），不与本版桌面提供聊天同步。
+fn 是运行在 Bun＋FIA 上的 Cordis 插件平台。当前源码面向 **fn 0.6.1 / build 14** 和 **SDK 0.5.0**，采用全插件化架构。实际公开版本与下载产物以 [正式安装入口](https://semicoder.dev/fn/docs/installation) 和 GitHub Releases 为准；iPhone 内测仍为 0.3.0（4），不与本版桌面提供聊天同步。
 
 默认组合提供紧凑侧栏、模型连接、插件管理、外观和应用更新，启动进入应用中心。聊天用途尚未定稿，Chat 页面、默认助手、卡片和 iCloud 同步暂不纳入本阶段首版发行。Agent、Session、模型适配及工具调度使用锁定的原版 dsh；布局和全部产品页面也是插件。关闭页面或断线不终止后台 Agent。界面统一使用原版 dsh 控件与主题，仅保留浅色、深色和跟随系统，不再提供自定义配色。
 
@@ -35,7 +35,7 @@ bun run npm:pack
 bun run framework:verify
 ```
 
-插件后端直接执行 ESM TypeScript，前端通过 `exports["./client"]` 提供上游模块工厂。`bun run agent plugin check/build/pack <目录>` 验证、构建、打包；纯服务、纯前端和双端插件均可。插件源码变更通过后台重启加载；安装先准备完整候选目录，空闲后切换。运行阶段关闭自动安装，禁止修改已生效目录。
+插件后端直接执行 ESM TypeScript，前端通过 `exports["./client"]` 提供上游模块工厂。`bun run agent plugin check/build/pack <目录>` 验证、构建、打包；纯服务、纯前端和双端插件均可。0.6.1 支持普通外部插件安装、更新和启停在空闲后增量生效，保留页面根节点和未变化实例；共享内核/基础组合变化及不可安全热更新的插件仍重启。0.6.0 的统一后台重启行为保留在旧发行中。安装先校验不可变候选目录，前后端确认后切换；见 [热更新](docs/plugin-hot-update.md)。运行阶段关闭自动安装，禁止修改已生效目录。
 
 新源码仅使用 `Backend/plugins-v1/` 与 Chat v4 数据空间，不读取、迁移或删除既有数据。不保留旧 SDK、应用 Bridge、公开 KV、网页抓取或网页搜索接口；fn 不再依赖 agent-webtool。旧三个测试插件从本地市场源码移除，生产市场尚未更改。插件属于可信本地代码，Cordis 不提供安全沙箱。
 

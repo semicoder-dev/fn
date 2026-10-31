@@ -1,3 +1,5 @@
+import { nextModules } from "./live-modules.ts";
+import { packageName, reconcileEntries } from "../packages/host/src/live-profile.ts";
 import * as Cordis from "@deepseek-ai/cordis";
 import Loader, { Group } from "@deepseek-ai/cordis-plugin-loader";
 import * as Slots from "@deepseek-ai/dsh-client-ui-slots";
@@ -38,6 +40,38 @@ let ctx: Cordis.Context | undefined,
   unmount: (() => void) | undefined,
   epoch = "";
 let loading: Promise<void> | undefined;
+let current: ClientBoot | undefined;
+let modules: Modules.ClientModuleSystem | undefined;
+let moduleExports: typeof Modules | undefined;
+let synchronizeAPIs: ((value: { namespaces: string[] }) => Promise<void>) | undefined;
+const clientId = crypto.randomUUID();
+const scriptTargets = new Map<string, ClientModuleLoaderTarget>();
+// Each script registers with the engine that requested it, including old factories' lazy chunks.
+(
+  window as unknown as { __ModuleLoader__: Pick<ClientModuleLoaderTarget, "load"> }
+).__ModuleLoader__ = {
+  load(entry) {
+    const source = (document.currentScript as HTMLScriptElement | null)?.src;
+    const target = source && scriptTargets.get(source);
+    if (!target) throw new Error("Unowned plugin script registration");
+    target.load(entry);
+  },
+};
+function registrationTarget() {
+  const pendingQueue: ClientBundleRegistration[] = [];
+  return {
+    mode: "queue",
+    pendingQueue,
+    load: (entry: ClientBundleRegistration) => pendingQueue.push(entry),
+  } as unknown as ClientModuleLoaderTarget;
+}
+function ready(manifest: ClientBoot) {
+  return api.call("host.ready", {
+    epoch: manifest.epoch,
+    generationId: manifest.generationId,
+    clientId,
+  });
+}
 function failure(error: unknown) {
   container.replaceChildren();
   const page = document.createElement("main");
@@ -71,12 +105,14 @@ function failure(error: unknown) {
   page.append(retry);
   container.append(page);
 }
-function loadScript(url: string) {
+function loadScript(url: string, target: ClientModuleLoaderTarget) {
   return new Promise<void>((resolve, reject) => {
     const script = document.createElement("script");
     script.src = url;
+    scriptTargets.set(script.src, target);
     const finish = (error?: Error) => {
       clearTimeout(timer);
+      scriptTargets.delete(script.src);
       script.remove();
       error ? reject(error) : resolve();
     };
@@ -89,6 +125,7 @@ function loadScript(url: string) {
 
 function boot() {
   if (loading) return loading;
+  const mounted = ctx;
   loading = (async () => {
     const response = await FIAClient.fetchBackend("/api/plugins/boot", {
       cache: "no-store",
@@ -97,20 +134,54 @@ function boot() {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error ?? "后台尚未就绪");
     const manifest = payload as ClientBoot;
-    if (ctx && epoch === manifest.epoch) return;
+    if (ctx && epoch === manifest.epoch && current && modules && moduleExports) {
+      if (current.generationId === manifest.generationId) {
+        await ready(manifest);
+        return;
+      }
+      try {
+        const target = registrationTarget();
+        const next = nextModules(
+          moduleExports,
+          target,
+          manifest.boot,
+          shared,
+          (url) => loadScript(url, target),
+          modules,
+        );
+        const revisions = new Map(modules.manifest.modules.map((row) => [row.id, row.rev]));
+        const changed = new Set(
+          next.manifest.modules
+            .filter((row) => revisions.get(row.id) !== row.rev)
+            .map((row) => packageName(row.id)),
+        );
+        if (changed.has("@deepseek-ai/dsh-client-modules")) throw new Error("启动模块变化需要重启");
+        ctx.loader.internal = next as unknown as Loader["internal"];
+        await synchronizeAPIs?.({ namespaces: manifest.namespaces ?? [] });
+        await reconcileEntries(ctx.loader, current.profile, manifest.profile, changed);
+        if (!ctx.get("uiRenderer") || !ctx.slots.entries("root").length)
+          throw new Error("组合没有提供 root 布局");
+        modules = next;
+        current = manifest;
+        await ready(manifest);
+      } catch (error) {
+        await api.call("host.updateFailed", {
+          epoch: manifest.epoch,
+          generationId: manifest.generationId,
+          clientId,
+          error: String(error).slice(0, 2000),
+        });
+      }
+      return;
+    }
     unmount?.();
     unmount = undefined;
     await ctx?.fiber.dispose();
     ctx = undefined;
     container.textContent = "正在加载插件…";
-    const pendingQueue: ClientBundleRegistration[] = [];
-    const target = {
-      mode: "queue",
-      pendingQueue,
-      load: (entry: ClientBundleRegistration) => pendingQueue.push(entry),
-    } as unknown as ClientModuleLoaderTarget;
-    (window as unknown as { __ModuleLoader__: ClientModuleLoaderTarget }).__ModuleLoader__ = target;
-    await loadScript(manifest.bootstrap);
+    const target = registrationTarget();
+    const pendingQueue = target.pendingQueue;
+    await loadScript(manifest.bootstrap, target);
     const id = "@deepseek-ai/dsh-client-modules";
     const registration = pendingQueue.find((entry) => entry.id === id);
     if (!registration) throw new Error("上游客户端模块未注册");
@@ -124,11 +195,8 @@ function boot() {
       ),
     ) as unknown as typeof Modules;
     pendingQueue.splice(pendingQueue.indexOf(registration), 1);
-    const modules = exports.createClientModuleSystem(
-      target,
-      { id, exports: exports as unknown as Record<string, unknown> },
-      { boot: manifest.boot, staticModules: shared, loadBundle: loadScript },
-    );
+    moduleExports = exports;
+    modules = nextModules(exports, target, manifest.boot, shared, (url) => loadScript(url, target));
     const root = new Cordis.Context();
     ctx = root;
     root.provide("platform", { native: FIAClient.native, api });
@@ -142,6 +210,7 @@ function boot() {
       for (const name of namespaces)
         if (!providers.has(name)) providers.set(name, root.provide(`api:${name}`, true));
     };
+    synchronizeAPIs = synchronize;
     await synchronize({ namespaces: manifest.namespaces ?? [] });
     root.effect(() =>
       api.on("host.apis", (payload) => {
@@ -164,7 +233,7 @@ function boot() {
           } catch (error) {
             return `${entry.id}: ${String(error)}`;
           }
-          return `${entry.id}: ${modules.importError(entry.options.name) ?? "插件未创建"}`;
+          return `${entry.id}: ${modules?.importError(entry.options.name) ?? "插件未创建"}`;
         }),
       );
       throw new Error(`未能激活插件：\n${details.join("\n")}`);
@@ -193,14 +262,17 @@ function boot() {
     container.replaceChildren();
     unmount = root.uiRenderer.mount(container);
     epoch = manifest.epoch;
+    current = manifest;
     await new Promise<void>((resolve) =>
       requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
     );
     if (ctx !== root) return;
-    await api.call("host.ready", { epoch });
+    await ready(manifest);
     await FIAClient.native.ready();
   })()
     .catch(async (error) => {
+      // A missed poll or transient transport error must not erase a mounted page.
+      if (ctx && ctx === mounted && current && epoch === current.epoch) return;
       unmount?.();
       unmount = undefined;
       await ctx?.fiber.dispose();
@@ -213,6 +285,13 @@ function boot() {
     });
   return loading;
 }
+api.on("host.composition", () => {
+  void boot();
+});
+// Also recover a missed event or a background tab without rebuilding unchanged UI.
+setInterval(() => {
+  void boot();
+}, 3000);
 api.onReconnect(() => {
   void boot();
 });

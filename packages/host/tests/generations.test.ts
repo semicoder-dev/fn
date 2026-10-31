@@ -770,3 +770,81 @@ if (one.Context !== two.Context || one.version !== '1.0.0' || two.version !== '2
     await server.stop(true);
   }
 }, 30_000);
+
+test("hot activation commits without restart; failed live replacement restarts the durable previous composition", async () => {
+  const f = await fixture();
+  const initial = await f.manager.initialize();
+  let fail = false;
+  const manager = new GenerationManager({
+    ...f.options,
+    hotActivate: async () => {
+      if (fail) throw new Error("client failed");
+      return true;
+    },
+  });
+  const next = await manager.stageInstall(await application(f.directory, "live"));
+  await manager.activateWhenIdle();
+  expect((await manager.status()).currentId).toBe(next.id);
+  expect((await new GenerationManager(f.options).initialize()).id).toBe(next.id);
+  expect(f.restarts).toEqual([]);
+  fail = true;
+  await manager.stageRemove(packageId("live"));
+  await expect(manager.activateWhenIdle()).rejects.toThrow("client failed");
+  expect((await manager.status()).currentId).toBe(next.id);
+  expect((await manager.status()).lastError).toContain("client failed");
+  expect(f.restarts).toEqual([next.id]);
+  expect(initial.id).not.toBe(next.id);
+});
+
+test("unsafe live changes use restart confirmation and busy changes remain staged", async () => {
+  const f = await fixture();
+  await f.manager.initialize();
+  let attempts = 0;
+  const manager = new GenerationManager({
+    ...f.options,
+    hotActivate: async () => {
+      attempts++;
+      return false;
+    },
+  });
+  const next = await manager.stageInstall(await application(f.directory, "restart-boundary"));
+  f.setBusy(true);
+  expect((await manager.activateWhenIdle()).activated).toBe(false);
+  expect(attempts).toBe(0);
+  f.setBusy(false);
+  await manager.activateWhenIdle();
+  expect(attempts).toBe(1);
+  expect(f.restarts).toEqual([next.id]);
+  expect((await new GenerationManager(f.options).initialize()).id).toBe(next.id);
+});
+
+test("interrupted hot activation restores the previous durable pointer on the next boot", async () => {
+  const f = await fixture();
+  const previous = await f.manager.initialize();
+  let release!: () => void, entered!: () => void;
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const manager = new GenerationManager({
+    ...f.options,
+    hotActivate: async () => {
+      entered();
+      await blocked;
+      return true;
+    },
+  });
+  await manager.stageInstall(await application(f.directory, "interrupted"));
+  const activation = manager.activateWhenIdle();
+  await started;
+  // Snapshot the persisted files as if the process had died before its client acknowledgement.
+  const pointerFile = join(f.options.dataDirectory, "runtime", "active.json");
+  const interruptedPointer = await readFile(pointerFile);
+  release();
+  await activation;
+  await writeFile(pointerFile, interruptedPointer);
+  const recovered = new GenerationManager(f.options);
+  expect((await recovered.initialize()).id).toBe(previous.id);
+});

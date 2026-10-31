@@ -34,6 +34,7 @@ export interface InstallExpectation {
 }
 
 export interface InstalledPlugin {
+  hotReload?: boolean;
   icon?: string;
   iconSvg?: string;
   id: string;
@@ -205,6 +206,9 @@ export interface GenerationManagerOptions {
   execPath?: string;
   progress?: (phase: GenerationPhase) => void;
   busy: () => boolean | Promise<boolean>;
+  /** Return false before mutation when this change requires a process restart. */
+  hotActivate?: (next: Generation, previous: Generation) => Promise<boolean>;
+  activated?: () => void | Promise<void>;
   /** Commit the backend restart after the durable activation pointer is written. */
   restart: (next: Generation, previous: Generation) => void | Promise<void>;
 }
@@ -218,7 +222,13 @@ interface PackageManifest {
   optionalDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
   peerDependenciesMeta?: Record<string, { optional?: boolean }>;
-  fn?: { name?: string; description?: string; icon?: string; iconSvg?: string };
+  fn?: {
+    hotReload?: boolean;
+    name?: string;
+    description?: string;
+    icon?: string;
+    iconSvg?: string;
+  };
 }
 
 const maxArchiveBytes = 64 * 1024 * 1024;
@@ -319,11 +329,22 @@ function parsePlugin(
   dependencies: boolean;
 } {
   const metadata = manifest.fn;
+  if (metadata?.hotReload !== undefined && typeof metadata.hotReload !== "boolean")
+    throw new Error("Invalid fn.hotReload");
   if (metadata && (typeof metadata !== "object" || Array.isArray(metadata)))
     throw new Error("Invalid fn metadata");
   for (const key of Object.keys(metadata ?? {}))
     if (
-      !["name", "description", "icon", "iconSvg", "clientSource", "profile", "bundle"].includes(key)
+      ![
+        "name",
+        "description",
+        "icon",
+        "iconSvg",
+        "clientSource",
+        "profile",
+        "bundle",
+        "hotReload",
+      ].includes(key)
     )
       throw new Error(`Unknown fn metadata: ${key}`);
   if (
@@ -390,6 +411,7 @@ function parsePlugin(
       ...(metadata?.description ? { description: metadata?.description } : {}),
       version: manifest.version,
       packageName: manifest.name,
+      ...(metadata?.hotReload !== undefined ? { hotReload: metadata.hotReload } : {}),
       entry,
       ...(client ? { client } : {}),
     },
@@ -1300,13 +1322,50 @@ export class GenerationManager {
         state: "activating",
         attempted: false,
       } satisfies ActivePointer);
+      let hot = false;
+      let attemptingHot = false;
       try {
-        await this.options.restart(next, previous);
+        if (this.options.hotActivate) {
+          // A crash during in-process replacement must restore the previous composition.
+          await atomicJson(this.activeFile, {
+            schemaVersion: 1,
+            id: next.id,
+            previousId: previous.id,
+            state: "activating",
+            attempted: true,
+          });
+          attemptingHot = true;
+          hot = await this.options.hotActivate(next, previous);
+          attemptingHot = hot;
+        }
+        if (hot) {
+          await atomicJson(join(this.root, "previous.json"), { id: previous.id });
+          await atomicJson(this.activeFile, { schemaVersion: 1, id: next.id, state: "ready" });
+          await rm(this.errorFile, { force: true });
+        } else {
+          await atomicJson(this.activeFile, {
+            schemaVersion: 1,
+            id: next.id,
+            previousId: previous.id,
+            state: "activating",
+            attempted: false,
+          });
+          await this.options.restart(next, previous);
+        }
       } catch (error) {
         await atomicJson(this.activeFile, { schemaVersion: 1, id: previous.id, state: "ready" });
+        if (attemptingHot) {
+          await atomicJson(this.errorFile, {
+            message: `热更新失败，已恢复上一组合：${String(error)}`,
+          });
+          await rm(this.pendingFile, { force: true });
+          // Unknown in-process effects are recovered by a clean process, never by pretending rollback succeeded.
+          await this.options.restart(previous, next);
+        }
         throw error;
       }
       await rm(this.pendingFile, { force: true });
+      if (hot) await this.options.activated?.();
       return { activated: true, pending: false, id: next.id };
     });
   }

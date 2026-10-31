@@ -12,6 +12,7 @@ export default class Plugins extends Service {
   private pending = false;
   private error: string | null = null;
   private stopping = false;
+  private activating = false;
   constructor(ctx: Context) {
     super(ctx, "plugins");
   }
@@ -148,13 +149,23 @@ export default class Plugins extends Service {
     this.changed();
   }
   private async activate() {
-    if (this.stopping || this.job || !this.pending || this.error || this.ctx.activity.busy())
+    if (
+      this.stopping ||
+      this.activating ||
+      this.job ||
+      !this.pending ||
+      this.error ||
+      this.ctx.activity.busy()
+    )
       return;
+    this.activating = true;
     try {
       await this.installation.manager.activateWhenIdle();
     } catch (error) {
       this.error = String(error).slice(0, 2000);
       this.changed();
+    } finally {
+      this.activating = false;
     }
   }
   private changed() {

@@ -77,8 +77,8 @@ function UpdateBanner({ remote }: { remote: Remote }) {
           (status.installing
             ? `${phaseLabels[status.phase ?? ""] ?? "准备插件"}…`
             : status.busy
-              ? "插件已准备，等待任务空闲后重启后台。"
-              : "插件已准备，正在重新连接…")}
+              ? "插件已准备，等待任务空闲后应用。"
+              : "插件已准备，正在应用更新…")}
       </span>
       {status.error && status.pending && (
         <Button onClick={() => void remote.plugins.call("activate", {})} type="button">
@@ -420,7 +420,7 @@ function PluginsPage({ remote }: { remote: Remote }) {
         )}
       </div>
       <p className={cx("runtime-muted page-note")}>
-        插件可执行本机代码，请只安装可信来源。更新将在任务空闲后重启后台，请先保存草稿。
+        插件可执行本机代码，请只安装可信来源。普通插件将在任务空闲后局部更新；无法安全热更新时会重启后台，请先保存插件内的草稿。
       </p>
       {installOpen && (
         <Modal

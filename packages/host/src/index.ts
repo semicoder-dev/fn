@@ -1,3 +1,4 @@
+import { reconcileEntries } from "./live-profile.ts";
 import { Context } from "@deepseek-ai/cordis";
 import Loader, { EntryTree, Group, type EntryOptions } from "@deepseek-ai/cordis-plugin-loader";
 export { composeProfile, resolveProfile } from "./profile.ts";
@@ -40,7 +41,16 @@ export interface Profile {
 export async function openHost(environment: HostEnvironment, profile: Profile) {
   await mkdir(environment.dataDirectory, { recursive: true, mode: 0o700 });
   const ctx = new Context();
-  ctx.provide("host", Object.freeze(environment));
+  let codeDirectory = environment.codeDirectory;
+  ctx.provide(
+    "host",
+    Object.freeze({
+      ...environment,
+      get codeDirectory() {
+        return codeDirectory;
+      },
+    }),
+  );
   try {
     await ctx.plugin(BunLoader, { baseUrl: pathToFileURL(environment.codeDirectory + "/").href });
     ctx.loader.builtins.group = Group;
@@ -53,7 +63,17 @@ export async function openHost(environment: HostEnvironment, profile: Profile) {
       throw new Error(
         `Plugin composition did not activate: ${failures.map((entry) => entry.id).join(", ")}`,
       );
-    return { ctx, profile, close: () => ctx.fiber.dispose() };
+    return {
+      ctx,
+      profile,
+      close: () => ctx.fiber.dispose(),
+      async update(directory: string, next: Profile, changed: ReadonlySet<string>) {
+        codeDirectory = directory;
+        (ctx.loader as BunLoader).directory = directory;
+        await reconcileEntries(ctx.loader, profile.plugins, next.plugins, changed);
+        profile = next;
+      },
+    };
   } catch (error) {
     await ctx.fiber.dispose().catch(() => {});
     throw error;
@@ -62,10 +82,16 @@ export async function openHost(environment: HostEnvironment, profile: Profile) {
 
 /** Resolve from the selected generation, including nested groups and bundles. */
 class BunLoader extends Loader {
+  override internal = undefined;
+  directory?: string;
   override import(name: string, getOuterStack?: () => string[]) {
     if (name.startsWith("cordis:") || name.startsWith("file:"))
       return super.import(name, getOuterStack);
-    const require = createRequire(new URL("package.json", this.ctx.baseUrl));
+    const require = createRequire(
+      this.directory
+        ? join(this.directory, "package.json")
+        : new URL("package.json", this.ctx.baseUrl),
+    );
     return super.import(pathToFileURL(require.resolve(name)).href, getOuterStack);
   }
 }
