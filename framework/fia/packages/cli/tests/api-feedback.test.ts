@@ -1,8 +1,18 @@
 import { afterEach, expect, test } from "bun:test";
 import { z as standardZ } from "zod";
-import { defineAPI, describeAPI, implementAPI, z } from "../src/business-api.ts";
+import {
+  defineAPI,
+  describeAPI,
+  implementAPI,
+  z,
+} from "../src/business-api.ts";
 import { API_MAX_BYTES, assertJSON, eventPath } from "../src/api-values.ts";
-import { APIError, createAPIClient, readLines, readResult } from "../src/api-client.ts";
+import {
+  APIError,
+  createAPIClient,
+  readLines,
+  readResult,
+} from "../src/api-client.ts";
 import { APIServer } from "../src/api-server.ts";
 import { defineBackend, type BackendNativeClient } from "../src/backend.ts";
 
@@ -18,12 +28,20 @@ const contract = defineAPI({
       input: z.object({}),
       output: z.object({ model: z.string().optional() }),
     },
-    invalid: { description: "Invalid output", input: z.object({}), output: z.any() },
+    invalid: {
+      description: "Invalid output",
+      input: z.object({}),
+      output: z.any(),
+    },
   },
   events: {
     changed: {
       description: "Change",
-      payload: z.object({ sessionId: z.string(), status: z.string(), data: z.string().optional() }),
+      payload: z.object({
+        sessionId: z.string(),
+        status: z.string(),
+        data: z.string().optional(),
+      }),
     },
     other: { description: "Other", payload: z.number() },
   },
@@ -54,7 +72,11 @@ function fixture(budget = API_MAX_BYTES) {
 function request(input: unknown) {
   return new Request("http://localhost/call", {
     method: "POST",
-    body: JSON.stringify({ method: "echo", input, requestId: crypto.randomUUID() }),
+    body: JSON.stringify({
+      method: "echo",
+      input,
+      requestId: crypto.randomUUID(),
+    }),
   });
 }
 async function until(predicate: () => boolean) {
@@ -66,10 +88,12 @@ async function until(predicate: () => boolean) {
 }
 
 test("JSON optional object fields are omitted and invalid values report precise paths", () => {
-  expect(() => assertJSON({ session: { model: undefined } }, "result")).not.toThrow();
-  expect(() => assertJSON({ session: { values: [undefined] } }, "result")).toThrow(
-    "result.session.values[0]",
-  );
+  expect(() =>
+    assertJSON({ session: { model: undefined } }, "result"),
+  ).not.toThrow();
+  expect(() =>
+    assertJSON({ session: { values: [undefined] } }, "result"),
+  ).toThrow("result.session.values[0]");
   expect(() => assertJSON(undefined, "result")).toThrow("result");
   const sparse: unknown[] = [];
   sparse.length = 1;
@@ -87,7 +111,11 @@ test("known HTTP errors and malformed responses never become execution_unknown",
   for (const [status, body, code] of [
     [401, "Unauthorized", "unauthorized"],
     [403, "Forbidden", "forbidden"],
-    [401, '{"error":{"code":"unauthorized","message":"No cookie"}}', "unauthorized"],
+    [
+      401,
+      '{"error":{"code":"unauthorized","message":"No cookie"}}',
+      "unauthorized",
+    ],
     [502, "proxy failed", "protocol_error"],
     [200, "{", "protocol_error"],
     [200, "null", "protocol_error"],
@@ -101,7 +129,9 @@ test("known HTTP errors and malformed responses never become execution_unknown",
   const client = createAPIClient(async () => {
     throw new Error("network lost");
   });
-  await expect(client.call("echo", "ok")).rejects.toMatchObject({ code: "execution_unknown" });
+  await expect(client.call("echo", "ok")).rejects.toMatchObject({
+    code: "execution_unknown",
+  });
   await expect(client.call("echo", { value: 1n })).rejects.toMatchObject({
     code: "invalid_argument",
   });
@@ -116,7 +146,9 @@ test("known HTTP errors and malformed responses never become execution_unknown",
         }),
       ),
   );
-  await expect(interrupted.call("echo", "ok")).rejects.toMatchObject({ code: "execution_unknown" });
+  await expect(interrupted.call("echo", "ok")).rejects.toMatchObject({
+    code: "execution_unknown",
+  });
   interrupted.close();
 });
 
@@ -133,7 +165,9 @@ test("requests use UTF-8 bytes, stop reading oversized streams and preserve opti
   });
   const oversized = "中".repeat(Math.ceil(API_MAX_BYTES / 3));
   for (const source of ["ui", "cli"] as const)
-    await expect(readResult(await api.fetch(request(oversized), source))).rejects.toMatchObject({
+    await expect(
+      readResult(await api.fetch(request(oversized), source)),
+    ).rejects.toMatchObject({
       code: "resource_limit",
     });
   expect(await client.call("echo", "中".repeat(1000))).toBe("中".repeat(1000));
@@ -153,7 +187,9 @@ test("requests use UTF-8 bytes, stop reading oversized streams and preserve opti
       },
     }),
   });
-  await expect(readResult(await api.fetch(streamed, "ui"))).rejects.toMatchObject({
+  await expect(
+    readResult(await api.fetch(streamed, "ui")),
+  ).rejects.toMatchObject({
     code: "resource_limit",
   });
   expect(cancelled).toBe(true);
@@ -165,25 +201,52 @@ test("background emit filters on server and byte backpressure isolates slow subs
     await api.fetch(
       new Request(
         "http://localhost" +
-          eventPath([{ event: "changed", match: { sessionId: "a", status: "idle" } }]),
+          eventPath([
+            { event: "changed", match: { sessionId: "a", status: "idle" } },
+          ]),
       ),
       "ui",
     ),
   );
   expect((await filtered.next()).value?.type).toBe("ready");
-  const slowResponse = await api.fetch(new Request("http://localhost/events"), "ui");
+  const slowResponse = await api.fetch(
+    new Request("http://localhost/events"),
+    "ui",
+  );
   const slow = slowResponse.body!.getReader();
-  api.context.emit("changed", { sessionId: "b", status: "idle", data: "x".repeat(600_000) });
-  api.context.emit("changed", { sessionId: "b", status: "idle", data: "x".repeat(600_000) });
+  api.context.emit("changed", {
+    sessionId: "b",
+    status: "idle",
+    data: "x".repeat(600_000),
+  });
+  api.context.emit("changed", {
+    sessionId: "b",
+    status: "idle",
+    data: "x".repeat(600_000),
+  });
   await expect(slow.read()).rejects.toMatchObject({ code: "resource_limit" });
-  api.context.emit("changed", { sessionId: "a", status: "idle", data: undefined });
-  expect((await filtered.next()).value?.payload).toEqual({ sessionId: "a", status: "idle" });
+  api.context.emit("changed", {
+    sessionId: "a",
+    status: "idle",
+    data: undefined,
+  });
+  expect((await filtered.next()).value?.payload).toEqual({
+    sessionId: "a",
+    status: "idle",
+  });
   await filtered.return(undefined);
   expect(() =>
-    api.emit("changed", { sessionId: "a", status: "idle", data: "中".repeat(API_MAX_BYTES) }),
+    api.emit("changed", {
+      sessionId: "a",
+      status: "idle",
+      data: "中".repeat(API_MAX_BYTES),
+    }),
   ).toThrow("1 MiB");
   // Cancelled/overflowed subscriptions must not retain heartbeat timers or abort listeners.
-  const internals = api as unknown as { streams: Set<unknown>; closeStreams: Set<unknown> };
+  const internals = api as unknown as {
+    streams: Set<unknown>;
+    closeStreams: Set<unknown>;
+  };
   expect(internals.streams.size).toBe(0);
   expect(internals.closeStreams.size).toBe(0);
 });
@@ -200,9 +263,13 @@ test("subscription changes rebuild one shared connection and dispatch each local
   const a: string[] = [],
     b: string[] = [];
   client.onReconnect(() => ready++);
-  const removeA = client.on("changed", (v) => a.push(v.sessionId), { match: { sessionId: "a" } });
+  const removeA = client.on("changed", (v) => a.push(v.sessionId), {
+    match: { sessionId: "a" },
+  });
   await until(() => ready === 1);
-  const removeB = client.on("changed", (v) => b.push(v.sessionId), { match: { sessionId: "b" } });
+  const removeB = client.on("changed", (v) => b.push(v.sessionId), {
+    match: { sessionId: "b" },
+  });
   await until(() => ready === 2);
   api.emit("changed", { sessionId: "a", status: "idle" });
   api.emit("changed", { sessionId: "b", status: "idle" });
@@ -212,20 +279,28 @@ test("subscription changes rebuild one shared connection and dispatch each local
   removeA();
   await until(() => ready === 3);
   removeB();
-  expect(paths.every((path) => path.startsWith("/events?subscriptions="))).toBe(true);
+  expect(paths.every((path) => path.startsWith("/events?subscriptions="))).toBe(
+    true,
+  );
   await expect(
     readResult(
-      await api.fetch(new Request("http://localhost" + eventPath([{ event: "unknown" }])), "ui"),
+      await api.fetch(
+        new Request("http://localhost" + eventPath([{ event: "unknown" }])),
+        "ui",
+      ),
     ),
   ).rejects.toMatchObject({ code: "not_found" });
 });
 
 test("event parsing bounds each frame, not a batch of coalesced frames", async () => {
-  const frame = JSON.stringify({ type: "event", payload: "x".repeat(600_000) }) + "\n";
+  const frame =
+    JSON.stringify({ type: "event", payload: "x".repeat(600_000) }) + "\n";
   let frames = 0;
   for await (const _ of readLines(new Response(frame.repeat(4)))) frames++;
   expect(frames).toBe(4);
-  await expect(readLines(new Response("{")).next()).rejects.toBeInstanceOf(APIError);
+  await expect(readLines(new Response("{")).next()).rejects.toBeInstanceOf(
+    APIError,
+  );
 });
 
 test("typed lifecycle and routes infer the contract while legacy WebSocket generics remain valid", () => {
@@ -273,7 +348,9 @@ test("typed lifecycle and routes infer the contract while legacy WebSocket gener
       },
     },
   });
-  expect(() => defineBackend({ apiOptions: { eventBufferBytes: 10 } })).toThrow("1 MiB");
+  expect(() => defineBackend({ apiOptions: { eventBufferBytes: 10 } })).toThrow(
+    "1 MiB",
+  );
 });
 
 test("standard Zod schemas interoperate and conversion errors identify their contract location", () => {
@@ -290,9 +367,16 @@ test("standard Zod schemas interoperate and conversion errors identify their con
   );
   expect(schema.methods.external?.input.type).toBe("object");
   expect(() =>
-    defineAPI({ methods: { bad: { description: "bad", input: z.date(), output: z.string() } } }),
+    defineAPI({
+      methods: {
+        bad: { description: "bad", input: z.date(), output: z.string() },
+      },
+    }),
   ).toThrow("methods.bad.input");
   expect(() =>
-    defineAPI({ methods: {}, events: { bad: { description: "bad", payload: z.date() } } }),
+    defineAPI({
+      methods: {},
+      events: { bad: { description: "bad", payload: z.date() } },
+    }),
   ).toThrow("events.bad.payload");
 });

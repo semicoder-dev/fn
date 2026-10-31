@@ -5,18 +5,26 @@ test("browser tickets and socket grants bind route, lifetime, origin and instanc
   const origin = "http://127.0.0.1:43210";
   const sessions = new BrowserSessions("one");
   const other = new BrowserSessions("two");
-  const ticket = new URL(sessions.issue(origin, "/settings?tab=appearance#theme")).hash.slice(1);
+  const ticket = new URL(
+    sessions.issue(origin, "/settings?tab=appearance#theme"),
+  ).hash.slice(1);
   expect(ticket).toMatch(/^[a-f0-9]{64}$/);
   expect(() => other.exchange(ticket, origin)).toThrow();
   expect(() => sessions.exchange(ticket, "http://127.0.0.1:43211")).toThrow();
   const entry = sessions.exchange(ticket, origin);
-  expect(entry.route).toBe("/settings?tab=appearance&fiaBrowser=1&fiaGeneration=one#theme");
+  expect(entry.route).toBe(
+    "/settings?tab=appearance&fiaBrowser=1&fiaGeneration=one#theme",
+  );
   expect(entry.token).not.toBe(sessions.nativeToken);
   expect(other.get(entry.token)).toBeUndefined();
   expect(() => sessions.exchange(ticket, origin)).toThrow();
   const session = sessions.get(entry.token)!;
-  const socket = new URL(sessions.socketTicket(session, "/api/feed?channel=one"));
-  expect(sessions.consumeSocket(new URL(socket), "http://127.0.0.1:43211")).toBeUndefined();
+  const socket = new URL(
+    sessions.socketTicket(session, "/api/feed?channel=one"),
+  );
+  expect(
+    sessions.consumeSocket(new URL(socket), "http://127.0.0.1:43211"),
+  ).toBeUndefined();
   expect(sessions.consumeSocket(new URL(socket), origin)).toBeUndefined();
   const expiring = new URL(sessions.socketTicket(session, "/api/feed"));
   const expires = new URL(sessions.issue(origin, "/")).hash.slice(1);

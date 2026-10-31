@@ -1,4 +1,8 @@
-import { browserBridge, frontendFetch, openWebSocket } from "./browser-transport.ts";
+import {
+  browserBridge,
+  frontendFetch,
+  openWebSocket,
+} from "./browser-transport.ts";
 export { openWebSocket } from "./browser-transport.ts";
 import { createNativeAPI } from "./api.ts";
 export type NativeErrorCode =
@@ -178,7 +182,9 @@ export class NativeResource {
   async #fetch(): Promise<Response> {
     return await frontendFetch(this.#request.url, {
       credentials: this.#request.credentials,
-      ...(this.#request.headers === undefined ? {} : { headers: this.#request.headers }),
+      ...(this.#request.headers === undefined
+        ? {}
+        : { headers: this.#request.headers }),
     });
   }
 }
@@ -241,9 +247,16 @@ export class NativeClient extends EventTarget implements NativeTransport {
     this.#closed = false;
     const socket = await this.#connect();
     if (options.signal?.aborted) throw options.signal.reason;
-    if (this.#pending.size >= 128) throw new Error("Native request concurrency limit exceeded");
+    if (this.#pending.size >= 128)
+      throw new Error("Native request concurrency limit exceeded");
     const id = this.#nextID++;
-    const message = JSON.stringify({ v: 1, type: "request", id, method, params });
+    const message = JSON.stringify({
+      v: 1,
+      type: "request",
+      id,
+      method,
+      params,
+    });
     if (new TextEncoder().encode(message).byteLength > 1024 * 1024)
       throw new Error("Native request exceeds protocol limit");
     const cancel = () => {
@@ -275,12 +288,16 @@ export class NativeClient extends EventTarget implements NativeTransport {
       if (options.signal !== undefined) {
         const abort = (): void => {
           this.#settle(id, () =>
-            reject(options.signal?.reason ?? new DOMException("Aborted", "AbortError")),
+            reject(
+              options.signal?.reason ??
+                new DOMException("Aborted", "AbortError"),
+            ),
           );
           cancel();
         };
         options.signal.addEventListener("abort", abort, { once: true });
-        pending.removeAbort = () => options.signal?.removeEventListener("abort", abort);
+        pending.removeAbort = () =>
+          options.signal?.removeEventListener("abort", abort);
       }
       this.#pending.set(id, pending);
       try {
@@ -296,7 +313,8 @@ export class NativeClient extends EventTarget implements NativeTransport {
   }
 
   on(event: string, listener: (payload: unknown) => void): () => void {
-    const handler = (message: Event): void => listener((message as CustomEvent<unknown>).detail);
+    const handler = (message: Event): void =>
+      listener((message as CustomEvent<unknown>).detail);
     this.#closed = false;
     this.#listeners++;
     this.addEventListener(event, handler);
@@ -325,7 +343,9 @@ export class NativeClient extends EventTarget implements NativeTransport {
     this.#socket = undefined;
     this.#connecting = undefined;
     for (const id of this.#pending.keys())
-      this.#settle(id, (pending) => pending.reject(new Error("Native client closed")));
+      this.#settle(id, (pending) =>
+        pending.reject(new Error("Native client closed")),
+      );
   }
 
   async #connect(): Promise<WebSocket> {
@@ -379,7 +399,11 @@ export class NativeClient extends EventTarget implements NativeTransport {
               if (this.#socket !== socket) return;
               this.#socket = undefined;
               this.#connecting = undefined;
-              if (!this.#closed && !browserBridge()?.ended() && this.#listeners > 0)
+              if (
+                !this.#closed &&
+                !browserBridge()?.ended() &&
+                this.#listeners > 0
+              )
                 this.#reconnect = setTimeout(() => {
                   void this.#connect().catch(() => {});
                 }, 500);
@@ -416,13 +440,16 @@ export class NativeClient extends EventTarget implements NativeTransport {
     }
     if (frame.v !== 1) return;
     if (frame.type === "event") {
-      this.dispatchEvent(new CustomEvent(frame.event, { detail: frame.payload }));
+      this.dispatchEvent(
+        new CustomEvent(frame.event, { detail: frame.payload }),
+      );
       return;
     }
     const pending = this.#pending.get(frame.id);
     if (pending === undefined) return;
     this.#settle(frame.id, () => {
-      if (frame.error !== undefined) pending.reject(new NativeError(frame.error));
+      if (frame.error !== undefined)
+        pending.reject(new NativeError(frame.error));
       else pending.resolve(frame.result);
     });
   }
@@ -452,9 +479,15 @@ export { createClient, APIError } from "./api-client.ts";
 export type { APIClient, CallOptions } from "./business-api.ts";
 
 /** Fetch an application HTTP route through the same native/browser authorization transport. */
-export function fetchBackend(path: string, init?: RequestInit): Promise<Response> {
+export function fetchBackend(
+  path: string,
+  init?: RequestInit,
+): Promise<Response> {
   const url = new URL(path, window.location.href);
-  if (url.origin !== window.location.origin || !url.pathname.startsWith("/api/"))
+  if (
+    url.origin !== window.location.origin ||
+    !url.pathname.startsWith("/api/")
+  )
     throw new Error("Expected an application /api/ route");
   return frontendFetch(url.pathname + url.search, init);
 }

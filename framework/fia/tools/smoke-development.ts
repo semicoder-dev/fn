@@ -41,11 +41,22 @@ export default function App() {
   let failure: unknown;
   let exited = false;
   const development = Bun.spawn(
-    [process.execPath, resolve(import.meta.dir, "../packages/cli/src/index.ts"), "dev"],
-    { cwd: root, detached: true, stdin: "ignore", stdout: "pipe", stderr: "pipe" },
+    [
+      process.execPath,
+      resolve(import.meta.dir, "../packages/cli/src/index.ts"),
+      "dev",
+    ],
+    {
+      cwd: root,
+      detached: true,
+      stdin: "ignore",
+      stdout: "pipe",
+      stderr: "pipe",
+    },
   );
   const drain = async (stream: ReadableStream<Uint8Array>) => {
-    for await (const bytes of stream) logs.push(new TextDecoder().decode(bytes));
+    for await (const bytes of stream)
+      logs.push(new TextDecoder().decode(bytes));
   };
   const running = Promise.all([
     development.exited,
@@ -63,7 +74,9 @@ export default function App() {
     });
   const inspect = async () => {
     if (failure || exited)
-      throw new Error("Development exited: " + String(failure) + "\n" + logs.join("\n"));
+      throw new Error(
+        "Development exited: " + String(failure) + "\n" + logs.join("\n"),
+      );
     return (await requestSession(root, "status")) as {
       runtime?: {
         pid: number;
@@ -105,7 +118,8 @@ export default function App() {
       30_000,
       "Development windows ready",
     );
-    if ((await agentValue()) !== 1) throw new Error("fia agent did not connect to this project");
+    if ((await agentValue()) !== 1)
+      throw new Error("fia agent did not connect to this project");
     const before = await waitUntil(
       async () => {
         try {
@@ -120,16 +134,24 @@ export default function App() {
       5_000,
       "Frontend probe",
     );
-    await writeFile(frontend, (await readFile(frontend, "utf8")).replace("marker:1", "marker:2"));
+    await writeFile(
+      frontend,
+      (await readFile(frontend, "utf8")).replace("marker:1", "marker:2"),
+    );
     const after = await waitUntil(
       async () => {
-        const value = JSON.parse(await readFile(report, "utf8")) as typeof before;
+        const value = JSON.parse(
+          await readFile(report, "utf8"),
+        ) as typeof before;
         return value.marker === 2 ? value : undefined;
       },
       10_000,
       "React Fast Refresh",
     );
-    if (!Number.isFinite(after.timeOrigin) || after.timeOrigin !== before.timeOrigin)
+    if (
+      !Number.isFinite(after.timeOrigin) ||
+      after.timeOrigin !== before.timeOrigin
+    )
       throw new Error("Frontend HMR reloaded the page");
     const beforeRestart = await inspect();
     if (beforeRestart.runtime?.processGroups[0] !== first.processGroups[0])
@@ -154,7 +176,9 @@ export default function App() {
     )
       throw new Error("Bun restart replaced native windows or host");
     if ((await agentValue()) !== 2)
-      throw new Error("fia agent did not reconnect to the new backend generation");
+      throw new Error(
+        "fia agent did not reconnect to the new backend generation",
+      );
     try {
       process.kill(-first.processGroups[0]!, 0);
       throw new Error("Old Bun process group remains");
@@ -167,21 +191,36 @@ export default function App() {
       .map((line) => JSON.parse(line));
     if (
       recorded.filter((event) => event.event === "start").length !== 2 ||
-      recorded.filter((event) => event.event === "stop" && event.generation === 1).length !== 1
+      recorded.filter(
+        (event) => event.event === "stop" && event.generation === 1,
+      ).length !== 1
     )
       throw new Error("Duplicate start or missing stop hook");
     const interruptedAt = Date.now();
     // A terminal sends Ctrl+C to the entire foreground process group.
     process.kill(-development.pid, "SIGINT");
-    await waitUntil(async () => (exited ? true : undefined), 3000, "Ctrl+C shutdown");
+    await waitUntil(
+      async () => (exited ? true : undefined),
+      3000,
+      "Ctrl+C shutdown",
+    );
     if (failure) throw failure;
     const stopped = (await readFile(events, "utf8"))
       .trim()
       .split("\n")
       .map((line) => JSON.parse(line));
-    if (stopped.filter((event) => event.event === "stop" && event.generation === 2).length !== 1)
-      throw new Error("Ctrl+C did not execute the backend stop hook exactly once");
-    for (const pid of [second.pid, ...second.processGroups.map((pid) => -pid)]) {
+    if (
+      stopped.filter(
+        (event) => event.event === "stop" && event.generation === 2,
+      ).length !== 1
+    )
+      throw new Error(
+        "Ctrl+C did not execute the backend stop hook exactly once",
+      );
+    for (const pid of [
+      second.pid,
+      ...second.processGroups.map((pid) => -pid),
+    ]) {
       try {
         process.kill(pid, 0);
         throw new Error("Process remains after Ctrl+C: " + pid);
@@ -189,7 +228,9 @@ export default function App() {
         if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
       }
     }
-    if (((await requestSession(root, "status")) as { running: boolean }).running)
+    if (
+      ((await requestSession(root, "status")) as { running: boolean }).running
+    )
       throw new Error("Development session remains after Ctrl+C");
     console.log(
       "Development: frontend HMR, two stable windows, backend restart, stop hook and process cleanup passed; Ctrl+C shutdown in " +

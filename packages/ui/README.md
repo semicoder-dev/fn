@@ -1,24 +1,9 @@
 # @semicoder/fn-ui
 
-未发布的全插件化候选。由宿主提供单份静态模块，产品页面仍是独立 Cordis 插件。
+Fn 自有 React UI。ApplicationProvider 接入宿主主题、语言、Toast、确认弹窗和应用关闭提示。Button、Input、Textarea、Select、Checkbox、Menu、Modal、Surface、Notice 等使用一致的语义变量和键盘交互。
 
-Button、Input、Checkbox、Switch、Menu、Modal、Tooltip、SegmentedControl 和图标直接重导出锁定的 DSH `ui-primitives`，不复制控件实现。DSH 发行包未声明完整浏览器依赖，本包精确补齐其依赖闭包。`Select` 组合原版 Menu 和 Button；Textarea、Notice、页面和设置分组是 DSH 暂无的少量组合。
+页面使用 CSS Modules，可从 `./theme.css` 导入主题。`./widgets` 为宿主与开发工具共用的小组件 renderer。页面打包自身的 React、SDK 和 UI；小组件只接收 JSON，不执行插件页面代码。
 
-```tsx
-import { Button, Modal, Input } from "@semicoder/fn-ui";
-// Modal 负责 portal、焦点、Escape 和清理；表单按钮须显式 type="submit"。
-<Modal open={open} onClose={close} title="编辑" closeLabel="关闭">
-  <Input data-modal-autofocus aria-label="名称" />
-  <Button variant="primary" onClick={save}>保存</Button>
-</Modal>
-```
+本分支使用与 SDK 同批的摘要归档。开发、明暗主题、中英、窄窗、焦点恢复和减少动态效果均为交付检查项。
 
-插件声明 `@semicoder/fn-ui: 0.0.0` peer，通过 fn SDK 构建时保持 external。不要将 UI 或 React 打入插件。基础主题仅由 `fn-ui-base` 加载一次，插件使用 CSS Modules 和 `--dsw-alias-*` / `--dsw-specific-*` 语义变量。不要写全局 button/input/select 样式或直接修改 body 主题。
-
-`theme.css` 引用 `upstream/` 的原样资源；公开 DSH 主题包没有独立 CSS 导出，所以资源固定到 `manifest.json` 中的来源 commit、文件 SHA-256 和 MIT 许可证。升级时显式从相应 Git SHA 更新清单和文件，运行 `bun scripts/upstream/ui-theme.ts [reference-checkout]` 验证；禁止从编译 JS 中提取 CSS。控件版本与主题来源须同时复核。
-
-fn 通过 `fn-ui-theme` 只设置 body 的 `data-ds-dark-theme`，保留浅色、深色、跟随系统与 FIA 标题栏同步；不提供预设配色、自定义颜色或语义 token 覆盖。不要设置 DSH Electron 专用的 `html[data-platform=darwin]`：FIA 使用 WebKit，普通网页菜单材质适用于本宿主。
-
-共享主题包含原版 `gradient-shadow-text.css`，提供菜单背景模糊、浮层阴影和字体变量；仅加载颜色表会使半透明菜单失去层次。`styles:check` 同时核对主题资源实际导入，以及导出控件 CSS 所需的主题变量，避免遗漏上游样式依赖。
-
-源码规则运行 `bun run styles:check`；新增控件须覆盖键盘、焦点返回、深浅主题、窄窗口及插件卸载。源码规则约束官方插件，不是可信本地第三方插件的安全沙箱。
+配色统一定义于 `src/theme.css` 的 `--fn-*` 语义变量，参考 DeepSeek Harness 的原版明暗配色：白色/近黑底色、中性主按钮、蓝色焦点与强调色。宿主和插件页面均从 Fn UI 导入主题；页面只消费变量，不重定义全局主题。Fn UI 不依赖 dsh 包。

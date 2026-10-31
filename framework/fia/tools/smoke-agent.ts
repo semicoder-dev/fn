@@ -16,24 +16,30 @@ export async function smokeAgent(config: ResolvedFIAConfig, app: string) {
   };
   const host = resolve(app, "Contents/MacOS/FIAHost");
   const run = async (args: string[], executable = host) => {
-    const child = Bun.spawn([executable, ...(executable === host ? ["--cli"] : []), ...args], {
-      env,
-      cwd: root,
-      stdout: "pipe",
-      stderr: "pipe",
-    });
+    const child = Bun.spawn(
+      [executable, ...(executable === host ? ["--cli"] : []), ...args],
+      {
+        env,
+        cwd: root,
+        stdout: "pipe",
+        stderr: "pipe",
+      },
+    );
     const [stdout, stderr, exitCode] = await Promise.all([
       new Response(child.stdout).text(),
       new Response(child.stderr).text(),
       child.exited,
     ]);
-    if (exitCode !== 0) throw new Error(`Agent CLI failed (${exitCode}): ${stderr}`);
+    if (exitCode !== 0)
+      throw new Error(`Agent CLI failed (${exitCode}): ${stderr}`);
     return stdout;
   };
   let quit = false;
   try {
     const cold = await Promise.all(
-      Array.from({ length: 3 }, () => run(["call", "counter.get", "--json", "{}"])),
+      Array.from({ length: 3 }, () =>
+        run(["call", "counter.get", "--json", "{}"]),
+      ),
     );
     if (!cold.every((value) => JSON.parse(value).value === 0))
       throw new Error("Cold CLI calls did not share the application state");
@@ -53,45 +59,64 @@ export async function smokeAgent(config: ResolvedFIAConfig, app: string) {
       );
       await waitUntil(
         async () =>
-          (await Bun.file(resolve(control, "desktop-verified")).exists()) ? true : undefined,
+          (await Bun.file(resolve(control, "desktop-verified")).exists())
+            ? true
+            : undefined,
         300000,
         "Desktop verification",
       );
     }
     await Promise.all(
-      Array.from({ length: 5 }, () => run(["call", "counter.increment", "--json", '{"by":1}'])),
+      Array.from({ length: 5 }, () =>
+        run(["call", "counter.increment", "--json", '{"by":1}']),
+      ),
     );
-    if (JSON.parse(await run(["call", "counter.get", "--json", "{}"])).value !== 5)
+    if (
+      JSON.parse(await run(["call", "counter.get", "--json", "{}"])).value !== 5
+    )
       throw new Error("Concurrent counter writes were lost");
     await run(["call", "counter.increment", "--json", '{"by":-5}']);
-    const changed = JSON.parse(await run(["call", "counter.increment", "--json", '{"by":2}']));
+    const changed = JSON.parse(
+      await run(["call", "counter.increment", "--json", '{"by":2}']),
+    );
     if (changed.value !== 2) throw new Error("CLI counter change failed");
     const script = await run([
       "exec",
       "-e",
       'const n: number = (await app.call("counter.increment", {by:3})).value; console.log(n);',
     ]);
-    if (script.trim() !== "5") throw new Error("Packaged TypeScript SDK did not use shared state");
-    const installation = JSON.parse(await run(["install", "--dir", resolve(root, "bin")]));
+    if (script.trim() !== "5")
+      throw new Error("Packaged TypeScript SDK did not use shared state");
+    const installation = JSON.parse(
+      await run(["install", "--dir", resolve(root, "bin")]),
+    );
     const installed = JSON.parse(
       await run(["call", "counter.get", "--json", "{}"], installation.path),
     );
     if (installed.value !== 5)
       throw new Error("Installed command is not using the application runtime");
-    const skill = JSON.parse(await run(["skill", "install", "--dir", resolve(root, "skills")]));
-    if (!(await readFile(resolve(skill.path, "SKILL.md"), "utf8")).includes(config.agent.command))
+    const skill = JSON.parse(
+      await run(["skill", "install", "--dir", resolve(root, "skills")]),
+    );
+    if (
+      !(await readFile(resolve(skill.path, "SKILL.md"), "utf8")).includes(
+        config.agent.command,
+      )
+    )
       throw new Error("Installed skill is incomplete");
     const signature = await defaultRunner(
       ["/usr/bin/codesign", "--verify", "--deep", "--strict", app],
       { cwd: root },
     );
-    if (signature.exitCode) throw new Error("CLI installation changed the signed bundle");
+    if (signature.exitCode)
+      throw new Error("CLI installation changed the signed bundle");
     await run(["open"]);
     await waitUntil(
       async () => {
         const state = await readInspection(control);
-        return (state?.visibleWindows as string[] | undefined)?.includes("main") &&
-          state?.pid === hidden.pid
+        return (state?.visibleWindows as string[] | undefined)?.includes(
+          "main",
+        ) && state?.pid === hidden.pid
           ? true
           : undefined;
       },

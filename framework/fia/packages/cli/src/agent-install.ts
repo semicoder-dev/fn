@@ -50,7 +50,8 @@ export async function manageCLI(
     return { path, installed: false };
   }
   await mkdir(directory, { recursive: true });
-  if (existing === undefined) await writeFile(path, expected, { mode: 0o755, flag: "wx" });
+  if (existing === undefined)
+    await writeFile(path, expected, { mode: 0o755, flag: "wx" });
   else {
     const temporary = path + ".fia-" + crypto.randomUUID();
     await writeFile(temporary, expected, { mode: 0o755, flag: "wx" });

@@ -16,7 +16,10 @@ test("browser transport ends authorization on a stopped backend but preserves ca
   };
   const controller = {
     scriptURL: origin + "/_fia/browser/worker.js?generation=test",
-    postMessage(_: unknown, ports: Array<{ postMessage(value: unknown): void }>) {
+    postMessage(
+      _: unknown,
+      ports: Array<{ postMessage(value: unknown): void }>,
+    ) {
       ports[0]!.postMessage({ ok: true });
     },
   };
@@ -35,7 +38,14 @@ test("browser transport ends authorization on a stopped backend but preserves ca
     Headers,
     setTimeout,
     clearTimeout,
-    navigator: { serviceWorker: { controller, register: async () => ({}), addEventListener() {} } },
+    navigator: {
+      language: "en",
+      serviceWorker: {
+        controller,
+        register: async () => ({}),
+        addEventListener() {},
+      },
+    },
     sessionStorage: {
       getItem: () => stored,
       setItem: (_: string, value: string) => {
@@ -46,10 +56,16 @@ test("browser transport ends authorization on a stopped backend but preserves ca
       },
     },
     MessageChannel: class {
-      port1 = { onmessage: undefined as undefined | ((event: any) => void), close() {} };
-      port2 = { postMessage: (data: unknown) => this.port1.onmessage!({ data }) };
+      port1 = {
+        onmessage: undefined as undefined | ((event: any) => void),
+        close() {},
+      };
+      port2 = {
+        postMessage: (data: unknown) => this.port1.onmessage!({ data }),
+      };
     },
     document: {
+      documentElement: { lang: "en" },
       body: {
         append() {
           notices++;
@@ -64,7 +80,9 @@ test("browser transport ends authorization on a stopped backend but preserves ca
   const abort = new AbortController();
   abort.abort();
   stopped = true;
-  await expect(bridge.request("/_fia/api/call", { signal: abort.signal })).rejects.toThrow();
+  await expect(
+    bridge.request("/_fia/api/call", { signal: abort.signal }),
+  ).rejects.toThrow();
   expect(bridge.ended()).toBe(false);
   expect(stored).not.toBeNull();
   let ended = 0;
@@ -74,6 +92,8 @@ test("browser transport ends authorization on a stopped backend but preserves ca
   expect(stored).toBeNull();
   expect(notices).toBe(1);
   expect(ended).toBe(1);
-  await expect(bridge.request("/_fia/api/events")).rejects.toThrow("authorization ended");
+  await expect(bridge.request("/_fia/api/events")).rejects.toThrow(
+    "authorization ended",
+  );
   expect(notices).toBe(1);
 });

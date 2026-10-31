@@ -19,7 +19,11 @@ import { createAPIClient, readLines, readResult } from "../src/api-client.ts";
 import { agentFetch, connectAgent } from "../src/agent-cli.ts";
 import { startAgentServer, type AgentRecord } from "../src/agent-server.ts";
 import { installSkill, manageCLI } from "../src/agent-install.ts";
-import { defineBackend, type BackendNativeClient, type InitializeFrame } from "../src/backend.ts";
+import {
+  defineBackend,
+  type BackendNativeClient,
+  type InitializeFrame,
+} from "../src/backend.ts";
 import { createGateway } from "../src/gateway.ts";
 
 const cleanup: Array<() => Promise<void>> = [];
@@ -28,14 +32,26 @@ afterEach(async () => {
 });
 const contract = defineAPI({
   methods: {
-    "counter.get": { description: "Read", input: z.strictObject({}), output: z.number() },
+    "counter.get": {
+      description: "Read",
+      input: z.strictObject({}),
+      output: z.number(),
+    },
     "counter.add": {
       description: "Add",
       input: z.strictObject({ by: z.number() }),
       output: z.number(),
     },
-    "bad.output": { description: "Invalid output", input: z.strictObject({}), output: z.number() },
-    wait: { description: "Wait for cancellation", input: z.strictObject({}), output: z.null() },
+    "bad.output": {
+      description: "Invalid output",
+      input: z.strictObject({}),
+      output: z.number(),
+    },
+    wait: {
+      description: "Wait for cancellation",
+      input: z.strictObject({}),
+      output: z.null(),
+    },
   },
   events: {
     "counter.changed": { description: "Changed", payload: z.number() },
@@ -67,7 +83,9 @@ else { console.log(JSON.stringify({args:process.argv.slice(2),cwd:process.cwd(),
       resolve(directory, "../metadata.json"),
       JSON.stringify({
         description: "Commands fixture",
-        commands: { probe: { description: "Probe command", entry: "commands/probe.js" } },
+        commands: {
+          probe: { description: "Probe command", entry: "commands/probe.js" },
+        },
       }),
     );
   }
@@ -202,7 +220,10 @@ else { console.log(JSON.stringify({args:process.argv.slice(2),cwd:process.cwd(),
     aborted: () => aborted,
   };
 }
-async function until(predicate: () => boolean | Promise<boolean>, timeout = 4000) {
+async function until(
+  predicate: () => boolean | Promise<boolean>,
+  timeout = 4000,
+) {
   const end = Date.now() + timeout;
   while (!(await predicate())) {
     if (Date.now() > end) throw new Error("Condition timed out");
@@ -212,13 +233,22 @@ async function until(predicate: () => boolean | Promise<boolean>, timeout = 4000
 
 test("API contract rejects non-JSON schemas and missing handlers", () => {
   expect(() =>
-    defineAPI({ methods: { bad: { description: "bad", input: z.date(), output: z.string() } } }),
+    defineAPI({
+      methods: {
+        bad: { description: "bad", input: z.date(), output: z.string() },
+      },
+    }),
   ).toThrow();
   expect(() => implementAPI(contract, {} as never)).toThrow();
 });
 test("authenticated browser and CLI share one dispatcher, state and source context", async () => {
   const f = await fixture();
-  const gateway = createGateway(defineBackend({}), f.api.context, f.init, f.api);
+  const gateway = createGateway(
+    defineBackend({}),
+    f.api.context,
+    f.init,
+    f.api,
+  );
   gateway.ready = true;
   const server = Bun.serve({
     hostname: "127.0.0.1",
@@ -231,7 +261,9 @@ test("authenticated browser and CLI share one dispatcher, state and source conte
   });
   const origin = "http://127.0.0.1:" + server.port;
   gateway.origin = origin;
-  const { token } = await (await exchangeBrowser(origin, gateway.issueBrowserURL())).json();
+  const { token } = await (
+    await exchangeBrowser(origin, gateway.issueBrowserURL())
+  ).json();
   const call = (method: string, input: unknown, cookie = true) =>
     fetch(origin + "/_fia/api/call", {
       method: "POST",
@@ -261,7 +293,9 @@ test("authenticated browser and CLI share one dispatcher, state and source conte
 test("shared API validates both directions, streams changes and protects local credentials", async () => {
   const f = await fixture();
   expect((await lstat(f.record.socket)).mode & 0o777).toBe(0o600);
-  expect((await fetch("http://localhost/schema", { unix: f.record.socket })).status).toBe(401);
+  expect(
+    (await fetch("http://localhost/schema", { unix: f.record.socket })).status,
+  ).toBe(401);
   const abort = new AbortController();
   const events = readLines(await f.send("/events", { signal: abort.signal }));
   expect((await events.next()).value?.type).toBe("ready");
@@ -273,16 +307,22 @@ test("shared API validates both directions, streams changes and protects local c
   });
   abort.abort();
   await events.return(undefined);
-  await expect(f.client.call("counter.add", { by: "bad" } as never)).rejects.toMatchObject({
+  await expect(
+    f.client.call("counter.add", { by: "bad" } as never),
+  ).rejects.toMatchObject({
     code: "invalid_argument",
   });
-  await expect(f.client.call("bad.output", {})).rejects.toMatchObject({ code: "invalid_output" });
+  await expect(f.client.call("bad.output", {})).rejects.toMatchObject({
+    code: "invalid_output",
+  });
   expect(await f.client.call("counter.get", {})).toBe(2);
 });
 test("cancellation reaches handlers and updates reject active calls and scripts", async () => {
   const f = await fixture();
   const abort = new AbortController();
-  const pending = f.client.call("wait", {}, { signal: abort.signal }).catch((e) => e);
+  const pending = f.client
+    .call("wait", {}, { signal: abort.signal })
+    .catch((e) => e);
   await until(() => f.api.calls.size === 1);
   await expect(f.api.prepare()).rejects.toMatchObject({ code: "update_busy" });
   expect(f.api.updating).toBe(false);
@@ -290,7 +330,9 @@ test("cancellation reaches handlers and updates reject active calls and scripts"
   expect((await pending).code).toBe("cancelled");
   await until(f.aborted);
   const leaseAbort = new AbortController();
-  const lease = readLines(await f.send("/lease", { signal: leaseAbort.signal }));
+  const lease = readLines(
+    await f.send("/lease", { signal: leaseAbort.signal }),
+  );
   await lease.next();
   await expect(f.api.prepare()).rejects.toMatchObject({ code: "update_busy" });
   leaseAbort.abort();
@@ -301,7 +343,9 @@ test("cancellation reaches handlers and updates reject active calls and scripts"
   ).rejects.toMatchObject({ code: "update_busy" });
   await f.api.prepare();
   await f.server.publish();
-  await expect(readResult(await f.send("/schema"))).rejects.toMatchObject({ code: "updating" });
+  await expect(readResult(await f.send("/schema"))).rejects.toMatchObject({
+    code: "updating",
+  });
 });
 test("event reconnection asks clients to refresh, and uncertain calls are never replayed", async () => {
   const f = await fixture();
@@ -354,11 +398,17 @@ test("update admission also rejects requests whose bodies were still arriving", 
   await f.api.prepare();
   body.enqueue(
     new TextEncoder().encode(
-      JSON.stringify({ method: "counter.add", input: { by: 10 }, requestId: "late" }),
+      JSON.stringify({
+        method: "counter.add",
+        input: { by: 10 },
+        requestId: "late",
+      }),
     ),
   );
   body.close();
-  await expect(readResult(await response)).rejects.toMatchObject({ code: "updating" });
+  await expect(readResult(await response)).rejects.toMatchObject({
+    code: "updating",
+  });
   f.api.updating = false;
   expect(await f.client.call("counter.get", {})).toBe(0);
   await expect(
@@ -389,7 +439,13 @@ test("packaged CLI executes TypeScript, relative imports, JSONL and reports erro
   expect(file.stdout).toContain('"type":"complete"');
   expect(file.stdout).toContain("10\\n");
   expect((await f.cli(["exec", "-e", "const ="])).exitCode).not.toBe(0);
-  const timeout = await f.cli(["exec", "--timeout", "100", "-e", "while(true) {}"]);
+  const timeout = await f.cli([
+    "exec",
+    "--timeout",
+    "100",
+    "-e",
+    "while(true) {}",
+  ]);
   expect(timeout.exitCode).toBe(124);
   expect(timeout.stderr).toContain("timeout");
   const input = f.spawn(["exec"], "pipe");
@@ -427,7 +483,8 @@ test("Ctrl-C and application disconnect terminate independent script processes",
         }
       });
     } finally {
-      if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+      if (child.exitCode === null && child.signalCode === null)
+        child.kill("SIGKILL");
       if (pid) {
         try {
           process.kill(pid, "SIGKILL");
@@ -459,7 +516,8 @@ test("a killed CLI supervisor leaves no script or descendant processes", async (
     );
     await until(() => f.api.leases.size === 0);
   } finally {
-    if (supervisor.exitCode === null && supervisor.signalCode === null) supervisor.kill("SIGKILL");
+    if (supervisor.exitCode === null && supervisor.signalCode === null)
+      supervisor.kill("SIGKILL");
     for (const pid of pids) {
       try {
         process.kill(pid, "SIGKILL");
@@ -489,14 +547,25 @@ test("CLI and skill installation are explicit, repairable and never overwrite fo
   const assets = resolve(f.root, "assets/test-app");
   await mkdir(assets, { recursive: true });
   await writeFile(resolve(assets, "SKILL.md"), "version one");
-  await symlink(resolve(f.root, "assets"), resolve(f.supportPath, "Agent/current"));
+  await symlink(
+    resolve(f.root, "assets"),
+    resolve(f.supportPath, "Agent/current"),
+  );
   const skill = await installSkill(app, resolve(f.root, "skills"));
-  expect(await readFile(resolve(skill.path, "SKILL.md"), "utf8")).toBe("version one");
+  expect(await readFile(resolve(skill.path, "SKILL.md"), "utf8")).toBe(
+    "version one",
+  );
 });
 
 test("CLI event waits filter, count, time out quietly and preserve cancellation", async () => {
   const f = await fixture();
-  const timeout = await f.cli(["events", "counter.changed", "--jsonl", "--timeout", "25"]);
+  const timeout = await f.cli([
+    "events",
+    "counter.changed",
+    "--jsonl",
+    "--timeout",
+    "25",
+  ]);
   expect(timeout).toEqual({ stdout: "", stderr: "", exitCode: 124 });
   for (const args of [
     ["--count", "0"],
@@ -504,7 +573,9 @@ test("CLI event waits filter, count, time out quietly and preserve cancellation"
     ["--match", "[]"],
     ["--match", '{"x":{}}'],
   ])
-    expect((await f.cli(["events", "counter.changed", ...args])).exitCode).toBe(2);
+    expect((await f.cli(["events", "counter.changed", ...args])).exitCode).toBe(
+      2,
+    );
   const child = f.spawn([
     "events",
     "session.changed",
@@ -515,7 +586,9 @@ test("CLI event waits filter, count, time out quietly and preserve cancellation"
     "--match",
     '{"sessionId":"a","status":"idle"}',
   ]);
-  await until(() => (f.api as unknown as { streams: Set<unknown> }).streams.size === 1);
+  await until(
+    () => (f.api as unknown as { streams: Set<unknown> }).streams.size === 1,
+  );
   f.api.emit("session.changed", { sessionId: "b", status: "idle" });
   f.api.emit("session.changed", { sessionId: "a", status: "running" });
   f.api.emit("session.changed", { sessionId: "a", status: "idle" });
@@ -531,9 +604,13 @@ test("CLI event waits filter, count, time out quietly and preserve cancellation"
     { sessionId: "a", status: "idle" },
   ]);
   expect(await new Response(child.stderr).text()).toBe("");
-  await until(() => (f.api as unknown as { streams: Set<unknown> }).streams.size === 0);
+  await until(
+    () => (f.api as unknown as { streams: Set<unknown> }).streams.size === 0,
+  );
   const cancelled = f.spawn(["events", "counter.changed"]);
-  await until(() => (f.api as unknown as { streams: Set<unknown> }).streams.size === 1);
+  await until(
+    () => (f.api as unknown as { streams: Set<unknown> }).streams.size === 1,
+  );
   cancelled.kill("SIGINT");
   expect(await cancelled.exited).toBe(130);
   expect(await new Response(cancelled.stdout).text()).toBe("");
@@ -542,15 +619,24 @@ test("CLI event waits filter, count, time out quietly and preserve cancellation"
 
 test("browser URLs require the authenticated agent endpoint in every mode", async () => {
   const production = await fixture();
-  expect((await production.cli(["open", "--browser", "--url"])).exitCode).toBe(0);
+  expect((await production.cli(["open", "--browser", "--url"])).exitCode).toBe(
+    0,
+  );
   const dev = await fixture(true);
   const result = await dev.cli(["open", "--browser", "--url"]);
   expect(result.exitCode).toBe(0);
-  expect(result.stdout.trim()).toBe("http://127.0.0.1:5173/_fia/browser/open#test");
+  expect(result.stdout.trim()).toBe(
+    "http://127.0.0.1:5173/_fia/browser/open#test",
+  );
   expect(result.stderr).toBe("");
   expect((await dev.cli(["open", "--url"])).exitCode).toBe(2);
   expect(
-    (await fetch("http://localhost/browser", { unix: dev.record.socket, method: "POST" })).status,
+    (
+      await fetch("http://localhost/browser", {
+        unix: dev.record.socket,
+        method: "POST",
+      })
+    ).status,
   ).toBe(401);
 });
 

@@ -32,7 +32,10 @@ export interface APISchema {
       examples?: APIMethod["examples"];
     }
   >;
-  events: Record<string, { description: string; payload: Record<string, unknown> }>;
+  events: Record<
+    string,
+    { description: string; payload: Record<string, unknown> }
+  >;
 }
 export interface CallOptions {
   signal?: AbortSignal;
@@ -70,16 +73,24 @@ export type APIHandlers<C extends APIContract> = {
   [K in keyof C["methods"]]: (
     input: z.output<C["methods"][K]["input"]>,
     context: InvocationContext<C>,
-  ) => z.input<C["methods"][K]["output"]> | Promise<z.input<C["methods"][K]["output"]>>;
+  ) =>
+    | z.input<C["methods"][K]["output"]>
+    | Promise<z.input<C["methods"][K]["output"]>>;
 };
 export interface APIImplementation<C extends APIContract = APIContract> {
   contract: C;
-  handlers: Record<string, (input: never, context: InvocationContext) => unknown>;
+  handlers: Record<
+    string,
+    (input: never, context: InvocationContext) => unknown
+  >;
 }
 
 /** A live API composition. Registration owns its calls and its event namespace. */
 export class APIRegistry implements APIImplementation {
-  readonly contract: APIContract = { methods: Object.create(null), events: Object.create(null) };
+  readonly contract: APIContract = {
+    methods: Object.create(null),
+    events: Object.create(null),
+  };
   readonly handlers: APIImplementation["handlers"] = Object.create(null);
   private readonly owners = new Map<string, () => Promise<void>>();
   private readonly active = new Set<string>();
@@ -208,8 +219,14 @@ export function implementAPI<C extends APIContract>(
   contract: C,
   handlers: APIHandlers<C>,
 ): APIImplementation<C> {
-  for (const name of new Set([...Object.keys(contract.methods), ...Object.keys(handlers)])) {
-    if (!Object.hasOwn(contract.methods, name) || typeof handlers[name] !== "function")
+  for (const name of new Set([
+    ...Object.keys(contract.methods),
+    ...Object.keys(handlers),
+  ])) {
+    if (
+      !Object.hasOwn(contract.methods, name) ||
+      typeof handlers[name] !== "function"
+    )
       throw new TypeError("API handler mismatch: " + name);
   }
   return { contract, handlers: handlers as APIImplementation["handlers"] };
@@ -223,7 +240,11 @@ export function describeAPI(contract: APIContract): APISchema {
     )
       throw new TypeError("API names and descriptions are required: " + key);
   };
-  const schema = (value: z.ZodType, path: string, io: "input" | "output" = "output") => {
+  const schema = (
+    value: z.ZodType,
+    path: string,
+    io: "input" | "output" = "output",
+  ) => {
     try {
       return z.toJSONSchema(value, { io, unrepresentable: "throw" });
     } catch (error) {
@@ -243,7 +264,8 @@ export function describeAPI(contract: APIContract): APISchema {
         for (const example of method.examples ?? []) {
           assertJSON(example);
           method.input.parse(example.input);
-          if (Object.hasOwn(example, "output")) method.output.parse(example.output);
+          if (Object.hasOwn(example, "output"))
+            method.output.parse(example.output);
         }
         return [
           key,

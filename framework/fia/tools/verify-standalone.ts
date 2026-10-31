@@ -37,11 +37,20 @@ if (import.meta.main) {
   try {
     const framework = resolve(temporary, "framework");
     await exportFramework(framework);
-    await runInteractive([process.execPath, "install", "--ignore-scripts"], { cwd: framework });
-    await runInteractive([process.execPath, "tools/task.ts", "check"], { cwd: framework });
+    await runInteractive([process.execPath, "install", "--ignore-scripts"], {
+      cwd: framework,
+    });
+    await runInteractive([process.execPath, "tools/task.ts", "check"], {
+      cwd: framework,
+    });
     const archives = resolve(temporary, "archives");
-    await runInteractive([process.execPath, "tools/task.ts", "pack", archives], { cwd: framework });
-    const pkg = JSON.parse(await readFile(resolve(framework, "packages/cli/package.json"), "utf8"));
+    await runInteractive(
+      [process.execPath, "tools/task.ts", "pack", archives],
+      { cwd: framework },
+    );
+    const pkg = JSON.parse(
+      await readFile(resolve(framework, "packages/cli/package.json"), "utf8"),
+    );
     const consumers = resolve(temporary, "consumers");
     await mkdir(consumers);
     await runInteractive(
@@ -63,13 +72,20 @@ if (import.meta.main) {
     app.dependencies["@semicoder/fia"] =
       "file:" + resolve(archives, `semicoder-fia-${pkg.version}.tgz`);
     await writeFile(packagePath, JSON.stringify(app, null, 2) + "\n");
-    await runInteractive([process.execPath, "install", "--ignore-scripts"], { cwd: projectRoot });
+    await runInteractive([process.execPath, "install", "--ignore-scripts"], {
+      cwd: projectRoot,
+    });
     for (const command of ["check", "build", "smoke"]) {
-      await runInteractive([process.execPath, "node_modules/@semicoder/fia/bin/fia", command], {
-        cwd: projectRoot,
-      });
+      await runInteractive(
+        [process.execPath, "node_modules/@semicoder/fia/bin/fia", command],
+        {
+          cwd: projectRoot,
+        },
+      );
     }
-    console.log("framework: standalone source, archive and independent application passed");
+    console.log(
+      "framework: standalone source, archive and independent application passed",
+    );
   } catch (error) {
     console.error(error);
     process.exitCode = 1;

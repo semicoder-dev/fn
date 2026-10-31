@@ -10,7 +10,7 @@ GitHub 仓库：`semicoder-dev/fia`。npm 包：`@semicoder/fia`，源码在 `pa
 
 Swift 测试显式使用 `--no-parallel`：原生测试共享 NSApplication、菜单与系统快捷键，不能跨套件并行；发布检查须看到最终测试汇总，不能只依据进程退出码。
 
-0.18.0 新增每个原生网页窗口的标题栏置顶图标，默认项目自动包含；应用须用新 Host 完整重建。置顶只保留当前窗口生命周期，不跨应用重启。麻辣烫 0.4.0 已通过 `release/runtime-lock.json` 接入同一官方归档；旧 0.3.0 的固定 FIA 0.17.0 保留。
+0.18.0 新增每个原生网页窗口的标题栏置顶图标，默认项目自动包含；应用须用新 Host 完整重建。置顶只保留当前窗口生命周期，不跨应用重启。Fn 0.4.0 已通过 `release/runtime-lock.json` 接入同一官方归档；旧 0.3.0 的固定 FIA 0.17.0 保留。
 
 公开 npm latest 为 0.18.0，归档带 SLSA provenance（透明日志索引 3157989242）。公开 npm tarball、正式 Actions artifact 和 [GitHub Release 附件](https://github.com/potato47/fia/releases/tag/v0.18.0) 逐字节一致：28,412,479 字节，SHA-256 `faf196b9408cc2fa4b9edfb0145c592a9a87b6fbc0b0245ad6b89c6c0e7ff4e2`。Release 同时提供 `SHA256SUMS`，无需重新打包。
 
@@ -18,7 +18,7 @@ Swift 测试显式使用 `--no-parallel`：原生测试共享 NSApplication、�
 
 ## 0.17.0 发布记录（2026-10-09，历史）
 
-`@semicoder/fia@0.17.0` 已通过维护者 npm 认证发布，registry latest 为 0.17.0；公开归档与本地验收包逐字节一致，SHA-256 `521a07c387efa5b2c7ddbb76807b5c613b5b26cdf6e9c84fb965d27a5dd536b6`。源码和本地 `v0.17.0` 标签为 `4689c707913ca31f93b03cfe4deb61466c9e69f2`。同一归档保存于麻辣烫 [fia-runtime-4689c707913c](https://github.com/potato47/malatang/releases/tag/fia-runtime-4689c707913c)，匿名下载一致，不重打包。
+`@semicoder/fia@0.17.0` 已通过维护者 npm 认证发布，registry latest 为 0.17.0；公开归档与本地验收包逐字节一致，SHA-256 `521a07c387efa5b2c7ddbb76807b5c613b5b26cdf6e9c84fb965d27a5dd536b6`。源码和本地 `v0.17.0` 标签为 `4689c707913ca31f93b03cfe4deb61466c9e69f2`。同一归档保存于Fn [fia-runtime-4689c707913c](https://github.com/potato47/malatang/releases/tag/fia-runtime-4689c707913c)，匿名下载一致，不重打包。
 
 本次完成 runtime 构建、完整 check / smoke、归档结构与独立默认模板检查 / 构建；新增默认浏览器界面、短期会话、Native 权限白名单、文件对话框连接修复与 Dev / Preview 隔离，也包含此前固定归档的 DMG 和应用子命令能力。原生宿主变化需完整应用安装包升级。
 
@@ -66,7 +66,7 @@ git push origin v0.18.1
 推送 `v*` 标签后，GitHub Actions 会：
 
 1. 校验标签精确等于 `v<package.version>`，且五处版本一致。
-2. 在 `macos-26` Apple Silicon runner 使用固定 Bun `1.4.3`、Node `24` 和 Swift 工具链构建 Host 与 Bun 运行时。runner 架构再次检查为 `arm64`；macOS 最低运行版本仍由 `Package.swift` 声明为 14。
+2. 在 `macos-26` Apple Silicon runner 使用固定 Bun `1.4.4`、Node `24` 和 Swift 工具链构建 Host 与 Bun 运行时。runner 架构再次检查为 `arm64`；macOS 最低运行版本仍由 `Package.swift` 声明为 14。
 3. 使用冻结锁文件安装依赖，执行 `runtime:build` 和完整 `check`（lint、格式、TypeScript、CLI 测试、Swift 测试）。
 4. 执行 `npm pack`，解包并验证 CLI 版本、SDK 入口、类型、文档、模板资源、二进制架构 / 校验和 / 可执行权限。构建不能改动受 Git 跟踪的文件。
 5. 将验证后的 `.tgz` 保存为 Actions artifact，保留 14 天；独立 Linux job 下载同一归档，以 npm `11.19.0` 和 OIDC 发布，不再构建或执行包生命周期脚本。

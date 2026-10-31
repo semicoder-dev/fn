@@ -1,7 +1,0 @@
-{
-  "bundles": ["./bundles/kernel.json", "./bundles/desktop.json"],
-  "patches": {
-    "plugins": [],
-    "client": []
-  }
-}

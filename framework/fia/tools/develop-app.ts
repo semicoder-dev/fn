@@ -7,15 +7,24 @@ import { parseDevelopmentOptions } from "../packages/cli/src/development-options
 export async function developmentInputs(projectRoot: string) {
   const workspace = await findWorkspace();
   return {
-    build: await fingerprint(repositoryRoot, [...new Set([...nativeInputs, ...cliInputs])]),
+    build: await fingerprint(repositoryRoot, [
+      ...new Set([...nativeInputs, ...cliInputs]),
+    ]),
     control:
-      (await fingerprint(repositoryRoot, ["tools", "package.json", "packages/cli/package.json"])) +
+      (await fingerprint(repositoryRoot, [
+        "tools",
+        "package.json",
+        "packages/cli/package.json",
+      ])) +
       (await fingerprint(workspace.root, ["bun.lock", "package.json"])) +
       (await fingerprint(projectRoot, ["package.json"])),
   };
 }
 
-export async function stopDevelopmentChild(child: Bun.Subprocess, graceMilliseconds = 30_000) {
+export async function stopDevelopmentChild(
+  child: Bun.Subprocess,
+  graceMilliseconds = 30_000,
+) {
   if (child.exitCode !== null || child.signalCode !== null) return;
   child.kill("SIGTERM");
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -44,7 +53,9 @@ export async function developApplication(projectRoot: string, args: string[]) {
   parseDevelopmentOptions(args);
   const frameworkPath = relative(projectRoot, repositoryRoot);
   const ignore =
-    frameworkPath && !frameworkPath.startsWith("..") && !isAbsolute(frameworkPath)
+    frameworkPath &&
+    !frameworkPath.startsWith("..") &&
+    !isAbsolute(frameworkPath)
       ? ["--watch-ignore", frameworkPath]
       : [];
   let stopped = false;
@@ -91,7 +102,11 @@ export async function developApplication(projectRoot: string, args: string[]) {
         await Bun.sleep(250);
         if (stopped) break;
         const settled = await developmentInputs(projectRoot);
-        if (settled.build !== input.build || settled.control !== initial.control) continue;
+        if (
+          settled.build !== input.build ||
+          settled.control !== initial.control
+        )
+          continue;
         if (child) {
           await stopDevelopmentChild(child);
           child = undefined;
@@ -108,11 +123,17 @@ export async function developApplication(projectRoot: string, args: string[]) {
         child = undefined;
         if (stopped) break;
         const latest = await developmentInputs(projectRoot);
-        if (latest.build !== input.build || latest.control !== initial.control || code === 75)
+        if (
+          latest.build !== input.build ||
+          latest.control !== initial.control ||
+          code === 75
+        )
           continue;
         if (code !== 0) {
           failed = input.build;
-          console.error("framework: build failed; Dev is stopped. Fix framework sources to retry");
+          console.error(
+            "framework: build failed; Dev is stopped. Fix framework sources to retry",
+          );
           continue;
         }
         failed = undefined;

@@ -6,7 +6,11 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { createGateway } from "../src/gateway.ts";
-import { defineBackend, type BackendNativeClient, type InitializeFrame } from "../src/backend.ts";
+import {
+  defineBackend,
+  type BackendNativeClient,
+  type InitializeFrame,
+} from "../src/backend.ts";
 
 const cleanup: Array<() => Promise<void>> = [];
 afterEach(async () => {
@@ -47,7 +51,10 @@ async function fixture(development = false) {
       timeouts.push(options?.timeoutMs);
       if (method === "resources.resolve")
         return {
-          path: resolve(directory, "resources/12345678-1234-1234-1234-123456789abc"),
+          path: resolve(
+            directory,
+            "resources/12345678-1234-1234-1234-123456789abc",
+          ),
           contentType: "application/octet-stream",
         };
       if (method === "wait")
@@ -69,11 +76,20 @@ async function fixture(development = false) {
       callbacks: {
         "/oauth/callback": (req) =>
           new Response(
-            new URL(req.url).searchParams.get("state") === "expected" ? "accepted" : "invalid",
-            { status: new URL(req.url).searchParams.get("state") === "expected" ? 200 : 400 },
+            new URL(req.url).searchParams.get("state") === "expected"
+              ? "accepted"
+              : "invalid",
+            {
+              status:
+                new URL(req.url).searchParams.get("state") === "expected"
+                  ? 200
+                  : 400,
+            },
           ),
       },
-      routes: { "/hello/:name": (req) => Response.json({ name: req.params.name }) },
+      routes: {
+        "/hello/:name": (req) => Response.json({ name: req.params.name }),
+      },
       fetch: (req, server) => {
         if (
           new URL(req.url).pathname === "/socket" &&
@@ -86,7 +102,9 @@ async function fixture(development = false) {
               start(controller) {
                 controller.enqueue(new TextEncoder().encode("data: first\n\n"));
                 const timer = setTimeout(() => {
-                  controller.enqueue(new TextEncoder().encode("data: second\n\n"));
+                  controller.enqueue(
+                    new TextEncoder().encode("data: second\n\n"),
+                  );
                   controller.close();
                 }, 31_000);
                 req.signal.addEventListener("abort", () => {
@@ -169,7 +187,10 @@ function next(ws: WebSocket): Promise<string> {
 
 test("native gateway lets keychain and file dialogs wait without removing ordinary request deadlines", async () => {
   const f = await fixture();
-  const ws = await socket(f.origin.replace("http:", "ws:") + "/_fia/native", f.headers);
+  const ws = await socket(
+    f.origin.replace("http:", "ws:") + "/_fia/native",
+    f.headers,
+  );
   try {
     for (const [id, method] of [
       "keychain.get",
@@ -180,7 +201,15 @@ test("native gateway lets keychain and file dialogs wait without removing ordina
       "clipboard.readText",
     ].entries()) {
       const response = next(ws);
-      ws.send(JSON.stringify({ v: 1, type: "request", id: id + 1, method, params: {} }));
+      ws.send(
+        JSON.stringify({
+          v: 1,
+          type: "request",
+          id: id + 1,
+          method,
+          params: {},
+        }),
+      );
       await response;
     }
     expect(f.timeouts).toEqual([0, 0, 0, 0, 0, 30_000]);
@@ -204,9 +233,15 @@ test("one-time bootstrap, scoped authentication and real HTTP routes", async () 
   const bootstrap = f.origin + "/_fia/bootstrap?" + query;
   const first = await fetch(bootstrap, { redirect: "manual" });
   expect(first.status).toBe(302);
-  expect(first.headers.get("set-cookie")).toContain("HttpOnly; SameSite=Strict");
+  expect(first.headers.get("set-cookie")).toContain(
+    "HttpOnly; SameSite=Strict",
+  );
   expect((await fetch(bootstrap, { redirect: "manual" })).status).toBe(403);
-  expect(await (await fetch(f.origin + "/api/hello/FIA", { headers: f.headers })).json()).toEqual({
+  expect(
+    await (
+      await fetch(f.origin + "/api/hello/FIA", { headers: f.headers })
+    ).json(),
+  ).toEqual({
     name: "FIA",
   });
   expect(
@@ -221,27 +256,41 @@ test("one-time bootstrap, scoped authentication and real HTTP routes", async () 
 test("external callbacks are exact GET routes without granting an application session", async () => {
   const f = await fixture();
   const url = f.origin + "/api/oauth/callback?state=expected";
-  const accepted = await fetch(url, { headers: { "sec-fetch-site": "cross-site" } });
+  const accepted = await fetch(url, {
+    headers: { "sec-fetch-site": "cross-site" },
+  });
   expect(accepted.status).toBe(200);
   expect(await accepted.text()).toBe("accepted");
   expect(accepted.headers.get("set-cookie")).toBeNull();
   expect(accepted.headers.get("cache-control")).toBe("no-store");
   expect(accepted.headers.get("referrer-policy")).toBe("no-referrer");
-  expect(accepted.headers.get("content-security-policy")).toContain("frame-ancestors 'none'");
-  expect((await fetch(f.origin + "/api/oauth/callback?state=wrong")).status).toBe(400);
+  expect(accepted.headers.get("content-security-policy")).toContain(
+    "frame-ancestors 'none'",
+  );
+  expect(
+    (await fetch(f.origin + "/api/oauth/callback?state=wrong")).status,
+  ).toBe(400);
   expect((await fetch(url, { method: "POST" })).status).toBe(405);
   expect(
-    (await f.gateway.fetch(new Request(url, { headers: { upgrade: "websocket" } }), f.server))
-      ?.status,
+    (
+      await f.gateway.fetch(
+        new Request(url, { headers: { upgrade: "websocket" } }),
+        f.server,
+      )
+    )?.status,
   ).toBe(400);
-  expect((await fetch(f.origin + "/api/oauth/callback/extra")).status).toBe(401);
+  expect((await fetch(f.origin + "/api/oauth/callback/extra")).status).toBe(
+    401,
+  );
   expect((await fetch(f.origin + "/api/hello/FIA")).status).toBe(401);
   expect((await fetch(f.origin + "/_fia/health")).status).toBe(401);
   expect(
     (
       await f.gateway.fetch(
         new Request(
-          "http://attacker.example:" + f.server.port + "/api/oauth/callback?state=expected",
+          "http://attacker.example:" +
+            f.server.port +
+            "/api/oauth/callback?state=expected",
         ),
         f.server,
       )
@@ -264,7 +313,9 @@ test("external callbacks are exact GET routes without granting an application se
   ]) {
     expect(() =>
       createGateway(
-        defineBackend({ http: { callbacks: { [path]: () => new Response("no") } } }),
+        defineBackend({
+          http: { callbacks: { [path]: () => new Response("no") } },
+        }),
         {
           native: { on: () => () => {} } as unknown as BackendNativeClient,
           app: {
@@ -282,26 +333,57 @@ test("external callbacks are exact GET routes without granting an application se
 
 test("native and business WebSockets coexist, support cancellation and native events", async () => {
   const f = await fixture();
-  const ws = await socket(f.origin.replace("http:", "ws:") + "/_fia/native", f.headers);
+  const ws = await socket(
+    f.origin.replace("http:", "ws:") + "/_fia/native",
+    f.headers,
+  );
   let reply = next(ws);
-  ws.send(JSON.stringify({ v: 1, type: "request", id: 1, method: "echo", params: [true, null] }));
+  ws.send(
+    JSON.stringify({
+      v: 1,
+      type: "request",
+      id: 1,
+      method: "echo",
+      params: [true, null],
+    }),
+  );
   expect(JSON.parse(await reply).result).toEqual([true, null]);
   reply = next(ws);
-  f.listeners.get("windows.titlebarAction")?.({ windowId: "main", itemId: "copy" });
+  f.listeners.get("windows.titlebarAction")?.({
+    windowId: "main",
+    itemId: "copy",
+  });
   expect(JSON.parse(await reply).event).toBe("windows.titlebarAction");
   reply = next(ws);
-  ws.send(JSON.stringify({ v: 1, type: "request", id: 2, method: "wait", params: {} }));
+  ws.send(
+    JSON.stringify({
+      v: 1,
+      type: "request",
+      id: 2,
+      method: "wait",
+      params: {},
+    }),
+  );
   await Bun.sleep(20);
   ws.send(JSON.stringify({ v: 1, type: "cancel", id: 2 }));
   expect(JSON.parse(await reply).error).toBeDefined();
   expect(f.aborted()).toBe(true);
   reply = next(ws);
   ws.send(
-    JSON.stringify({ v: 1, type: "request", id: 3, method: "resources.resolve", params: {} }),
+    JSON.stringify({
+      v: 1,
+      type: "request",
+      id: 3,
+      method: "resources.resolve",
+      params: {},
+    }),
   );
   expect(JSON.parse(await reply).error).toBeDefined();
   expect(f.calls).not.toContain("resources.resolve");
-  const business = await socket(f.origin.replace("http:", "ws:") + "/api/socket", f.headers);
+  const business = await socket(
+    f.origin.replace("http:", "ws:") + "/api/socket",
+    f.headers,
+  );
   const echoed = next(business);
   business.send("standard websocket");
   expect(await echoed).toBe("standard websocket");
@@ -315,11 +397,17 @@ test("native resource delivery and static routes cannot escape their roots", asy
   const bytes = new Uint8Array(2 * 1024 * 1024).fill(42);
   await writeFile(resolve(f.directory, "resources", id), bytes);
   expect(
-    (await (await fetch(f.origin + "/_fia/resources/" + id, { headers: f.headers })).arrayBuffer())
-      .byteLength,
+    (
+      await (
+        await fetch(f.origin + "/_fia/resources/" + id, { headers: f.headers })
+      ).arrayBuffer()
+    ).byteLength,
   ).toBe(bytes.byteLength);
   await writeFile(resolve(f.directory, "secret.txt"), "secret");
-  await symlink(resolve(f.directory, "secret.txt"), resolve(f.directory, "web/leak.txt"));
+  await symlink(
+    resolve(f.directory, "secret.txt"),
+    resolve(f.directory, "web/leak.txt"),
+  );
   expect((await fetch(f.origin + "/leak.txt")).status).toBe(404);
   expect(
     (
@@ -335,11 +423,17 @@ test("native resource delivery and static routes cannot escape their roots", asy
 test("SSE delivers the first chunk immediately and survives more than 30 seconds", async () => {
   const f = await fixture();
   const start = Date.now();
-  const response = await fetch(f.origin + "/api/stream", { headers: f.headers });
+  const response = await fetch(f.origin + "/api/stream", {
+    headers: f.headers,
+  });
   const reader = response.body!.getReader();
-  expect(new TextDecoder().decode((await reader.read()).value)).toContain("first");
+  expect(new TextDecoder().decode((await reader.read()).value)).toContain(
+    "first",
+  );
   expect(Date.now() - start).toBeLessThan(3000);
-  expect(new TextDecoder().decode((await reader.read()).value)).toContain("second");
+  expect(new TextDecoder().decode((await reader.read()).value)).toContain(
+    "second",
+  );
   expect((await reader.read()).done).toBe(true);
 }, 35_000);
 
@@ -368,13 +462,22 @@ test("browser tickets work in production and development, expire and cannot mark
     expect(session.route).toContain("/page?q=one");
     expect(session.token).not.toBe(f.init.sessionSecret);
     expect((await exchangeBrowser(f.origin, issued)).status).toBe(403);
-    const headers = { authorization: "Bearer " + session.token, origin: new URL(issued).origin };
-    expect((await fetch(f.origin + "/api/hello/browser", { headers })).status).toBe(200);
+    const headers = {
+      authorization: "Bearer " + session.token,
+      origin: new URL(issued).origin,
+    };
+    expect(
+      (await fetch(f.origin + "/api/hello/browser", { headers })).status,
+    ).toBe(200);
     for (const browser of [true, false, undefined]) {
       const ready = await fetch(f.origin + "/_fia/ready", {
         method: "POST",
         headers: { ...headers, "content-type": "application/json" },
-        body: JSON.stringify({ browser, windowId: "main", generation: f.init.generation }),
+        body: JSON.stringify({
+          browser,
+          windowId: "main",
+          generation: f.init.generation,
+        }),
       });
       expect(ready.status).toBe(200);
     }
@@ -395,15 +498,21 @@ test("browser tickets work in production and development, expire and cannot mark
       Date.now = originalNow;
     }
     const other = await fixture(development);
-    expect((await exchangeBrowser(other.origin, f.gateway.issueBrowserURL())).status).toBe(403);
+    expect(
+      (await exchangeBrowser(other.origin, f.gateway.issueBrowserURL())).status,
+    ).toBe(403);
     f.gateway.revokeBrowsers();
-    expect((await fetch(f.origin + "/api/hello/browser", { headers })).status).toBe(401);
+    expect(
+      (await fetch(f.origin + "/api/hello/browser", { headers })).status,
+    ).toBe(401);
   }
 });
 
 test("browser and native credentials cannot access host controls or bypass origin checks", async () => {
   const f = await fixture();
-  const { token } = await (await exchangeBrowser(f.origin, f.gateway.issueBrowserURL())).json();
+  const { token } = await (
+    await exchangeBrowser(f.origin, f.gateway.issueBrowserURL())
+  ).json();
   const headers = { authorization: "Bearer " + token, origin: f.origin };
   for (const route of [
     "/api/hello/x",
@@ -412,38 +521,53 @@ test("browser and native credentials cannot access host controls or bypass origi
   ]) {
     expect((await fetch(f.origin + route)).status).toBe(401);
     expect(
-      (await fetch(f.origin + route, { headers: { origin: f.origin, "user-agent": "Safari" } }))
-        .status,
+      (
+        await fetch(f.origin + route, {
+          headers: { origin: f.origin, "user-agent": "Safari" },
+        })
+      ).status,
     ).toBe(401);
     expect(
       (
         await fetch(f.origin + route, {
           headers: {
-            cookie: "fia_" + f.init.sessionSecret.slice(0, 12) + "=" + f.init.sessionSecret,
+            cookie:
+              "fia_" +
+              f.init.sessionSecret.slice(0, 12) +
+              "=" +
+              f.init.sessionSecret,
           },
         })
       ).status,
     ).toBe(401);
     expect(
-      (await fetch(f.origin + route, { headers: { ...headers, origin: "http://127.0.0.1:1" } }))
-        .status,
+      (
+        await fetch(f.origin + route, {
+          headers: { ...headers, origin: "http://127.0.0.1:1" },
+        })
+      ).status,
     ).toBe(401);
     expect(
-      (await fetch(f.origin + route, { headers: { ...headers, "sec-fetch-site": "cross-site" } }))
-        .status,
+      (
+        await fetch(f.origin + route, {
+          headers: { ...headers, "sec-fetch-site": "cross-site" },
+        })
+      ).status,
     ).toBe(401);
-    const forgedHost = await new Promise<number | undefined>((resolve, reject) => {
-      const request = httpRequest(
-        f.origin + route,
-        { headers: { ...headers, host: "attacker.example" } },
-        (response) => {
-          response.resume();
-          resolve(response.statusCode);
-        },
-      );
-      request.on("error", reject);
-      request.end();
-    });
+    const forgedHost = await new Promise<number | undefined>(
+      (resolve, reject) => {
+        const request = httpRequest(
+          f.origin + route,
+          { headers: { ...headers, host: "attacker.example" } },
+          (response) => {
+            response.resume();
+            resolve(response.statusCode);
+          },
+        );
+        request.on("error", reject);
+        request.end();
+      },
+    );
     expect(forgedHost).toBe(403);
     expect(
       (
@@ -454,9 +578,19 @@ test("browser and native credentials cannot access host controls or bypass origi
     ).toBe(401);
   }
   for (const credential of [headers, f.headers]) {
-    for (const route of ["/_fia/browser/issue", "/_fia/browser/revoke", "/_fia/update/prepare"]) {
+    for (const route of [
+      "/_fia/browser/issue",
+      "/_fia/browser/revoke",
+      "/_fia/update/prepare",
+    ]) {
       expect(
-        (await fetch(f.origin + route, { method: "POST", headers: credential, body: "{}" })).status,
+        (
+          await fetch(f.origin + route, {
+            method: "POST",
+            headers: credential,
+            body: "{}",
+          })
+        ).status,
       ).toBe(403);
     }
   }
@@ -483,7 +617,9 @@ test("browser and native credentials cannot access host controls or bypass origi
 
 test("browser socket tickets are path-bound and one-use; permissions and revocation cover all streams", async () => {
   const f = await fixture();
-  const { token } = await (await exchangeBrowser(f.origin, f.gateway.issueBrowserURL())).json();
+  const { token } = await (
+    await exchangeBrowser(f.origin, f.gateway.issueBrowserURL())
+  ).json();
   const headers = {
     authorization: "Bearer " + token,
     origin: f.origin,
@@ -510,21 +646,39 @@ test("browser socket tickets are path-bound and one-use; permissions and revocat
     "unknown",
   ].entries()) {
     const reply = next(ws);
-    ws.send(JSON.stringify({ v: 1, type: "request", id: index + 1, method, params: {} }));
+    ws.send(
+      JSON.stringify({
+        v: 1,
+        type: "request",
+        id: index + 1,
+        method,
+        params: {},
+      }),
+    );
     expect(JSON.parse(await reply).error).toBeDefined();
     expect(f.calls).not.toContain(method);
   }
   const allowed = next(ws);
   ws.send(
-    JSON.stringify({ v: 1, type: "request", id: 100, method: "clipboard.readText", params: {} }),
+    JSON.stringify({
+      v: 1,
+      type: "request",
+      id: 100,
+      method: "clipboard.readText",
+      params: {},
+    }),
   );
   expect(JSON.parse(await allowed).error).toBeUndefined();
   expect(f.calls).toContain("clipboard.readText");
   await expect(socket(issued, { origin: f.origin })).rejects.toBeDefined();
   const wrongPath = new URL(await ticket("/_fia/native"));
   wrongPath.pathname = "/api/socket";
-  await expect(socket(wrongPath.href, { origin: f.origin })).rejects.toBeDefined();
-  const business = await socket(await ticket("/api/socket"), { origin: f.origin });
+  await expect(
+    socket(wrongPath.href, { origin: f.origin }),
+  ).rejects.toBeDefined();
+  const business = await socket(await ticket("/api/socket"), {
+    origin: f.origin,
+  });
   const echoed = next(business);
   business.send("browser business socket");
   expect(await echoed).toBe("browser business socket");
@@ -544,5 +698,7 @@ test("browser socket tickets are path-bound and one-use; permissions and revocat
   expect(await closed).toEqual([4001, 4001]);
   expect((await reading).done).toBe(true);
   expect(f.aborted()).toBe(true);
-  expect((await fetch(f.origin + "/api/hello/x", { headers })).status).toBe(401);
+  expect((await fetch(f.origin + "/api/hello/x", { headers })).status).toBe(
+    401,
+  );
 });

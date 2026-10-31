@@ -7,7 +7,10 @@ import { findWorkspace } from "./workspace.ts";
 const PACKAGE_PATH = resolve(repositoryRoot, "packages/cli/package.json");
 const ROOT_PACKAGE_PATH = resolve(repositoryRoot, "package.json");
 const METADATA_PATH = resolve(repositoryRoot, "packages/cli/src/metadata.ts");
-const SWIFT_VERSION_PATH = resolve(repositoryRoot, "Sources/FIACore/FIAVersion.swift");
+const SWIFT_VERSION_PATH = resolve(
+  repositoryRoot,
+  "Sources/FIACore/FIAVersion.swift",
+);
 
 interface ParsedVersion {
   readonly core: readonly [number, number, number];
@@ -25,10 +28,17 @@ function parseVersion(value: string): ParsedVersion {
     );
   if (match === null) throw new Error(`invalid semantic version: ${value}`);
   const prerelease = match[4]?.split(".") ?? [];
-  if (prerelease.some((part) => /^\d+$/.test(part) && part.length > 1 && part.startsWith("0"))) {
+  if (
+    prerelease.some(
+      (part) => /^\d+$/.test(part) && part.length > 1 && part.startsWith("0"),
+    )
+  ) {
     throw new Error(`invalid semantic version: ${value}`);
   }
-  return { core: [Number(match[1]), Number(match[2]), Number(match[3])], prerelease };
+  return {
+    core: [Number(match[1]), Number(match[2]), Number(match[3])],
+    prerelease,
+  };
 }
 
 function compareIdentifier(left: string, right: string): number {
@@ -39,7 +49,10 @@ function compareIdentifier(left: string, right: string): number {
   return left.localeCompare(right);
 }
 
-export function compareSemanticVersions(leftValue: string, rightValue: string): number {
+export function compareSemanticVersions(
+  leftValue: string,
+  rightValue: string,
+): number {
   const left = parseVersion(leftValue),
     right = parseVersion(rightValue);
   for (let index = 0; index < 3; index += 1) {
@@ -60,28 +73,42 @@ export function compareSemanticVersions(leftValue: string, rightValue: string): 
   ) {
     const leftPart = left.prerelease[index],
       rightPart = right.prerelease[index];
-    if (leftPart === undefined || rightPart === undefined) return leftPart === undefined ? -1 : 1;
+    if (leftPart === undefined || rightPart === undefined)
+      return leftPart === undefined ? -1 : 1;
     const difference = compareIdentifier(leftPart, rightPart);
     if (difference !== 0) return difference;
   }
   return 0;
 }
 
-export function requireIncreasingVersion(current: string, target: string): void {
+export function requireIncreasingVersion(
+  current: string,
+  target: string,
+): void {
   parseVersion(current);
   parseVersion(target);
   if (compareSemanticVersions(target, current) <= 0)
-    throw new Error(`target version ${target} must be greater than current version ${current}`);
+    throw new Error(
+      `target version ${target} must be greater than current version ${current}`,
+    );
 }
 
 export function readMetadataVersion(source: string): string {
-  const matches = [...source.matchAll(/export const CLI_VERSION = "([^"]+)";/g)];
+  const matches = [
+    ...source.matchAll(/export const CLI_VERSION = "([^"]+)";/g),
+  ];
   if (matches.length !== 1)
-    throw new Error("CLI metadata must contain exactly one CLI_VERSION declaration");
+    throw new Error(
+      "CLI metadata must contain exactly one CLI_VERSION declaration",
+    );
   return matches[0]![1]!;
 }
 
-export function replaceMetadataVersion(source: string, current: string, target: string): string {
+export function replaceMetadataVersion(
+  source: string,
+  current: string,
+  target: string,
+): string {
   if (readMetadataVersion(source) !== current)
     throw new Error(`CLI metadata does not match package version ${current}`);
   return source.replace(
@@ -91,9 +118,13 @@ export function replaceMetadataVersion(source: string, current: string, target: 
 }
 
 export function readSwiftFrameworkVersion(source: string): string {
-  const matches = [...source.matchAll(/public static let current = "([^"]+)"/g)];
+  const matches = [
+    ...source.matchAll(/public static let current = "([^"]+)"/g),
+  ];
   if (matches.length !== 1)
-    throw new Error("Swift Runtime must contain exactly one FIAVersion.current declaration");
+    throw new Error(
+      "Swift Runtime must contain exactly one FIAVersion.current declaration",
+    );
   return matches[0]![1]!;
 }
 
@@ -103,21 +134,29 @@ export function replaceSwiftFrameworkVersion(
   target: string,
 ): string {
   if (readSwiftFrameworkVersion(source) !== current)
-    throw new Error(`Swift Runtime version does not match package version ${current}`);
+    throw new Error(
+      `Swift Runtime version does not match package version ${current}`,
+    );
   return source.replace(
     `public static let current = "${current}"`,
     `public static let current = "${target}"`,
   );
 }
 
-export function readWorkspaceVersionFromLock(source: string, packagePath = "packages/cli"): string {
+export function readWorkspaceVersionFromLock(
+  source: string,
+  packagePath = "packages/cli",
+): string {
   const start = source.indexOf(JSON.stringify(packagePath) + ":");
   const remaining = start < 0 ? "" : source.slice(start);
   const boundary = /\n\s*"packages"\s*:/.exec(remaining);
   if (start < 0 || boundary?.index === undefined)
     throw new Error("bun.lock does not contain the CLI workspace");
-  const match = /"version":\s*"([^"]+)"/.exec(source.slice(start, start + boundary.index));
-  if (match === null) throw new Error("bun.lock CLI workspace does not contain a version");
+  const match = /"version":\s*"([^"]+)"/.exec(
+    source.slice(start, start + boundary.index),
+  );
+  if (match === null)
+    throw new Error("bun.lock CLI workspace does not contain a version");
   return match[1]!;
 }
 
@@ -128,13 +167,17 @@ function replaceLockVersion(
   packagePath: string,
 ): string {
   if (readWorkspaceVersionFromLock(source, packagePath) !== current)
-    throw new Error("bun.lock workspace version does not match package version");
+    throw new Error(
+      "bun.lock workspace version does not match package version",
+    );
   const start = source.indexOf(JSON.stringify(packagePath) + ":");
   const boundary = /\n\s*"packages"\s*:/.exec(source.slice(start))!;
   const end = start + boundary.index;
   return (
     source.slice(0, start) +
-    source.slice(start, end).replace(`"version": "${current}"`, `"version": "${target}"`) +
+    source
+      .slice(start, end)
+      .replace(`"version": "${current}"`, `"version": "${target}"`) +
     source.slice(end)
   );
 }
@@ -144,7 +187,9 @@ export function nextMinorVersion(current: string): string {
   return `${core[0]}.${core[1] + 1}.0`;
 }
 
-export async function updateNPMVersion(target: string): Promise<() => Promise<void>> {
+export async function updateNPMVersion(
+  target: string,
+): Promise<() => Promise<void>> {
   requireBunVersion();
   const current = cliPackage.version;
   requireIncreasingVersion(current, target);
@@ -158,25 +203,34 @@ export async function updateNPMVersion(target: string): Promise<() => Promise<vo
     LOCK_PATH,
   ];
   const snapshots: Snapshot[] = await Promise.all(
-    versionedPaths.map(async (path) => ({ path, contents: await readFile(path) })),
+    versionedPaths.map(async (path) => ({
+      path,
+      contents: await readFile(path),
+    })),
   );
   const restore = async () => {
-    await Promise.all(snapshots.map((snapshot) => writeFile(snapshot.path, snapshot.contents)));
+    await Promise.all(
+      snapshots.map((snapshot) => writeFile(snapshot.path, snapshot.contents)),
+    );
   };
   try {
-    const packageValue = JSON.parse(await readFile(PACKAGE_PATH, "utf8")) as Record<
-      string,
-      unknown
-    >;
-    const rootPackageValue = JSON.parse(await readFile(ROOT_PACKAGE_PATH, "utf8")) as Record<
-      string,
-      unknown
-    >;
+    const packageValue = JSON.parse(
+      await readFile(PACKAGE_PATH, "utf8"),
+    ) as Record<string, unknown>;
+    const rootPackageValue = JSON.parse(
+      await readFile(ROOT_PACKAGE_PATH, "utf8"),
+    ) as Record<string, unknown>;
     if (rootPackageValue.version !== current)
-      throw new Error(`root package version does not match package version ${current}`);
+      throw new Error(
+        `root package version does not match package version ${current}`,
+      );
     packageValue.version = target;
     rootPackageValue.version = target;
-    const metadata = replaceMetadataVersion(await readFile(METADATA_PATH, "utf8"), current, target);
+    const metadata = replaceMetadataVersion(
+      await readFile(METADATA_PATH, "utf8"),
+      current,
+      target,
+    );
     const swiftVersion = replaceSwiftFrameworkVersion(
       await readFile(SWIFT_VERSION_PATH, "utf8"),
       current,
@@ -190,18 +244,26 @@ export async function updateNPMVersion(target: string): Promise<() => Promise<vo
     );
     await Promise.all([
       writeFile(PACKAGE_PATH, `${JSON.stringify(packageValue, null, 2)}\n`),
-      writeFile(ROOT_PACKAGE_PATH, `${JSON.stringify(rootPackageValue, null, 2)}\n`),
+      writeFile(
+        ROOT_PACKAGE_PATH,
+        `${JSON.stringify(rootPackageValue, null, 2)}\n`,
+      ),
       writeFile(METADATA_PATH, metadata),
       writeFile(SWIFT_VERSION_PATH, swiftVersion),
       writeFile(LOCK_PATH, lock),
     ]);
-    await run([process.execPath, "install", "--lockfile-only", "--ignore-scripts"], {
-      cwd: workspace.root,
-    });
+    await run(
+      [process.execPath, "install", "--lockfile-only", "--ignore-scripts"],
+      {
+        cwd: workspace.root,
+      },
+    );
     return restore;
   } catch (error) {
     await restore();
-    throw new Error("version update failed; versioned files were rolled back", { cause: error });
+    throw new Error("version update failed; versioned files were rolled back", {
+      cause: error,
+    });
   }
 }
 
@@ -213,7 +275,8 @@ if (import.meta.main) {
         "Usage: bun run version:npm [version]\nDefault: increment minor version. Does not publish or create a Git tag.",
       );
     } else {
-      if (args.length > 1) throw new Error("at most one target version is allowed");
+      if (args.length > 1)
+        throw new Error("at most one target version is allowed");
       const target = args[0] ?? nextMinorVersion(cliPackage.version);
       await updateNPMVersion(target);
       console.log(
@@ -221,7 +284,9 @@ if (import.meta.main) {
       );
     }
   } catch (error) {
-    console.error(`version: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(
+      `version: ${error instanceof Error ? error.message : String(error)}`,
+    );
     process.exitCode = 1;
   }
 }

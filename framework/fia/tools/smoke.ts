@@ -1,5 +1,12 @@
 import { smokeAgent } from "./smoke-agent.ts";
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { createProject } from "../packages/cli/src/create.ts";
@@ -11,7 +18,10 @@ import {
 } from "../packages/cli/src/application.ts";
 import { generateIcon, parseIconArguments } from "../packages/cli/src/icon.ts";
 import { smokeApplication } from "../packages/cli/src/smoke.ts";
-import { generateUpdateKeys, verifyRelease } from "../packages/cli/src/updates.ts";
+import {
+  generateUpdateKeys,
+  verifyRelease,
+} from "../packages/cli/src/updates.ts";
 import { checkProject } from "../packages/cli/src/check.ts";
 import { repositoryRoot } from "./shared.ts";
 import { smokeDevelopment } from "./smoke-development.ts";
@@ -27,8 +37,6 @@ try {
   for (const name of [
     "react",
     "react-dom",
-    "vite",
-    "@vitejs/plugin-react",
     "typescript",
     "@types/react",
     "@types/react-dom",
@@ -37,7 +45,10 @@ try {
     let source: string;
     try {
       source = dirname(
-        Bun.resolveSync(name + "/package.json", resolve(repositoryRoot, "packages/cli")),
+        Bun.resolveSync(
+          name + "/package.json",
+          resolve(repositoryRoot, "packages/cli"),
+        ),
       );
     } catch {
       source = dirname(Bun.resolveSync(name + "/package.json", repositoryRoot));
@@ -62,7 +73,9 @@ try {
     },
   });
   await generateIcon({ ...parseIconArguments(["中"]), cwd: projectRoot });
-  console.log("Generated, typechecked, packaged and rendered an icon without Swift compilation.");
+  console.log(
+    "Generated, typechecked, packaged and rendered an icon without Swift compilation.",
+  );
   const result = await smokeApplication(config, built.app);
   console.log(JSON.stringify(result, null, 2));
   await smokeAgent(config, built.app);
@@ -82,14 +95,24 @@ try {
   );
   config = await loadProjectConfig(projectRoot);
   process.env.FIA_UPDATE_PRIVATE_KEY_FILE = keys.privateKeyFile;
-  const release = (await releaseApplication(config, true)) as { manifest: string };
+  const release = (await releaseApplication(config, true)) as {
+    manifest: string;
+  };
   const envelope = JSON.parse(await readFile(release.manifest, "utf8"));
   const verified = verifyRelease(envelope, keys.publicKey);
-  if (verified.build !== 2 || !verified.files.some((file) => file.path === "backend/index.js"))
+  if (
+    verified.build !== 2 ||
+    !verified.files.some((file) => file.path === "backend/index.js")
+  )
     throw new Error("Code update release did not verify");
   console.log("Signed frontend/backend update package verified.");
   await smokeLocalProfiles(config, () => smokeDevelopment(config));
-  console.log(JSON.stringify({ ok: true, buildCommands: commands.map((command) => command[0]) }));
+  console.log(
+    JSON.stringify({
+      ok: true,
+      buildCommands: commands.map((command) => command[0]),
+    }),
+  );
 } finally {
   await rm(temporary, { recursive: true, force: true });
 }

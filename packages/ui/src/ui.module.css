@@ -1,0 +1,219 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid var(--fn-border);
+  border-radius: 8px;
+  background: var(--fn-surface);
+  white-space: nowrap;
+  transition: box-shadow 0.15s;
+}
+.button:hover {
+  background: var(--fn-hover);
+}
+.button[data-variant="primary"] {
+  background: var(--fn-accent);
+  border-color: transparent;
+  color: var(--fn-on-accent);
+}
+.button[data-variant="primary"]:hover {
+  background: var(--fn-accent-hover);
+}
+.button[data-variant="danger"] {
+  color: var(--fn-danger);
+}
+.button[data-variant="ghost"] {
+  background: transparent;
+  border-color: transparent;
+}
+.button[data-size="sm"] {
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.inputWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--fn-border);
+  border-radius: 8px;
+  background: var(--fn-input);
+  padding: 0 9px;
+  min-width: 0;
+}
+.input {
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  padding: 8px 0;
+  outline-offset: 1px;
+}
+.inputWrap:focus-within {
+  outline: 2px solid var(--fn-focus);
+  outline-offset: 1px;
+}
+.input:focus-visible {
+  outline: 0;
+}
+.textarea {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: var(--fn-input);
+  border: 1px solid var(--fn-border);
+  border-radius: 8px;
+  resize: vertical;
+  line-height: 1.65;
+}
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.checkbox input {
+  accent-color: var(--fn-info);
+}
+.dialog {
+  margin: auto;
+  padding: 0;
+  width: min(500px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  border: 1px solid var(--fn-border);
+  border-radius: 16px;
+  background: var(--fn-surface-raised);
+  box-shadow: var(--fn-shadow-dialog);
+  overflow: auto;
+}
+.dialog::backdrop {
+  background: var(--fn-mask);
+  backdrop-filter: blur(3px);
+}
+.wide {
+  width: min(820px, calc(100vw - 32px));
+}
+.dialogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--fn-line);
+}
+.dialogHeader h2 {
+  font-size: 16px;
+  margin: 0;
+  font-weight: 600;
+}
+.dialogHeader button {
+  padding: 5px;
+  border: 0;
+  background: transparent;
+}
+.dialogContent {
+  padding: 22px;
+}
+.menu {
+  position: fixed;
+  margin: 0;
+  padding: 5px;
+  min-width: 170px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+  border: 1px solid var(--fn-border);
+  border-radius: 10px;
+  background: var(--fn-surface-raised);
+  box-shadow: var(--fn-shadow-floating);
+  color: var(--fn-text);
+}
+.menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  text-align: left;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+}
+.menu button:hover,
+.menu button:focus-visible {
+  background: var(--fn-hover);
+}
+.menu button[data-danger] {
+  color: var(--fn-danger);
+}
+.menu hr {
+  border: 0;
+  border-top: 1px solid var(--fn-border);
+}
+.select {
+  justify-content: space-between;
+}
+.notice {
+  padding: 12px 15px;
+  border-radius: 8px;
+  background: var(--fn-soft);
+  color: var(--fn-secondary);
+  line-height: 1.6;
+}
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.pageHeader h1 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+}
+.pageHeader p {
+  margin: 8px 0 0;
+  color: var(--fn-muted);
+}
+.surface {
+  border: 1px solid var(--fn-border);
+  border-radius: 14px;
+  background: var(--fn-surface);
+  padding: 20px;
+  box-shadow: var(--fn-shadow);
+}
+.toast {
+  position: fixed;
+  inset: auto 0 30px;
+  margin: auto;
+  width: max-content;
+  max-width: 90vw;
+  padding: 12px 18px;
+  background: var(--fn-toast-bg);
+  color: var(--fn-toast-text);
+  border: 0;
+  border-radius: 10px;
+  box-shadow: var(--fn-shadow-floating);
+  font-size: 13px;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 22px;
+}
+.failure {
+  display: grid;
+  place-content: center;
+  min-height: 80vh;
+  text-align: center;
+  gap: 12px;
+  padding: 24px;
+}
+.failure p {
+  max-width: 480px;
+  overflow-wrap: anywhere;
+}

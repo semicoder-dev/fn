@@ -3,7 +3,11 @@ import { CLI_VERSION } from "../packages/cli/src/metadata.ts";
 import { findWorkspace } from "./workspace.ts";
 import cli from "../packages/cli/package.json";
 import root from "../package.json";
-import { nextMinorVersion, requireIncreasingVersion, updateNPMVersion } from "./version-npm.ts";
+import {
+  nextMinorVersion,
+  requireIncreasingVersion,
+  updateNPMVersion,
+} from "./version-npm.ts";
 
 const publishCommand = [
   "npm",
@@ -24,7 +28,8 @@ export function parseReleaseArguments(args: readonly string[]) {
   for (const arg of args) {
     if (arg === "--dry-run") dryRun = true;
     else if (arg.startsWith("-")) throw new Error(`unknown option: ${arg}`);
-    else if (version !== undefined) throw new Error("at most one target version is allowed");
+    else if (version !== undefined)
+      throw new Error("at most one target version is allowed");
     else version = arg;
   }
   return { help: false, dryRun, version };
@@ -33,7 +38,9 @@ export function parseReleaseArguments(args: readonly string[]) {
 export async function releaseNPM(args: readonly string[]): Promise<void> {
   const options = parseReleaseArguments(args);
   if (options.help) {
-    console.log("Usage: bun run release [version] [--dry-run]\nDefault: increment minor version.");
+    console.log(
+      "Usage: bun run release [version] [--dry-run]\nDefault: increment minor version.",
+    );
     return;
   }
   if (!options.dryRun && (await findWorkspace()).root !== repositoryRoot)
@@ -44,7 +51,10 @@ export async function releaseNPM(args: readonly string[]): Promise<void> {
   requireIncreasingVersion(cli.version, target);
   if (cli.version !== CLI_VERSION || root.version !== CLI_VERSION)
     throw new Error("Framework package versions must match");
-  if (!options.dryRun && (await run(["git", "status", "--porcelain"], { quiet: true })).trim())
+  if (
+    !options.dryRun &&
+    (await run(["git", "status", "--porcelain"], { quiet: true })).trim()
+  )
     throw new Error("Refusing to publish a dirty worktree");
 
   console.log(`release: updating version ${cli.version} → ${target}`);
@@ -62,11 +72,15 @@ export async function releaseNPM(args: readonly string[]): Promise<void> {
     console.log("release: running checks");
     await runInteractive([process.execPath, "run", "check"]);
     console.log("release: checking npm package (dry-run)");
-    await runInteractive([...publishCommand, "--dry-run"], { cwd: repositoryRoot });
+    await runInteractive([...publishCommand, "--dry-run"], {
+      cwd: repositoryRoot,
+    });
     if (options.dryRun) {
       console.log("release: dry-run complete; nothing was published");
     } else {
-      console.log("release: publishing to npm; complete any authentication prompts below");
+      console.log(
+        "release: publishing to npm; complete any authentication prompts below",
+      );
       await runInteractive(publishCommand, { cwd: repositoryRoot });
       published = true;
       console.log(`release: published ${cli.name}@${target}`);
@@ -83,7 +97,9 @@ if (import.meta.main) {
   try {
     await releaseNPM(process.argv.slice(2));
   } catch (error) {
-    console.error(`release: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(
+      `release: ${error instanceof Error ? error.message : String(error)}`,
+    );
     process.exitCode = 1;
   }
 }

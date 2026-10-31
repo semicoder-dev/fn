@@ -6,7 +6,9 @@ const identity = process.env.FN_SIGNING_IDENTITY;
 const betaEntitlements = process.env.FN_BETA_ENTITLEMENTS;
 const betaProfile = process.env.FN_BETA_PROFILE;
 if (beta && (!identity || !betaEntitlements || !betaProfile))
-  throw new Error("fn Beta 需要独立 Developer ID 签名、entitlements 和 profile");
+  throw new Error(
+    "Fn Beta 需要独立 Developer ID 签名、entitlements 和 profile",
+  );
 const productionEntitlements = process.env.FN_CLOUDKIT_PRODUCTION_ENTITLEMENTS;
 const productionProfile = process.env.FN_CLOUDKIT_PRODUCTION_PROFILE;
 if (Boolean(productionEntitlements) !== Boolean(productionProfile))
@@ -18,10 +20,12 @@ if (
   [cloudIdentity, cloudEntitlements, cloudProfile].some(Boolean) &&
   ![cloudIdentity, cloudEntitlements, cloudProfile].every(Boolean)
 )
-  throw new Error("CloudKit 开发签名需要同时配置 identity、entitlements 和 profile");
+  throw new Error(
+    "CloudKit 开发签名需要同时配置 identity、entitlements 和 profile",
+  );
 export default defineConfig({
   app: {
-    name: beta ? "fn Beta" : "fn",
+    name: beta ? "Fn Beta" : "Fn",
     identifier: beta ? "com.semicoder.fn.beta" : "com.semicoder.fn",
     version: pkg.version,
     build: release.build,
@@ -29,24 +33,23 @@ export default defineConfig({
   },
   agent: {
     command: beta ? "fn-beta" : "fn",
-    description: "Manage fn applications, model connections and durable agent sessions.",
+    description: "Manage Fn applications, models and messages.",
     instructions: "agent/instructions.md",
     commands: {
       plugin: {
-        description: "Inspect, build and pack Cordis plugins",
+        description: "Create, build and debug Fn applications",
         entry: "commands/plugin.ts",
       },
     },
   },
   backend: {
     entry: "host/backend.ts",
-    // A first launch verifies and materializes the complete immutable dependency graph.
-    startupTimeoutMs: 60_000,
-    assets: [],
+    startupTimeoutMs: 15_000,
+    assets: ["resources/app-runner.js"],
   },
-  runtime: { assets: ["resources/runtime-seed.tgz", "resources/runtime-seed.json"] },
+  runtime: { assets: [] },
   api: { entry: "host/api.ts" },
-  statusItem: { symbol: "square.stack.3d.up", tooltip: "fn" },
+  statusItem: { symbol: "square.stack.3d.up", tooltip: "Fn" },
   ...(beta || process.env.FN_DISABLE_UPDATES === "1"
     ? {}
     : {
@@ -59,7 +62,9 @@ export default defineConfig({
   ...(identity || cloudIdentity
     ? {
         signing: {
-          ...(identity ? { releaseIdentity: identity, notarizationProfile: "fn-notary" } : {}),
+          ...(identity
+            ? { releaseIdentity: identity, notarizationProfile: "fn-notary" }
+            : {}),
           application: {
             ...(beta
               ? {
@@ -74,7 +79,9 @@ export default defineConfig({
                     production: {
                       entitlements: productionEntitlements!,
                       provisioningProfile: productionProfile,
-                      cloudKitContainers: ["iCloud.com.semicoder.fn.production"],
+                      cloudKitContainers: [
+                        "iCloud.com.semicoder.fn.production",
+                      ],
                     },
                   }
                 : {}),
@@ -88,7 +95,9 @@ export default defineConfig({
                 }
               : {}),
           },
-          ...(cloudIdentity && !beta ? { developmentIdentity: cloudIdentity } : {}),
+          ...(cloudIdentity && !beta
+            ? { developmentIdentity: cloudIdentity }
+            : {}),
         },
       }
     : {}),

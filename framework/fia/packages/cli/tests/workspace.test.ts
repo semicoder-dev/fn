@@ -19,7 +19,9 @@ test("framework metadata resolves either standalone or parent workspace without 
       lock: resolve(root, "bun.lock"),
       packagePath: "framework/fia/packages/cli",
     });
-    expect(readWorkspaceVersionFromLock(source, "framework/fia/packages/cli")).toBe(pkg.version);
+    expect(
+      readWorkspaceVersionFromLock(source, "framework/fia/packages/cli"),
+    ).toBe(pkg.version);
     await writeFile(resolve(framework, "bun.lock"), standaloneLockFixture());
     expect((await findWorkspace(framework)).root).toBe(framework);
   } finally {

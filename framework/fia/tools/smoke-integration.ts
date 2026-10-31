@@ -12,7 +12,10 @@ if (!(await Bun.file(resolve(project, ".fia/integration-fixture")).exists()))
   );
 const client = resolve(repositoryRoot, "packages/cli/src/client.ts");
 const native = resolve(repositoryRoot, "Sources/FIACore/FIAVersion.swift");
-const addition = resolve(repositoryRoot, "packages/cli/src/integration-probe.ts");
+const addition = resolve(
+  repositoryRoot,
+  "packages/cli/src/integration-probe.ts",
+);
 const backend = resolve(project, "backend/index.ts");
 const frontend = resolve(project, "frontend/style.css");
 const manifest = resolve(project, "package.json");
@@ -27,19 +30,30 @@ const logs: string[] = [];
 const pids = new Set<number>();
 const results: string[] = [];
 const spawnSupervisor = () =>
-  Bun.spawn([process.execPath, resolve(repositoryRoot, "tools/develop-app.ts"), project], {
-    cwd: project,
-    detached: true,
-    stdout: "pipe",
-    stderr: "pipe",
-    stdin: "ignore",
-  });
+  Bun.spawn(
+    [
+      process.execPath,
+      resolve(repositoryRoot, "tools/develop-app.ts"),
+      project,
+    ],
+    {
+      cwd: project,
+      detached: true,
+      stdout: "pipe",
+      stderr: "pipe",
+      stdin: "ignore",
+    },
+  );
 let child = spawnSupervisor();
 const drain = async (stream: ReadableStream<Uint8Array>) => {
   for await (const bytes of stream) logs.push(new TextDecoder().decode(bytes));
 };
 let drains = Promise.all([drain(child.stdout), drain(child.stderr)]);
-const wait = async <T>(label: string, probe: () => Promise<T | undefined>, timeout = 90_000) => {
+const wait = async <T>(
+  label: string,
+  probe: () => Promise<T | undefined>,
+  timeout = 90_000,
+) => {
   const end = Date.now() + timeout;
   while (Date.now() < end) {
     const value = await probe();
@@ -51,7 +65,12 @@ const wait = async <T>(label: string, probe: () => Promise<T | undefined>, timeo
 const status = () =>
   requestSession(project, "status") as Promise<{
     running: boolean;
-    runtime?: { pid: number; backend: string; frontendsReady: string[]; processGroups: number[] };
+    runtime?: {
+      pid: number;
+      backend: string;
+      frontendsReady: string[];
+      processGroups: number[];
+    };
   }>;
 const ready = (previous?: number) =>
   wait("ready after " + previous, async () => {
@@ -72,55 +91,86 @@ const count = (text: string) => logs.join("").split(text).length - 1;
 try {
   let pid = await ready();
   const beforeBurst = count("Application ready");
-  await writeFile(client, originals.get(client)! + "\n// integration burst 1\n");
+  await writeFile(
+    client,
+    originals.get(client)! + "\n// integration burst 1\n",
+  );
   await Bun.sleep(30);
-  await writeFile(client, originals.get(client)! + "\n// integration burst 2\n");
+  await writeFile(
+    client,
+    originals.get(client)! + "\n// integration burst 2\n",
+  );
   pid = await ready(pid);
   await Bun.sleep(1500);
   if (count("Application ready") !== beforeBurst + 1)
     throw new Error("Burst triggered duplicate restarts");
   results.push("TypeScript burst: one restart");
   const nativeBuilds = count("building native runtime");
-  await writeFile(client, originals.get(client)! + "\nexport const = broken;\n");
+  await writeFile(
+    client,
+    originals.get(client)! + "\nexport const = broken;\n",
+  );
   await wait("failed build", async () =>
-    logs.join("").includes("build failed; Dev is stopped") && !(await status()).running
+    logs.join("").includes("build failed; Dev is stopped") &&
+    !(await status()).running
       ? true
       : undefined,
   );
   // Revert exactly to the last successful inputs: it must still restart the stopped app.
-  await writeFile(client, originals.get(client)! + "\n// integration burst 2\n");
+  await writeFile(
+    client,
+    originals.get(client)! + "\n// integration burst 2\n",
+  );
   pid = await ready(pid);
   if (count("building native runtime") !== nativeBuilds)
     throw new Error("CLI failure invalidated native cache");
   results.push("compile error: stopped, recovered, native cache retained");
   const buildCount = count("building CLI and SDK");
   const readyCount = count("Application ready");
-  await writeFile(client, originals.get(client)! + "\n// save during compilation 1\n");
+  await writeFile(
+    client,
+    originals.get(client)! + "\n// save during compilation 1\n",
+  );
   await wait("compiler started", async () =>
     count("building CLI and SDK") > buildCount ? true : undefined,
   );
-  await writeFile(client, originals.get(client)! + "\n// save during compilation 2\n");
+  await writeFile(
+    client,
+    originals.get(client)! + "\n// save during compilation 2\n",
+  );
   pid = await ready(pid);
   await Bun.sleep(1500);
   if (count("Application ready") !== readyCount + 1)
     throw new Error("Intermediate build started an application");
-  results.push("save during compilation: only final inputs start the application");
+  results.push(
+    "save during compilation: only final inputs start the application",
+  );
 
   await writeFile(addition, "export const integrationProbe = true;\n");
   pid = await ready(pid);
   await rm(addition);
   pid = await ready(pid);
   results.push("source addition/deletion: restarted");
-  await writeFile(native, originals.get(native)! + "\n// integration native rebuild\n");
+  await writeFile(
+    native,
+    originals.get(native)! + "\n// integration native rebuild\n",
+  );
   pid = await ready(pid);
   if (count("building native runtime") !== nativeBuilds + 1)
     throw new Error("Native source did not rebuild exactly once");
   results.push("native source: runtime rebuilt and restarted");
   const preparations = count("preparing latest sources");
-  await writeFile(frontend, originals.get(frontend)! + "\n:root { --integration-smoke: 1; }\n");
+  await writeFile(
+    frontend,
+    originals.get(frontend)! + "\n:root { --integration-smoke: 1; }\n",
+  );
   await Bun.sleep(2000);
-  if ((await status()).runtime?.pid !== pid) throw new Error("Frontend edit restarted host");
-  await writeFile(backend, originals.get(backend)! + "\n// integration application backend\n");
+  if ((await status()).runtime?.pid !== pid)
+    throw new Error("Frontend edit restarted host");
+  await writeFile(
+    backend,
+    originals.get(backend)! + "\n// integration application backend\n",
+  );
   pid = await ready(pid);
   if (count("preparing latest sources") !== preparations)
     throw new Error("App edit triggered framework rebuild");
@@ -129,14 +179,17 @@ try {
   await wait("dependency change exits supervisor", async () =>
     child.exitCode !== null ? true : undefined,
   );
-  if (child.exitCode !== 75) throw new Error("Dependency change did not request a restart");
+  if (child.exitCode !== 75)
+    throw new Error("Dependency change did not request a restart");
   results.push("dependency declaration: supervisor exits with instructions");
   await drains;
   child = spawnSupervisor();
   drains = Promise.all([drain(child.stdout), drain(child.stderr)]);
   await ready();
   child.kill("SIGINT");
-  await wait("Ctrl-C exits supervisor", async () => (child.exitCode !== null ? true : undefined));
+  await wait("Ctrl-C exits supervisor", async () =>
+    child.exitCode !== null ? true : undefined,
+  );
   if (child.exitCode !== 130 || (await status()).running)
     throw new Error("Ctrl-C did not stop the supervised application");
   results.push("Ctrl-C: supervisor and application stop together");
@@ -145,7 +198,10 @@ try {
   await drains;
   for (const [path, original] of originals) await writeFile(path, original);
   await rm(addition, { force: true });
-  await writeFile(resolve(project, ".fia/integration-smoke.log"), logs.join(""));
+  await writeFile(
+    resolve(project, ".fia/integration-smoke.log"),
+    logs.join(""),
+  );
 }
 await wait(
   "all observed managed processes stopped",

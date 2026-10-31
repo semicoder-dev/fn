@@ -20,7 +20,7 @@ settings:
     INFOPLIST_KEY_FNCloudKitContainer: iCloud.com.semicoder.fn.development
     INFOPLIST_KEY_FNCommunicationEnvironment: development
     FN_CLOUDKIT_CONTAINER: iCloud.com.semicoder.fn.development
-    INFOPLIST_KEY_CFBundleDisplayName: fn Chat Dev
+    INFOPLIST_KEY_CFBundleDisplayName: Fn Dev
 targets:
   FnPhone:
     type: application
@@ -60,7 +60,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.semicoder.fn.chat.dev
         CODE_SIGN_ENTITLEMENTS: Config/macOS.entitlements
         ENABLE_HARDENED_RUNTIME: YES
-        INFOPLIST_KEY_CFBundleName: fn Chat Dev
+        INFOPLIST_KEY_CFBundleName: Fn Dev
   FnPhoneTestFlight:
     type: application
     platform: iOS
@@ -79,7 +79,7 @@ targets:
         FN_CLOUDKIT_CONTAINER: iCloud.com.semicoder.fn.production
         INFOPLIST_KEY_FNCloudKitContainer: iCloud.com.semicoder.fn.production
         INFOPLIST_KEY_FNCommunicationEnvironment: production
-        INFOPLIST_KEY_CFBundleDisplayName: fn
+        INFOPLIST_KEY_CFBundleDisplayName: Fn
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     info:

@@ -6,83 +6,121 @@ import UserNotifications
 
 @MainActor public final class SessionModel: ObservableObject {
   public static let shared = SessionModel()
-  public let sync: SessionSync
+  public let sync: PhoneSync
   @Published public var revision = 0
   @Published public var error = ""
   @Published public var selectedHost = ""
-  @Published public var selectedSession: String?
-  @Published public var pushStatus = "正在注册通知"
-  @Published public var drafts: [String: String] = [:]
+  @Published public var selectedApplication = ""
+  @Published public var pushStatus = ""
+  @Published public var text = ""
   private var connecting = false
-  private var reconnect = false
-  private var pendingCreate: String?
-  private var pendingNotification = UserDefaults.standard.string(forKey: "fnSessionPendingNotification")
   private let network = NWPathMonitor()
+  public var chinese: Bool { Locale.preferredLanguages.first?.hasPrefix("zh") ?? false }
   public init() {
-    let root = URL.applicationSupportDirectory.appending(path: Bundle.main.bundleIdentifier ?? "fn-chat")
-    sync = SessionSync(root: root)
+    sync = PhoneSync(
+      root: URL.applicationSupportDirectory.appending(
+        path: Bundle.main.bundleIdentifier ?? "fn-phone"))
     sync.changed = { [weak self] in self?.refresh() }
     sync.identityChanged = { [weak self] in
-      self?.selectedHost = ""; self?.selectedSession = nil; self?.drafts = [:]
-      self?.pendingCreate = nil; self?.pendingNotification = nil
-      UserDefaults.standard.removeObject(forKey: "fnSessionPendingNotification")
+      self?.selectedHost = ""
+      self?.selectedApplication = ""
+      self?.text = ""
     }
     network.pathUpdateHandler = { [weak self] path in
       if path.status == .satisfied { Task { @MainActor [weak self] in await self?.resume() } }
     }
-    network.start(queue: DispatchQueue(label: "fn.session.network"))
+    network.start(queue: DispatchQueue(label: "fn.relay.network"))
+  }
+  public var hosts: [RelayHost] { sync.store?.hosts() ?? [] }
+  public var host: RelayHost? { hosts.first { $0.id == selectedHost } }
+  public var application: RelayApplication? {
+    host?.applications.first { $0.id == selectedApplication }
+  }
+  public var messages: [RelayStatus] {
+    sync.store?.messages(hostId: selectedHost, instanceId: selectedApplication) ?? []
   }
   private func refresh() {
     revision += 1
-    if selectedHost.isEmpty, let host = sync.hosts().first { selectedHost = host.id }
-    if let pendingCreate, let result = sync.results().first(where: { $0.id == pendingCreate }) {
-      self.pendingCreate = nil
-      if result.status == "completed", let id = result.sessionId { selectedSession = id }
-      else { error = result.error ?? "创建会话未完成" }
-    }
-    if let recordId = pendingNotification {
-      if let record = sync.records("FnSessionCard", as: SessionCardRecord.self).first(where: { "FnSessionCard:" + $0.hostId + ":" + $0.id == recordId || $0.id == recordId }) {
-        selectedHost = record.hostId; selectedSession = record.sessionId; pendingNotification = nil
-        UserDefaults.standard.removeObject(forKey: "fnSessionPendingNotification")
-      }
-      let records = sync.records("FnSessionReply", as: SessionItemRecord.self)
-      if let record = records.first(where: { "FnSessionReply:" + $0.hostId + ":" + $0.id == recordId || $0.id == recordId }) {
-        selectedHost = record.hostId; selectedSession = record.sessionId; pendingNotification = nil
-        UserDefaults.standard.removeObject(forKey: "fnSessionPendingNotification")
-      }
-    }
+    if selectedHost.isEmpty { selectedHost = hosts.first?.id ?? "" }
+    if application == nil { selectedApplication = host?.applications.first?.id ?? "" }
+    error = sync.error ?? ""
   }
   public func accountChanged() {
     sync.disconnect()
-    if connecting { reconnect = true } else { Task { await resume() } }
-  }
-  public func resume() async {
-    if sync.store != nil { await sync.sync(); if sync.store != nil { return } }
-    guard !connecting else { return }
-    connecting = true
-    defer { connecting = false; if reconnect { reconnect = false; Task { await resume() } } }
-    guard let container = Bundle.main.object(forInfoDictionaryKey: "FNCloudKitContainer") as? String,
-      let environment = Bundle.main.object(forInfoDictionaryKey: "FNCommunicationEnvironment") as? String,
-      let bundle = Bundle.main.bundleIdentifier else { error = "缺少聊天环境配置"; return }
-    await sync.connect(container: container, environment: environment, bundleID: bundle)
-  }
-  public func command(_ action: String, fields: [String: Any]) {
-    do {
-      let id = try sync.enqueue(host: selectedHost, action: action, fields: fields)
-      if action == "create" { pendingCreate = id }
-      error = ""
-    } catch { self.error = error.localizedDescription }
-  }
-  public func openNotification(_ id: String?) {
-    pendingNotification = id
-    if let id { UserDefaults.standard.set(id, forKey: "fnSessionPendingNotification") }
-    refresh()
     Task { await resume() }
   }
-  public func notifications() async {
+  public func resume() async {
+    if sync.store != nil {
+      await sync.sync()
+      return
+    }
+    guard !connecting else { return }
+    connecting = true
+    defer { connecting = false }
     do {
-      let allowed = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])
-      pushStatus = allowed ? "通知已允许" : "通知未允许"
+      guard
+        let container = Bundle.main.object(forInfoDictionaryKey: "FNCloudKitContainer") as? String,
+        let environment = Bundle.main.object(forInfoDictionaryKey: "FNCommunicationEnvironment")
+          as? String
+      else { throw RelayError.configuration }
+      try await sync.connect(
+        container: container,
+        transport: AppleRelayTransport(container: container, environment: environment))
+      refresh()
     } catch { self.error = error.localizedDescription }
   }
+  public func send() {
+    guard !selectedHost.isEmpty, !selectedApplication.isEmpty else { return }
+    do {
+      _ = try sync.store?.enqueue(
+        hostId: selectedHost, instanceId: selectedApplication, text: text,
+        locale: chinese ? "zh-CN" : "en")
+      text = ""
+      refresh()
+      Task { await sync.sync() }
+    } catch { self.error = error.localizedDescription }
+  }
+  public func retry(_ message: RelayStatus) {
+    text = message.text
+    send()
+  }
+  public func openNotification(_ id: String?) { Task { await resume() } }
+  public func notifications() async {
+    do {
+      let allowed = try await UNUserNotificationCenter.current().requestAuthorization(options: [
+        .alert, .badge, .sound,
+      ])
+      pushStatus = L(allowed ? "notificationsOn" : "notificationsOff")
+    } catch { self.error = error.localizedDescription }
+  }
+}
+@MainActor func L(_ key: String) -> String {
+  let words: [String: (String, String)] = [
+    "devices": ("桌面设备", "Desktop devices"), "application": ("应用", "Application"),
+    "connect": ("连接桌面上的 Fn", "Connect to Fn on your desktop"),
+    "setup": (
+      "请使用相同 iCloud 账号，并在桌面 Fn 设置中连接手机。",
+      "Use the same iCloud account and connect your phone in Fn settings on the desktop."
+    ), "refresh": ("刷新", "Refresh"), "send": ("发送", "Send"),
+    "placeholder": ("输入文字…", "Write a message…"),
+    "closed": (
+      "应用已关闭，请在桌面启动后处理。", "The application is closed. Start it on the desktop to process messages."
+    ),
+    "offline": (
+      "桌面暂时离线，消息将在连接恢复后送达。",
+      "The desktop is offline. Messages will be delivered when it reconnects."
+    ), "queued": ("等待上传", "Waiting to upload"),
+    "waiting": ("等待桌面应用处理", "Waiting for the desktop application"),
+    "processing": ("正在处理", "Processing"), "completed": ("已完成", "Completed"),
+    "interrupted": ("处理已中断", "Interrupted"), "failed": ("处理失败", "Failed"),
+    "cancelled": ("已取消", "Cancelled"), "retry": ("重新发送", "Send again"),
+    "notifications": ("通知", "Notifications"), "notificationsOn": ("已允许通知", "Notifications enabled"),
+    "notificationsOff": ("未允许通知", "Notifications disabled"),
+    "empty": (
+      "消息由桌面应用处理，手机负责收发。",
+      "Your desktop application processes messages. Your phone sends and receives them."
+    ),
+  ]
+  let pair = words[key] ?? (key, key)
+  return Locale.preferredLanguages.first?.hasPrefix("zh") == true ? pair.0 : pair.1
 }

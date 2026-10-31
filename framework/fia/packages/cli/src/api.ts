@@ -1,4 +1,8 @@
-export type CloudKitScope = { container: string; accountKey: string; zone: string };
+export type CloudKitScope = {
+  container: string;
+  accountKey: string;
+  zone: string;
+};
 export type CloudKitRecord = {
   id: string;
   type: string;
@@ -116,14 +120,27 @@ export function createNativeAPI(transport: NativeTransport) {
   return {
     agent: {
       installCLI: (options?: NativeCallOptions) =>
-        transport.call<{ path: string; installed: boolean }>("agent.installCLI", {}, options),
+        transport.call<{ path: string; installed: boolean }>(
+          "agent.installCLI",
+          {},
+          options,
+        ),
       status: (options?: NativeCallOptions) =>
-        transport.call<{ path: string; installed: boolean }>("agent.status", {}, options),
+        transport.call<{ path: string; installed: boolean }>(
+          "agent.status",
+          {},
+          options,
+        ),
       uninstallCLI: (options?: NativeCallOptions) =>
-        transport.call<{ path: string; installed: boolean }>("agent.uninstallCLI", {}, options),
+        transport.call<{ path: string; installed: boolean }>(
+          "agent.uninstallCLI",
+          {},
+          options,
+        ),
     },
     application: {
-      show: (options?: NativeCallOptions) => transport.call("application.show", {}, options),
+      show: (options?: NativeCallOptions) =>
+        transport.call("application.show", {}, options),
       info: (options?: NativeCallOptions): Promise<BuiltinApplicationInfo> =>
         transport.call("application.info", {}, options),
       /** Set app-local native appearance. Reapply saved preferences at backend startup. */
@@ -141,14 +158,18 @@ export function createNativeAPI(transport: NativeTransport) {
       writeText: (
         input: BuiltinClipboardText,
         options?: NativeCallOptions,
-      ): Promise<Record<string, never>> => transport.call("clipboard.writeText", input, options),
+      ): Promise<Record<string, never>> =>
+        transport.call("clipboard.writeText", input, options),
     },
     dialogs: {
       openFiles: (
         input: BuiltinOpenFilesInput,
         options?: NativeCallOptions,
       ): Promise<string[] | null> =>
-        transport.call("dialogs.openFiles", input, { timeoutMs: 0, ...options }),
+        transport.call("dialogs.openFiles", input, {
+          timeoutMs: 0,
+          ...options,
+        }),
       saveFile: (
         input: BuiltinSaveFileInput,
         options?: NativeCallOptions,
@@ -156,14 +177,20 @@ export function createNativeAPI(transport: NativeTransport) {
         transport.call("dialogs.saveFile", input, { timeoutMs: 0, ...options }),
     },
     keychain: {
-      get: (input: BuiltinKeyInput, options?: NativeCallOptions): Promise<string | null> =>
+      get: (
+        input: BuiltinKeyInput,
+        options?: NativeCallOptions,
+      ): Promise<string | null> =>
         transport.call("keychain.get", input, { timeoutMs: 0, ...options }),
       set: (
         input: BuiltinKeyValueInput,
         options?: NativeCallOptions,
       ): Promise<Record<string, never>> =>
         transport.call("keychain.set", input, { timeoutMs: 0, ...options }),
-      delete: (input: BuiltinKeyInput, options?: NativeCallOptions): Promise<boolean> =>
+      delete: (
+        input: BuiltinKeyInput,
+        options?: NativeCallOptions,
+      ): Promise<boolean> =>
         transport.call("keychain.delete", input, { timeoutMs: 0, ...options }),
     },
     cloudKit: {
@@ -175,19 +202,27 @@ export function createNativeAPI(transport: NativeTransport) {
       ensureZone: (
         scope: CloudKitScope,
         options?: NativeCallOptions,
-      ): Promise<Record<string, never>> => transport.call("cloudKit.ensureZone", scope, options),
+      ): Promise<Record<string, never>> =>
+        transport.call("cloudKit.ensureZone", scope, options),
       read: (
         input: { scope: CloudKitScope; id: string },
         options?: NativeCallOptions,
-      ): Promise<CloudKitRecord> => transport.call("cloudKit.read", input, options),
+      ): Promise<CloudKitRecord> =>
+        transport.call("cloudKit.read", input, options),
       commit: (
-        input: { scope: CloudKitScope; records: CloudKitRecord[]; deletedIDs: string[] },
+        input: {
+          scope: CloudKitScope;
+          records: CloudKitRecord[];
+          deletedIDs: string[];
+        },
         options?: NativeCallOptions,
-      ): Promise<CloudKitRecord[]> => transport.call("cloudKit.commit", input, options),
+      ): Promise<CloudKitRecord[]> =>
+        transport.call("cloudKit.commit", input, options),
       changes: (
         input: { scope: CloudKitScope; token?: string },
         options?: NativeCallOptions,
-      ): Promise<CloudKitChanges> => transport.call("cloudKit.changes", input, options),
+      ): Promise<CloudKitChanges> =>
+        transport.call("cloudKit.changes", input, options),
       subscribe: (
         input: {
           scope: CloudKitScope;
@@ -197,17 +232,22 @@ export function createNativeAPI(transport: NativeTransport) {
           body: string;
         },
         options?: NativeCallOptions,
-      ): Promise<Record<string, never>> => transport.call("cloudKit.subscribe", input, options),
-      registerPush: (options?: NativeCallOptions): Promise<Record<string, never>> =>
+      ): Promise<Record<string, never>> =>
+        transport.call("cloudKit.subscribe", input, options),
+      registerPush: (
+        options?: NativeCallOptions,
+      ): Promise<Record<string, never>> =>
         transport.call("cloudKit.registerPush", {}, options),
       subscribeZone: (
         input: { scope: CloudKitScope; id: string },
         options?: NativeCallOptions,
-      ): Promise<Record<string, never>> => transport.call("cloudKit.subscribeZone", input, options),
+      ): Promise<Record<string, never>> =>
+        transport.call("cloudKit.subscribeZone", input, options),
       unsubscribe: (
         input: { scope: CloudKitScope; id: string },
         options?: NativeCallOptions,
-      ): Promise<Record<string, never>> => transport.call("cloudKit.unsubscribe", input, options),
+      ): Promise<Record<string, never>> =>
+        transport.call("cloudKit.unsubscribe", input, options),
     },
     notifications: {
       requestAuthorization: (options?: NativeCallOptions): Promise<boolean> =>
@@ -215,71 +255,153 @@ export function createNativeAPI(transport: NativeTransport) {
       deliver: (
         input: BuiltinNotificationInput,
         options?: NativeCallOptions,
-      ): Promise<Record<string, never>> => transport.call("notifications.deliver", input, options),
+      ): Promise<Record<string, never>> =>
+        transport.call("notifications.deliver", input, options),
     },
     screens: {
       list: (options?: NativeCallOptions): Promise<BuiltinScreenDescriptor[]> =>
         transport.call("screens.list", {}, options),
     },
     system: {
-      openURL: (input: BuiltinURLInput, options?: NativeCallOptions): Promise<boolean> =>
-        transport.call("system.openURL", input, options),
+      openURL: (
+        input: BuiltinURLInput,
+        options?: NativeCallOptions,
+      ): Promise<boolean> => transport.call("system.openURL", input, options),
       reveal: (
         input: BuiltinPathInput,
         options?: NativeCallOptions,
-      ): Promise<Record<string, never>> => transport.call("system.reveal", input, options),
+      ): Promise<Record<string, never>> =>
+        transport.call("system.reveal", input, options),
     },
     globalShortcuts: {
       set: (
         input: BuiltinShortcutsInput,
         options?: NativeCallOptions,
-      ): Promise<Record<string, never>> => transport.call("globalShortcuts.set", input, options),
+      ): Promise<Record<string, never>> =>
+        transport.call("globalShortcuts.set", input, options),
     },
     screen: {
       requestAuthorization: (options?: NativeCallOptions): Promise<boolean> =>
         transport.call("screen.requestAuthorization", {}, options),
-      captureRegion: (options?: NativeCallOptions): Promise<BuiltinResourceDescriptor> =>
+      captureRegion: (
+        options?: NativeCallOptions,
+      ): Promise<BuiltinResourceDescriptor> =>
         transport.call("screen.captureRegion", {}, options),
     },
     resources: {
       dispose: (
         input: BuiltinResourceID,
         options?: NativeCallOptions,
-      ): Promise<Record<string, never>> => transport.call("resources.dispose", input, options),
+      ): Promise<Record<string, never>> =>
+        transport.call("resources.dispose", input, options),
+    },
+    processes: {
+      spawn: (
+        input: {
+          id: string;
+          executable: string;
+          arguments: string[];
+          directory: string;
+          environment: Record<string, string>;
+        },
+        options?: NativeCallOptions,
+      ): Promise<{
+        id: string;
+        pid: number;
+        running: boolean;
+        exitCode?: number;
+      }> => transport.call("runtime.processes.spawn", input, options),
+      stop: (
+        input: { id: string },
+        options?: NativeCallOptions,
+      ): Promise<Record<string, never>> =>
+        transport.call("runtime.processes.stop", input, options),
+      state: (
+        input: { id: string },
+        options?: NativeCallOptions,
+      ): Promise<{
+        id: string;
+        pid: number;
+        running: boolean;
+        exitCode?: number;
+      }> => transport.call("runtime.processes.state", input, options),
+    },
+    statusItem: {
+      setMenu: (
+        input: {
+          items: {
+            id: string;
+            label: string;
+            enabled?: boolean;
+            checked?: boolean;
+          }[];
+          locale?: string;
+        },
+        options?: NativeCallOptions,
+      ): Promise<Record<string, never>> =>
+        transport.call("runtime.statusItem.setMenu", input, options),
     },
     windows: {
-      create: (input: WindowOptions, options?: NativeCallOptions): Promise<BuiltinWindowState> =>
+      create: (
+        input: WindowOptions,
+        options?: NativeCallOptions,
+      ): Promise<BuiltinWindowState> =>
         transport.call("windows.create", input, options),
-      update: (input: WindowOptions, options?: NativeCallOptions): Promise<BuiltinWindowState> =>
+      update: (
+        input: WindowOptions,
+        options?: NativeCallOptions,
+      ): Promise<BuiltinWindowState> =>
         transport.call("windows.update", input, options),
       setTitlebar: (
         input: { id: string; items: readonly TitlebarItem[] },
         options?: NativeCallOptions,
-      ): Promise<BuiltinWindowState> => transport.call("windows.setTitlebar", input, options),
-      open: (input: BuiltinWindowID, options?: NativeCallOptions): Promise<BuiltinWindowState> =>
+      ): Promise<BuiltinWindowState> =>
+        transport.call("windows.setTitlebar", input, options),
+      open: (
+        input: BuiltinWindowID,
+        options?: NativeCallOptions,
+      ): Promise<BuiltinWindowState> =>
         transport.call("windows.open", input, options),
-      hide: (input: BuiltinWindowID, options?: NativeCallOptions): Promise<BuiltinWindowState> =>
+      hide: (
+        input: BuiltinWindowID,
+        options?: NativeCallOptions,
+      ): Promise<BuiltinWindowState> =>
         transport.call("windows.hide", input, options),
-      focus: (input: BuiltinWindowID, options?: NativeCallOptions): Promise<BuiltinWindowState> =>
+      focus: (
+        input: BuiltinWindowID,
+        options?: NativeCallOptions,
+      ): Promise<BuiltinWindowState> =>
         transport.call("windows.focus", input, options),
-      close: (input: BuiltinWindowID, options?: NativeCallOptions): Promise<BuiltinWindowState> =>
+      close: (
+        input: BuiltinWindowID,
+        options?: NativeCallOptions,
+      ): Promise<BuiltinWindowState> =>
         transport.call("windows.close", input, options),
-      state: (input: BuiltinWindowID, options?: NativeCallOptions): Promise<BuiltinWindowState> =>
+      state: (
+        input: BuiltinWindowID,
+        options?: NativeCallOptions,
+      ): Promise<BuiltinWindowState> =>
         transport.call("windows.state", input, options),
       minimize: (
         input: BuiltinWindowID,
         options?: NativeCallOptions,
-      ): Promise<BuiltinWindowState> => transport.call("windows.minimize", input, options),
+      ): Promise<BuiltinWindowState> =>
+        transport.call("windows.minimize", input, options),
       maximize: (
         input: BuiltinWindowID,
         options?: NativeCallOptions,
-      ): Promise<BuiltinWindowState> => transport.call("windows.maximize", input, options),
-      restore: (input: BuiltinWindowID, options?: NativeCallOptions): Promise<BuiltinWindowState> =>
+      ): Promise<BuiltinWindowState> =>
+        transport.call("windows.maximize", input, options),
+      restore: (
+        input: BuiltinWindowID,
+        options?: NativeCallOptions,
+      ): Promise<BuiltinWindowState> =>
         transport.call("windows.restore", input, options),
       toggleFullscreen: (
         input: BuiltinWindowID,
         options?: NativeCallOptions,
-      ): Promise<BuiltinWindowState> => transport.call("windows.toggleFullscreen", input, options),
+      ): Promise<BuiltinWindowState> =>
+        transport.call("windows.toggleFullscreen", input, options),
     },
     updates: {
       check: (options?: NativeCallOptions): Promise<UpdateState> =>
@@ -311,6 +433,7 @@ export interface WindowOptions {
   width?: number;
   height?: number;
   titlebar?: readonly TitlebarItem[];
+  managedClose?: boolean;
 }
 export interface UpdateState {
   phase:

@@ -71,6 +71,7 @@ open class AppKitWindow: NSObject, AppWindow, NSWindowDelegate {
   private var fullscreen: AppWindowFullscreen = .windowed
   private var previous: AppWindowState
   private var performingProgrammaticChange = false
+  var closeRequested: (() -> Bool)?
   var presentationAllowed: () -> Bool = { true }
 
   public var state: AppWindowState {
@@ -168,6 +169,7 @@ open class AppKitWindow: NSObject, AppWindow, NSWindowDelegate {
     change(.close) { window.close() }
   }
   public func windowShouldClose(_ sender: NSWindow) -> Bool {
+    if closeRequested?() == true { return false }
     switch userCloseAction {
     case .closeWindow: return true
     case .hideWindow:
@@ -238,9 +240,10 @@ public struct WindowOptions: Codable, Sendable {
   public var width: Double?
   public var height: Double?
   public var titlebar: [TitlebarItem]?
+  public var managedClose: Bool?
   public init(
     id: String, route: String? = nil, title: String? = nil, width: Double? = nil,
-    height: Double? = nil, titlebar: [TitlebarItem]? = nil
+    height: Double? = nil, titlebar: [TitlebarItem]? = nil, managedClose: Bool? = nil
   ) {
     self.id = id
     self.route = route
@@ -248,6 +251,7 @@ public struct WindowOptions: Codable, Sendable {
     self.width = width
     self.height = height
     self.titlebar = titlebar
+    self.managedClose = managedClose
   }
 }
 
@@ -318,6 +322,7 @@ public final class WebWindow: AppKitWindow, WKNavigationDelegate {
     setTitlebar(options.titlebar ?? [])
     loading()
   }
+  var locale = "en" { didSet { setTitlebar(items) } }
   func loading() {
     connected = false
     webView.stopLoading()
@@ -370,7 +375,7 @@ public final class WebWindow: AppKitWindow, WKNavigationDelegate {
     updatePinButton()
     stack.addArrangedSubview(pin)
     let browser = TitlebarIconButton(title: "", target: self, action: #selector(openBrowser))
-    let description = BrowserAccessLabels.open
+    let description = locale.hasPrefix("zh") ? BrowserAccessLabels.open : "Open in Browser"
     browser.identifier = NSUserInterfaceItemIdentifier("fia.openInBrowser")
     browser.image = NSImage(systemSymbolName: "arrow.up.forward.square", accessibilityDescription: description)
     browser.toolTip = description
@@ -393,7 +398,7 @@ public final class WebWindow: AppKitWindow, WKNavigationDelegate {
     window.addTitlebarAccessoryViewController(accessory)
   }
   private func updatePinButton() {
-    let description = pinned ? WindowPinLabels.unpin : WindowPinLabels.pin
+    let description = locale.hasPrefix("zh") ? (pinned ? WindowPinLabels.unpin : WindowPinLabels.pin) : (pinned ? "Unpin Window" : "Keep Window on Top")
     pinButton?.image = NSImage(
       systemSymbolName: pinned ? "pin.fill" : "pin", accessibilityDescription: description)
     pinButton?.state = pinned ? .on : .off
@@ -513,6 +518,7 @@ public final class WindowManager {
   private var stopping = false
   public var appName = "FIA"
   public var onEvent: ((AppWindowEvent) -> Void)?
+  public var onCloseRequested: ((String) -> Void)?
   public var onAction: ((String, String) -> Void)?
   var onBrowser: ((String) -> Void)?
   private var browserAvailable = true
@@ -537,6 +543,7 @@ public final class WindowManager {
     _ = try create(definitions["main"] ?? WindowOptions(id: "main"))
   }
   public func restoreMainWindow() throws { try operate("open", id: "main") }
+  var locale = "en" { didSet { for window in instances.values { window.locale = locale } } }
   public init() {}
   func suspend() {
     connected = false
@@ -566,7 +573,14 @@ public final class WindowManager {
       options: options, appName: appName, emit: { [weak self] event in self?.onEvent?(event) },
       action: { [weak self] id, item in self?.onAction?(id, item) },
       browserAction: { [weak self] id in self?.onBrowser?(id) })
+    window.locale = locale
     window.browserAvailable = browserAvailable
+    if options.managedClose == true {
+      window.closeRequested = { [weak self, weak window] in
+        guard let self, window?.connected == true, !self.stopping else { return false }
+        self.onCloseRequested?(options.id); return true
+      }
+    }
     instances[options.id] = window
     window.onContentFailure = { [weak self] in self?.onContentFailure?(options.id) }
     if connected, let url { window.load(url(window.id, window.route)) }
@@ -593,6 +607,14 @@ public final class WindowManager {
     if let items = options.titlebar {
       window.setTitlebar(items)
       stored.titlebar = items
+    }
+    if let managed = options.managedClose {
+      stored.managedClose = managed
+      window.closeRequested = managed ? { [weak self, weak window] in
+        guard let self, window?.connected == true, !self.stopping else { return false }
+        self.onCloseRequested?(options.id)
+        return true
+      } : nil
     }
     if options.width != nil || options.height != nil {
       window.window.setContentSize(

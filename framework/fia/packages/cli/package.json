@@ -34,15 +34,14 @@
       "import": "./dist/backend.js",
       "default": "./dist/backend.js"
     },
-    "./vite": {
-      "types": "./dist/vite.d.ts",
-      "import": "./dist/vite.js",
-      "default": "./dist/vite.js"
-    },
     "./config": {
       "types": "./dist/config.d.ts",
       "import": "./dist/config.js",
       "default": "./dist/config.js"
+    },
+    "./web": {
+      "types": "./dist/web.d.ts",
+      "import": "./dist/web.js"
     }
   },
   "publishConfig": {
@@ -61,12 +60,10 @@
   "devDependencies": {
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "^5.0.0",
     "react": "19.2.7",
-    "react-dom": "19.2.7",
-    "vite": "^7.1.3"
+    "react-dom": "19.2.7"
   },
   "engines": {
-    "bun": ">=1.4.0"
+    "bun": ">=1.4.4"
   }
 }

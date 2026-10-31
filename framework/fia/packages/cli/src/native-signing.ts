@@ -13,9 +13,15 @@ const execute: Run = async (command) => {
 };
 
 /** Sign copied native dependencies before an application archives or hashes them. */
-export async function signNativeCodeTree(directory: string, identity: string, run: Run = execute) {
+export async function signNativeCodeTree(
+  directory: string,
+  identity: string,
+  run: Run = execute,
+) {
   if (!identity.startsWith("Developer ID Application:"))
-    throw new Error("Native distribution resources require a Developer ID Application identity");
+    throw new Error(
+      "Native distribution resources require a Developer ID Application identity",
+    );
   const signed: string[] = [];
   const magic = new Set([
     "feedface",

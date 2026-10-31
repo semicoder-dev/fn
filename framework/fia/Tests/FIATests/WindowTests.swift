@@ -264,14 +264,14 @@ struct WindowTests {
     }
     #expect(window.window.level == .normal)
     #expect(try button().state == .off)
-    #expect(try button().toolTip == WindowPinLabels.pin)
+    #expect(try button().toolTip == "Keep Window on Top")
     // Pinning is a local native action and remains available before backend readiness.
     #expect(try button().isEnabled)
     try button().performClick(nil)
     #expect(window.window.level == .floating)
     #expect(other.window.level == .normal)
     #expect(try button().state == .on)
-    #expect(try button().toolTip == WindowPinLabels.unpin)
+    #expect(try button().toolTip == "Unpin Window")
     window.connected = true
     window.loading()
     window.setTitlebar([TitlebarItem(type: "text", id: "status", label: "Ready", symbol: nil, tooltip: nil, enabled: nil)])
@@ -288,7 +288,7 @@ struct WindowTests {
     try button().performClick(nil)
     #expect(window.window.level == .normal)
     #expect(try button().state == .off)
-    #expect(try button().toolTip == WindowPinLabels.pin)
+    #expect(try button().toolTip == "Keep Window on Top")
   }
   @Test func registryCancelsNativeCallsWithoutPoisoningNextGeneration() async throws {
     let registry = NativeMethodRegistry()

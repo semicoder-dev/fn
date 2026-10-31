@@ -35,7 +35,10 @@ export async function readResult(response: Response): Promise<unknown> {
   try {
     value = JSON.parse(text);
   } catch {
-    throw new APIError("protocol_error", "Application returned invalid JSON: " + response.status);
+    throw new APIError(
+      "protocol_error",
+      "Application returned invalid JSON: " + response.status,
+    );
   }
   if (value === null || typeof value !== "object" || Array.isArray(value))
     throw new APIError("protocol_error", "Invalid API response envelope");
@@ -50,18 +53,28 @@ export async function readResult(response: Response): Promise<unknown> {
       typeof error.message !== "string"
     )
       throw new APIError("protocol_error", "Invalid API error envelope");
-    throw new APIError(error.code, error.message, "details" in error ? error.details : undefined);
+    throw new APIError(
+      error.code,
+      error.message,
+      "details" in error ? error.details : undefined,
+    );
   }
   if (!response.ok || !("result" in value))
-    throw new APIError("protocol_error", "Invalid API response: " + response.status);
+    throw new APIError(
+      "protocol_error",
+      "Invalid API response: " + response.status,
+    );
   return value.result;
 }
-export async function* readLines(response: Response): AsyncGenerator<Record<string, unknown>> {
+export async function* readLines(
+  response: Response,
+): AsyncGenerator<Record<string, unknown>> {
   if (!response.ok) {
     await readResult(response);
     return;
   }
-  if (!response.body) throw new APIError("disconnected", "Missing event stream");
+  if (!response.body)
+    throw new APIError("disconnected", "Missing event stream");
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
@@ -81,7 +94,8 @@ export async function* readLines(response: Response): AsyncGenerator<Record<stri
       if (new TextEncoder().encode(buffer).byteLength > API_MAX_BYTES)
         throw new APIError("resource_limit", "Event frame exceeds 1 MiB");
     }
-    if (buffer || decoder.decode()) throw new APIError("protocol_error", "Incomplete event frame");
+    if (buffer || decoder.decode())
+      throw new APIError("protocol_error", "Incomplete event frame");
   } finally {
     await reader.cancel().catch(() => {});
     reader.releaseLock();
@@ -93,7 +107,10 @@ export function createAPIClient<C extends APIContract>(
 ): APIClient<C> {
   const listeners = new Map<
     string,
-    { subscription: EventSubscription; callbacks: Set<(payload: unknown) => void> }
+    {
+      subscription: EventSubscription;
+      callbacks: Set<(payload: unknown) => void>;
+    }
   >();
   const reconnect = new Set<() => void>();
   const lifetime = new AbortController();
@@ -102,7 +119,9 @@ export function createAPIClient<C extends APIContract>(
   let closed = false;
   const startEvents = () => {
     if (events || closed || !listeners.size) return;
-    const subscriptions = [...listeners.values()].map((item) => item.subscription);
+    const subscriptions = [...listeners.values()].map(
+      (item) => item.subscription,
+    );
     const controller = (events = new AbortController());
     const signal = AbortSignal.any([controller.signal, lifetime.signal]);
     void (async () => {
@@ -120,7 +139,9 @@ export function createAPIClient<C extends APIContract>(
             }
             if (frame.type === "event")
               for (const { subscription, callbacks } of listeners.values())
-                if (matchesEvent(subscription, String(frame.event), frame.payload))
+                if (
+                  matchesEvent(subscription, String(frame.event), frame.payload)
+                )
                   for (const listener of callbacks) listener(frame.payload);
           }
         } catch {
@@ -146,7 +167,11 @@ export function createAPIClient<C extends APIContract>(
       let body: string;
       try {
         assertJSON(input, "input");
-        body = JSON.stringify({ method, input, requestId: crypto.randomUUID() });
+        body = JSON.stringify({
+          method,
+          input,
+          requestId: crypto.randomUUID(),
+        });
       } catch (error) {
         throw new APIError(
           "invalid_argument",
@@ -168,7 +193,10 @@ export function createAPIClient<C extends APIContract>(
           await send("/call", {
             method: "POST",
             signal,
-            headers: { "content-type": "application/json", "x-fia-client": sessionId },
+            headers: {
+              "content-type": "application/json",
+              "x-fia-client": sessionId,
+            },
             body,
           }),
         );
@@ -185,9 +213,16 @@ export function createAPIClient<C extends APIContract>(
         );
       }
     },
-    on(event: string, listener: (payload: unknown) => void, options: EventOptions = {}) {
+    on(
+      event: string,
+      listener: (payload: unknown) => void,
+      options: EventOptions = {},
+    ) {
       if (closed) throw new APIError("disconnected", "Client is closed");
-      const match = options.match === undefined ? undefined : parseEventMatch(options.match);
+      const match =
+        options.match === undefined
+          ? undefined
+          : parseEventMatch(options.match);
       const subscription = {
         event,
         ...(match
@@ -238,5 +273,7 @@ export function createAPIClient<C extends APIContract>(
   } as APIClient<C>;
 }
 export function createClient<C extends APIContract>(): APIClient<C> {
-  return createAPIClient<C>((path, init) => frontendFetch("/_fia/api" + path, init));
+  return createAPIClient<C>((path, init) =>
+    frontendFetch("/_fia/api" + path, init),
+  );
 }

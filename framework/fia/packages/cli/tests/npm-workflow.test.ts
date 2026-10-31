@@ -1,11 +1,21 @@
 import { standaloneLockFixture } from "./workspace.fixture.ts";
 import { expect, test } from "bun:test";
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import cli from "../package.json";
 import { hash } from "../src/artifacts.ts";
-import { BUNDLED_BUN_VERSION, FIA_BACKEND_PROTOCOL_VERSION } from "../src/metadata.ts";
+import {
+  BUNDLED_BUN_VERSION,
+  FIA_BACKEND_PROTOCOL_VERSION,
+} from "../src/metadata.ts";
 import { checkNPMRelease } from "../../../tools/check-npm-release.ts";
 import { checkNPMPackage } from "../../../tools/check-npm-package.ts";
 
@@ -35,14 +45,16 @@ test("release metadata validates all version sources and routes prereleases to n
       version,
       distTag: "latest",
     });
-    await expect(checkNPMRelease(directory, "refs/tags/v99.0.0")).rejects.toThrow(
-      "Release tag must be",
-    );
+    await expect(
+      checkNPMRelease(directory, "refs/tags/v99.0.0"),
+    ).rejects.toThrow("Release tag must be");
     for (const path of paths) {
       const filename = resolve(directory, path);
       const source = await readFile(filename, "utf8");
       await writeFile(filename, source.replaceAll(`"${version}"`, '"99.0.0"'));
-      await expect(checkNPMRelease(directory)).rejects.toThrow("does not match");
+      await expect(checkNPMRelease(directory)).rejects.toThrow(
+        "does not match",
+      );
       await writeFile(filename, source);
     }
     const prerelease = `${version}-beta.1`;
@@ -50,19 +62,29 @@ test("release metadata validates all version sources and routes prereleases to n
       const filename = resolve(directory, path);
       await writeFile(
         filename,
-        (await readFile(filename, "utf8")).replaceAll(`"${version}"`, `"${prerelease}"`),
+        (await readFile(filename, "utf8")).replaceAll(
+          `"${version}"`,
+          `"${prerelease}"`,
+        ),
       );
     }
-    expect(await checkNPMRelease(directory, `refs/tags/v${prerelease}`)).toEqual({
+    expect(
+      await checkNPMRelease(directory, `refs/tags/v${prerelease}`),
+    ).toEqual({
       version: prerelease,
       distTag: "next",
     });
     const packagePath = resolve(directory, "packages/cli/package.json");
     const source = await readFile(packagePath, "utf8");
-    await writeFile(packagePath, source.replace("semicoder-dev/fia", "other/fia"));
+    await writeFile(
+      packagePath,
+      source.replace("semicoder-dev/fia", "other/fia"),
+    );
     await expect(checkNPMRelease(directory)).rejects.toThrow("repository.url");
     await writeFile(packagePath, source.replace(prerelease, "01.2.3"));
-    await expect(checkNPMRelease(directory)).rejects.toThrow("invalid semantic version");
+    await expect(checkNPMRelease(directory)).rejects.toThrow(
+      "invalid semantic version",
+    );
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -105,7 +127,11 @@ test("packed package validation rejects omitted SDK files, corrupt runtimes and 
         bunSHA256: hash(binary),
       }),
     );
-    for (const path of ["bin/fia", "assets/darwin-arm64/FIAHost", "assets/darwin-arm64/bun"])
+    for (const path of [
+      "bin/fia",
+      "assets/darwin-arm64/FIAHost",
+      "assets/darwin-arm64/bun",
+    ])
       await chmod(resolve(directory, path), 0o755);
     await checkNPMPackage(directory);
     await rm(resolve(directory, "dist/client.d.ts"));
@@ -115,7 +141,9 @@ test("packed package validation rejects omitted SDK files, corrupt runtimes and 
     await expect(checkNPMPackage(directory)).rejects.toThrow("executable bit");
     await chmod(resolve(directory, "assets/darwin-arm64/FIAHost"), 0o755);
     await put("assets/darwin-arm64/bun", "corrupt runtime");
-    await expect(checkNPMPackage(directory)).rejects.toThrow("integrity failed");
+    await expect(checkNPMPackage(directory)).rejects.toThrow(
+      "integrity failed",
+    );
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

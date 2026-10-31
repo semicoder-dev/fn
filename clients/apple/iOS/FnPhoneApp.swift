@@ -20,7 +20,7 @@ final class PhoneDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCe
   }
   func application(
     _ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken token: Data
-  ) { SessionModel.shared.pushStatus = "APNs 注册成功" }
+  ) { SessionModel.shared.pushStatus = Locale.current.language.languageCode?.identifier == "zh" ? "推送已连接" : "Push connected" }
   func application(
     _ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error
   ) { SessionModel.shared.pushStatus = error.localizedDescription }

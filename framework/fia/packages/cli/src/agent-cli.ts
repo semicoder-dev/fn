@@ -1,19 +1,39 @@
 import { mkdir, readFile, realpath, rm, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { APIError, createAPIClient, readLines, readResult, type APIFetch } from "./api-client.ts";
-import { installSkill, manageCLI, type AgentInstallation } from "./agent-install.ts";
+import {
+  APIError,
+  createAPIClient,
+  readLines,
+  readResult,
+  type APIFetch,
+} from "./api-client.ts";
+import {
+  installSkill,
+  manageCLI,
+  type AgentInstallation,
+} from "./agent-install.ts";
 import { eventPath, parseEventMatch } from "./api-values.ts";
 import type { AgentRecord } from "./agent-server.ts";
-import { reservedAgentCommands, type ApplicationCommands } from "./agent-commands.ts";
+import {
+  reservedAgentCommands,
+  type ApplicationCommands,
+} from "./agent-commands.ts";
 
-export function agentFetch(record: AgentRecord, source: "cli" | "script" = "cli"): APIFetch {
+export function agentFetch(
+  record: AgentRecord,
+  source: "cli" | "script" = "cli",
+): APIFetch {
   return (path, init = {}) => {
     const headers = new Headers(init.headers);
     headers.set("authorization", "Bearer " + record.token);
     headers.set("x-fia-generation", record.generation);
     headers.set("x-fia-source", source);
-    return fetch("http://localhost" + path, { ...init, headers, unix: record.socket });
+    return fetch("http://localhost" + path, {
+      ...init,
+      headers,
+      unix: record.socket,
+    });
   };
 }
 async function startupFailure(app: AgentInstallation, runtimeId: string) {
@@ -62,7 +82,9 @@ export async function connectAgent(
         if (hostRunning && record.phase === "updating")
           throw new APIError("updating", "Application is updating");
         const live = (await readResult(
-          await agentFetch(record)("/handshake", { signal: AbortSignal.timeout(1000) }),
+          await agentFetch(record)("/handshake", {
+            signal: AbortSignal.timeout(1000),
+          }),
         )) as AgentRecord;
         if (
           record.protocolVersion !== 1 ||
@@ -94,7 +116,8 @@ export async function connectAgent(
         const failure = await startupFailure(app, runtimeId);
         if (launch && failure && failure.createdAt >= startedAt)
           throw new APIError("startup_failed", failure.message);
-        if (!launch) throw new APIError("not_running", "Application is not running");
+        if (!launch)
+          throw new APIError("not_running", "Application is not running");
         if (hostRunning) {
           await Bun.sleep(100);
           continue;
@@ -120,7 +143,11 @@ export async function connectAgent(
               "--env",
               "FIA_DATA_DIRECTORY=" + dirname(app.supportPath),
               ...(process.env.FIA_CONTROL_DIRECTORY
-                ? ["--env", "FIA_CONTROL_DIRECTORY=" + process.env.FIA_CONTROL_DIRECTORY]
+                ? [
+                    "--env",
+                    "FIA_CONTROL_DIRECTORY=" +
+                      process.env.FIA_CONTROL_DIRECTORY,
+                  ]
                 : []),
               app.bundlePath,
               "--args",
@@ -129,22 +156,30 @@ export async function connectAgent(
             { stdin: "ignore", stdout: "ignore", stderr: "pipe" },
           );
           if (await child.exited)
-            throw new APIError("launch_failed", await new Response(child.stderr).text());
+            throw new APIError(
+              "launch_failed",
+              await new Response(child.stderr).text(),
+            );
         }
         await Bun.sleep(100);
       }
     } while (Date.now() < deadline);
-    throw new APIError("startup_timeout", "Application did not become ready within 20 seconds");
+    throw new APIError(
+      "startup_timeout",
+      "Application did not become ready within 20 seconds",
+    );
   } finally {
     if (ownsLaunch) await rm(lock, { recursive: true, force: true });
   }
 }
-const emit = (value: unknown) => process.stdout.write(JSON.stringify(value) + "\n");
+const emit = (value: unknown) =>
+  process.stdout.write(JSON.stringify(value) + "\n");
 function option(args: string[], name: string): string | undefined {
   const index = args.indexOf(name);
   if (index < 0) return;
   const value = args[index + 1];
-  if (value === undefined) throw new APIError("usage", "Missing value for " + name);
+  if (value === undefined)
+    throw new APIError("usage", "Missing value for " + name);
   args.splice(index, 2);
   return value;
 }
@@ -155,7 +190,8 @@ function flag(args: string[], name: string) {
   return true;
 }
 function noExtra(args: string[]) {
-  if (args.length) throw new APIError("usage", "Unexpected arguments: " + args.join(" "));
+  if (args.length)
+    throw new APIError("usage", "Unexpected arguments: " + args.join(" "));
 }
 export async function runAgentCLI(
   argv: readonly string[],
@@ -165,13 +201,17 @@ export async function runAgentCLI(
 ): Promise<number> {
   let client: ReturnType<typeof createAPIClient> | undefined;
   const lifetime = new AbortController();
-  const interrupt = () => lifetime.abort(new APIError("cancelled", "Interrupted"));
+  const interrupt = () =>
+    lifetime.abort(new APIError("cancelled", "Interrupted"));
   process.on("SIGINT", interrupt);
   process.on("SIGTERM", interrupt);
   try {
     const bundlePath = await realpath(bundle);
     const manifest = JSON.parse(
-      await readFile(resolve(bundlePath, "Contents/Resources/fia.runtime.json"), "utf8"),
+      await readFile(
+        resolve(bundlePath, "Contents/Resources/fia.runtime.json"),
+        "utf8",
+      ),
     );
     if (manifest.schema !== 4 || !manifest.agent?.command)
       throw new APIError("incompatible_runtime", "Install a FIA 4 application");
@@ -184,7 +224,8 @@ export async function runAgentCLI(
       supportPath:
         support ??
         resolve(
-          manifest.localProfile?.dataRoot ?? resolve(homedir(), "Library/Application Support"),
+          manifest.localProfile?.dataRoot ??
+            resolve(homedir(), "Library/Application Support"),
           manifest.app.identifier,
         ),
     };
@@ -197,9 +238,7 @@ export async function runAgentCLI(
         await manageCLI(
           app,
           (command === "installation-status" ? "status" : command) as
-            | "install"
-            | "uninstall"
-            | "status",
+            "install" | "uninstall" | "status",
           directory && resolve(directory),
         ),
       );
@@ -210,7 +249,12 @@ export async function runAgentCLI(
         throw new APIError("usage", "Use skill install [--dir DIRECTORY]");
       const directory = option(args, "--dir");
       noExtra(args);
-      await connectAgent(app, manifest.runtimeId, !development, lifetime.signal);
+      await connectAgent(
+        app,
+        manifest.runtimeId,
+        !development,
+        lifetime.signal,
+      );
       emit(await installSkill(app, directory && resolve(directory)));
       return 0;
     }
@@ -223,13 +267,19 @@ export async function runAgentCLI(
         lifetime.signal,
       );
     } catch (error) {
-      if (command === "status" && error instanceof APIError && error.code === "not_running") {
+      if (
+        command === "status" &&
+        error instanceof APIError &&
+        error.code === "not_running"
+      ) {
         flag(args, "--json");
         noExtra(args);
         const failure = await startupFailure(app, manifest.runtimeId);
         emit({
           running: false,
-          ...(failure ? { error: { code: "startup_failed", message: failure.message } } : {}),
+          ...(failure
+            ? { error: { code: "startup_failed", message: failure.message } }
+            : {}),
         });
         return 0;
       }
@@ -241,21 +291,29 @@ export async function runAgentCLI(
       flag(args, "--json");
       noExtra(args);
       const { token: _token, socket: _socket, ...publicRecord } = record;
-      emit({ ...publicRecord, running: true, frameworkVersion: manifest.frameworkVersion });
+      emit({
+        ...publicRecord,
+        running: true,
+        frameworkVersion: manifest.frameworkVersion,
+      });
       return 0;
     }
     if (command === "open" || command === "quit") {
       const browser = command === "open" && flag(args, "--browser");
       const urlOnly = command === "open" && flag(args, "--url");
       noExtra(args);
-      if (urlOnly && !browser) throw new APIError("usage", "--url requires open --browser");
+      if (urlOnly && !browser)
+        throw new APIError("usage", "--url requires open --browser");
       if (browser) {
         const { url } = (await readResult(
           await send("/browser", { method: "POST", signal: lifetime.signal }),
         )) as { url: string };
         if (urlOnly) process.stdout.write(url + "\n");
         else {
-          const child = Bun.spawn(["/usr/bin/open", url], { stdout: "ignore", stderr: "pipe" });
+          const child = Bun.spawn(["/usr/bin/open", url], {
+            stdout: "ignore",
+            stderr: "pipe",
+          });
           if (await child.exited)
             throw new APIError(
               "open_failed",
@@ -266,14 +324,21 @@ export async function runAgentCLI(
         return 0;
       }
       emit(
-        await readResult(await send("/" + command, { method: "POST", signal: lifetime.signal })),
+        await readResult(
+          await send("/" + command, {
+            method: "POST",
+            signal: lifetime.signal,
+          }),
+        ),
       );
       return 0;
     }
     if (["help", "--help", "-h", "schema"].includes(command)) {
       flag(args, "--json");
       noExtra(args);
-      const schema = await readResult(await send("/schema", { signal: lifetime.signal }));
+      const schema = await readResult(
+        await send("/schema", { signal: lifetime.signal }),
+      );
       const extensions =
         command === "schema"
           ? undefined
@@ -286,7 +351,10 @@ export async function runAgentCLI(
           `${app.command} — ${record.description ?? manifest.agent.description ?? manifest.app.name}\n\nCommands: help, schema --json, call METHOD --json JSON, events EVENT --jsonl [--count N] [--timeout MS] [--match JSON], exec (--file FILE | -e CODE | < stdin) [--timeout MS] [--jsonl], open [--browser [--url]], status --json, quit, install, uninstall, skill install [--dir DIRECTORY]\n\nBrowser: open --browser opens the main route in the default browser. Explicit --url prints a one-use 60-second link; authorization ends on backend restart or Disconnect Browsers.\n\n${Object.entries(
             extensions?.commands ?? {},
           )
-            .map(([name, value]) => `${name}: ${value.description} (${app.command} ${name} --help)`)
+            .map(
+              ([name, value]) =>
+                `${name}: ${value.description} (${app.command} ${name} --help)`,
+            )
             .join("\n")}\n\n${JSON.stringify(schema, null, 2)}\n`,
         );
       return 0;
@@ -296,7 +364,11 @@ export async function runAgentCLI(
       const input = option(args, "--json") ?? "{}";
       noExtra(args);
       if (!method) throw new APIError("usage", "call requires a method");
-      emit(await client.call(method, JSON.parse(input), { signal: lifetime.signal }));
+      emit(
+        await client.call(method, JSON.parse(input), {
+          signal: lifetime.signal,
+        }),
+      );
       return 0;
     }
     if (command === "events") {
@@ -310,9 +382,13 @@ export async function runAgentCLI(
       const timeout = timeoutArg === undefined ? 0 : Number(timeoutArg);
       if (
         (countArg !== undefined &&
-          (!/^\d+$/u.test(countArg) || !Number.isSafeInteger(count) || count < 1)) ||
+          (!/^\d+$/u.test(countArg) ||
+            !Number.isSafeInteger(count) ||
+            count < 1)) ||
         (timeoutArg !== undefined &&
-          (!/^\d+$/u.test(timeoutArg) || !Number.isSafeInteger(timeout) || timeout > 2_147_483_647))
+          (!/^\d+$/u.test(timeoutArg) ||
+            !Number.isSafeInteger(timeout) ||
+            timeout > 2_147_483_647))
       )
         throw new APIError(
           "usage",
@@ -320,22 +396,34 @@ export async function runAgentCLI(
         );
       let match;
       try {
-        match = matchArg === undefined ? undefined : parseEventMatch(JSON.parse(matchArg));
+        match =
+          matchArg === undefined
+            ? undefined
+            : parseEventMatch(JSON.parse(matchArg));
       } catch (error) {
-        throw new APIError("usage", error instanceof Error ? error.message : String(error));
+        throw new APIError(
+          "usage",
+          error instanceof Error ? error.message : String(error),
+        );
       }
-      const schema = (await readResult(await send("/schema", { signal: lifetime.signal }))) as {
+      const schema = (await readResult(
+        await send("/schema", { signal: lifetime.signal }),
+      )) as {
         events: Record<string, unknown>;
       };
       if (!event || !Object.hasOwn(schema.events, event))
         throw new APIError("not_found", "Unknown event: " + event);
       const waiting = new AbortController();
       const signal = AbortSignal.any([lifetime.signal, waiting.signal]);
-      const timer = timeout ? setTimeout(() => waiting.abort(), timeout) : undefined;
+      const timer = timeout
+        ? setTimeout(() => waiting.abort(), timeout)
+        : undefined;
       let received = 0;
       try {
         for await (const frame of readLines(
-          await send(eventPath([{ event, ...(match ? { match } : {}) }]), { signal }),
+          await send(eventPath([{ event, ...(match ? { match } : {}) }]), {
+            signal,
+          }),
         )) {
           if (frame.type === "event" && frame.event === event) {
             emit(frame);
@@ -357,7 +445,8 @@ export async function runAgentCLI(
         waiting.abort();
       }
     }
-    if (command === "exec") return await executeScript(args, app, record, lifetime.signal);
+    if (command === "exec")
+      return await executeScript(args, app, record, lifetime.signal);
     if (!reservedAgentCommands.has(command)) {
       const extensions = (await readResult(
         await send("/commands", { signal: lifetime.signal }),
@@ -383,16 +472,23 @@ export async function runAgentCLI(
         : "invalid_argument";
     process.stderr.write(
       JSON.stringify({
-        error: { code, message: error instanceof Error ? error.message : String(error) },
+        error: {
+          code,
+          message: error instanceof Error ? error.message : String(error),
+        },
       }) + "\n",
     );
     return code === "cancelled"
       ? 130
       : code === "timeout"
         ? 124
-        : ["updating", "update_busy", "not_running", "execution_unknown", "disconnected"].includes(
-              code,
-            )
+        : [
+              "updating",
+              "update_busy",
+              "not_running",
+              "execution_unknown",
+              "disconnected",
+            ].includes(code)
           ? 75
           : code === "usage" || code === "invalid_argument"
             ? 2
@@ -416,7 +512,11 @@ async function executeScript(
   const timeout = Number(option(args, "--timeout") ?? 60_000);
   const jsonl = flag(args, "--jsonl");
   noExtra(args);
-  if (!Number.isSafeInteger(timeout) || timeout < 0 || (file !== undefined && code !== undefined))
+  if (
+    !Number.isSafeInteger(timeout) ||
+    timeout < 0 ||
+    (file !== undefined && code !== undefined)
+  )
     throw new APIError(
       "usage",
       "Choose one script source and a non-negative timeout in milliseconds",
@@ -463,7 +563,10 @@ async function executeScript(
   const ready = await iterator.next();
   if (ready.value?.type !== "ready")
     throw new APIError("disconnected", "Script lease was not established");
-  const preload = resolve(app.bundlePath, "Contents/Resources/script-preload.js");
+  const preload = resolve(
+    app.bundlePath,
+    "Contents/Resources/script-preload.js",
+  );
   let child;
   try {
     child = Bun.spawn(
@@ -540,16 +643,23 @@ async function executeScript(
       }
     }
   })();
-  const drain = async (stream: ReadableStream<Uint8Array>, channel: "stdout" | "stderr") => {
+  const drain = async (
+    stream: ReadableStream<Uint8Array>,
+    channel: "stdout" | "stderr",
+  ) => {
     const decoder = new TextDecoder();
     for await (const chunk of stream) {
-      if (jsonl) emit({ type: channel, data: decoder.decode(chunk, { stream: true }) });
+      if (jsonl)
+        emit({ type: channel, data: decoder.decode(chunk, { stream: true }) });
       else process[channel].write(chunk);
     }
     const rest = decoder.decode();
     if (jsonl && rest) emit({ type: channel, data: rest });
   };
-  const drains = Promise.all([drain(child.stdout, "stdout"), drain(child.stderr, "stderr")]);
+  const drains = Promise.all([
+    drain(child.stdout, "stdout"),
+    drain(child.stderr, "stderr"),
+  ]);
   try {
     const exitCode = await child.exited;
     // Detached descendants must not outlive even a successful script.

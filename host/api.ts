@@ -1,11 +1,16 @@
-import { defineAPI } from "@semicoder/fia/api";
-import contract from "./contract.ts";
-// Only recovery is statically declared. Product contracts join FIA's live schema when their plugins activate.
+import { defineAPI, z } from "@semicoder/fia/api";
 export default defineAPI({
-  methods: Object.fromEntries(
-    Object.entries(contract.methods).map(([name, value]) => [`host.${name}`, value]),
-  ),
-  events: Object.fromEntries(
-    Object.entries(contract.events).map(([name, value]) => [`host.${name}`, value]),
-  ),
+  methods: {
+    "platform.command": {
+      description: "Manage Fn applications and isolated development instances",
+      input: z.object({ action: z.string(), input: z.json().optional() }),
+      output: z.json(),
+    },
+  },
+  events: {
+    "platform.changed": {
+      description: "Application platform changed",
+      payload: z.object({}),
+    },
+  },
 });

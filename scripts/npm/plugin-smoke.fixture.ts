@@ -1,103 +1,76 @@
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { inspectPlugin, buildPlugin, packPlugin } from "@semicoder/fn-sdk/build";
-import * as Cordis from "@deepseek-ai/cordis";
-import * as React from "react";
-import * as Slots from "@deepseek-ai/dsh-client-ui-slots";
-const root = join(process.cwd(), "fixture");
-await mkdir(join(root, "src"), { recursive: true });
+import { buildPlugin, packPlugin } from "@semicoder/fn-sdk/build";
+import { manifestSchema } from "@semicoder/fn-sdk/manifest";
+const root = join(process.cwd(), "app");
+await mkdir(root);
+const manifest = {
+  manifestVersion: 1,
+  id: "independent-app",
+  version: "0.1.0",
+  hostApi: 1,
+  name: "Independent",
+  entries: { backend: "src/backend.ts", page: "src/page.tsx" },
+  locales: { default: "en", messages: { en: "locales/en.json" } },
+  uses: [],
+  contributes: {
+    widgets: [
+      {
+        id: "summary",
+        size: "3x1",
+        initial: "widgets/summary.json",
+      },
+    ],
+  },
+};
+await Bun.write(join(root, "fn.app.json"), JSON.stringify(manifest));
 await Bun.write(
   join(root, "package.json"),
   JSON.stringify({
-    name: "@semicoder/fn-fixture",
-    version: "0.0.0",
+    name: "independent-app",
     type: "module",
-    files: ["src", "dist"],
-    exports: { ".": "./src/index.ts", "./client": "./dist/client.js" },
-    fn: { name: "Fixture" },
+    files: ["src", "locales", "widgets"],
+    dependencies: { "@semicoder/fn-sdk": "0.6.0" },
   }),
 );
+await Bun.write(join(root, "locales/en.json"), "{}");
 await Bun.write(
-  join(root, "src/index.ts"),
-  'export function apply(ctx) { ctx.provide("fixture", true); }',
+  join(root, "widgets/summary.json"),
+  JSON.stringify({ version: 1, body: { type: "metric", value: 3 } }),
 );
 await Bun.write(
-  join(root, "src/client.tsx"),
-  `import type { Context } from "@deepseek-ai/cordis";
-import React from "react";
-import "./style.css";
-export const inject = ["slots"];
-export function apply(ctx: Context) { ctx.slots.register({ name: "root" }, () => <main>Fixture</main>); }`,
+  join(root, "src/backend.ts"),
+  'import {defineBackend} from "@semicoder/fn-sdk/backend";import {defineContract,method,z} from "@semicoder/fn-sdk/contract";export default defineBackend({api:defineContract({read:method({input:z.object({}),output:z.string()})}),setup:()=>({handlers:{read:()=>"independent"}})});',
 );
-await Bun.write(join(root, "src/style.css"), ".fixture { color: red }");
-await inspectPlugin(root);
+await Bun.write(
+  join(root, "src/page.tsx"),
+  'import {createRoot} from "react-dom/client";import {Button} from "@semicoder/fn-ui";createRoot(document.getElementById("root")!).render(<Button>Independent</Button>);',
+);
 await buildPlugin(root);
-let registration: any;
-const nodes = new Set<object>();
-const window = {
-  __ModuleLoader__: {
-    load(value: unknown) {
-      registration = value;
-    },
-  },
-};
-const document = {
-  currentScript: { src: "https://fn.invalid/api/plugin-assets/g/p/client.js" },
-  createElement() {
-    const value = {
-      textContent: "",
-      remove() {
-        nodes.delete(value);
-      },
-    };
-    return value;
-  },
-  head: {
-    append(value: object) {
-      nodes.add(value);
-    },
-  },
-};
-new Function("window", "document", await readFile(join(root, "dist/client.js"), "utf8"))(
-  window,
-  document,
+const packed = await packPlugin(root);
+const bytes = await Bun.file(packed.path).bytes();
+const files = await new Bun.Archive(bytes).files();
+const installedManifest = manifestSchema.parse(
+  JSON.parse(await files.get("fn.app.json")!.text()),
 );
-const shared: Record<string, unknown> = {
-  react: React,
-  "react/jsx-runtime": await import("react/jsx-runtime"),
-  "@deepseek-ai/cordis": Cordis,
-  "@deepseek-ai/dsh-client-ui-slots": Slots,
-};
-const module = registration.factory((name: string) => {
-  if (!(name in shared)) throw new Error(`Unexpected bundled dependency: ${name}`);
-  return shared[name];
-});
-const ctx = new Cordis.Context();
-const { createRequire } = await import("node:module");
-const require = createRequire(import.meta.url);
-let renderer: any;
-new Function(
-  "window",
-  await readFile(require.resolve("@deepseek-ai/dsh-client-ui-renderer/client"), "utf8"),
-)({
-  __ModuleLoader__: {
-    load(value: unknown) {
-      renderer = value;
-    },
-  },
-});
-Object.assign(shared, {
-  "react-dom": await import("react-dom"),
-  "react-dom/client": await import("react-dom/client"),
-});
-const rendererModule = renderer.factory((name: string) => shared[name]);
-await ctx.plugin(rendererModule.default ?? rendererModule);
-const slots = ctx.slots;
-await ctx.plugin(module.default ?? module);
-if (nodes.size !== 1 || slots.entries("root").length !== 1)
-  throw new Error("Client activation failed");
-await ctx.fiber.dispose();
-if (Number(nodes.size) !== 0 || slots.entries("root").length !== 0)
-  throw new Error("Client resources leaked");
-await packPlugin(root, join(process.cwd(), "packed"));
-console.log("Standalone SDK backend/client pack and original slot/CSS cleanup passed");
+if (installedManifest.contributes.widgets[0]?.size !== "3x1")
+  throw new Error("Fixed widget size missing from independent archive");
+if (
+  !files.has("page/index.html") ||
+  !(await files.get("src/backend.ts")?.text())?.includes("independent")
+)
+  throw new Error("Invalid app archive");
+// Move the complete installation away from the consumer's node_modules.
+const { mkdtemp } = await import("node:fs/promises");
+const { tmpdir } = await import("node:os");
+const installed = await mkdtemp(join(tmpdir(), "fn-installed-"));
+try {
+  for (const [name, file] of files)
+    await Bun.write(join(installed, name), await file.bytes());
+  const backend = (await import(join(installed, "src/backend.ts"))).default;
+  const app = await backend.setup({});
+  if ((await app.handlers.read({})) !== "independent")
+    throw new Error("Frozen backend dependencies failed");
+} finally {
+  await rm(installed, { recursive: true, force: true });
+}

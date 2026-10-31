@@ -22,12 +22,27 @@ test("keychain and file dialogs have no default deadline but honor explicit canc
   await api.dialogs.saveFile({ suggestedName: "test.txt" });
   expect(calls.map((call) => call.options?.timeoutMs)).toEqual([0, 0, 0, 0, 0]);
   const controller = new AbortController();
-  await api.keychain.get({ key: "test" }, { timeoutMs: 50, signal: controller.signal });
-  expect(calls.at(-1)?.options).toEqual({ timeoutMs: 50, signal: controller.signal });
-  await api.dialogs.openFiles({ multiple: false }, { timeoutMs: 50, signal: controller.signal });
-  expect(calls.at(-1)?.options).toEqual({ timeoutMs: 50, signal: controller.signal });
+  await api.keychain.get(
+    { key: "test" },
+    { timeoutMs: 50, signal: controller.signal },
+  );
+  expect(calls.at(-1)?.options).toEqual({
+    timeoutMs: 50,
+    signal: controller.signal,
+  });
+  await api.dialogs.openFiles(
+    { multiple: false },
+    { timeoutMs: 50, signal: controller.signal },
+  );
+  expect(calls.at(-1)?.options).toEqual({
+    timeoutMs: 50,
+    signal: controller.signal,
+  });
   await api.dialogs.saveFile({}, { timeoutMs: 50, signal: controller.signal });
-  expect(calls.at(-1)?.options).toEqual({ timeoutMs: 50, signal: controller.signal });
+  expect(calls.at(-1)?.options).toEqual({
+    timeoutMs: 50,
+    signal: controller.signal,
+  });
 });
 
 test("late socket events cannot settle requests from a replacement connection", async () => {
@@ -62,7 +77,12 @@ test("late socket events cannot settle requests from a replacement connection", 
     }
   }
   Object.defineProperty(globalThis, "window", {
-    value: { location: { href: "http://127.0.0.1:1234/", origin: "http://127.0.0.1:1234" } },
+    value: {
+      location: {
+        href: "http://127.0.0.1:1234/",
+        origin: "http://127.0.0.1:1234",
+      },
+    },
     configurable: true,
   });
   globalThis.WebSocket = Socket as unknown as typeof WebSocket;
@@ -97,7 +117,8 @@ test("late socket events cannot settle requests from a replacement connection", 
     client.close();
     for (const socket of Socket.all) socket.dispatchEvent(new Event("close"));
     globalThis.WebSocket = originalSocket;
-    if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow);
+    if (originalWindow)
+      Object.defineProperty(globalThis, "window", originalWindow);
     else Reflect.deleteProperty(globalThis, "window");
   }
 });

@@ -49,6 +49,8 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
     private(set) var statusItem: NSStatusItem?
     private var stopping = false
     private var menuInstalled = false
+    private var menuLocale: String?
+    private var chinese: Bool { runtime.statusMenu.locale?.hasPrefix("zh") ?? false }
 
     init(runtime: FIARuntime, manifest: RuntimeManifest, headless: Bool) {
         self.runtime = runtime
@@ -58,6 +60,16 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         runtime.onShow = { [weak self] in self?.showApplication() }
+        runtime.onStatusMenu = { [weak self] in
+            guard let self else { return }
+            self.installStatusItem()
+            if self.menuLocale != self.runtime.statusMenu.locale {
+                self.menuLocale = self.runtime.statusMenu.locale
+                self.runtime.windows.locale = self.menuLocale ?? "en"
+                self.menuInstalled = false
+                self.installMenu()
+            }
+        }
         installStatusItem()
         if !headless { installMenu() }
         Task { @MainActor in
@@ -109,53 +121,53 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
         let main = NSMenu()
         let applicationItem = NSMenuItem(title: manifest.app.name, action: nil, keyEquivalent: "")
         let applicationMenu = NSMenu()
-        applicationMenu.addItem(withTitle: "About \(manifest.app.name)", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        applicationMenu.addItem(withTitle: chinese ? "关于 \(manifest.app.name)" : "About \(manifest.app.name)", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         if runtime.updater.isEnabled {
             applicationMenu.addItem(.separator())
-            let update = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
+            let update = NSMenuItem(title: chinese ? "检查更新…" : "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
             update.target = self
             applicationMenu.addItem(update)
         }
-        let install = NSMenuItem(title: "Install Command Line Tool…", action: #selector(installCLI), keyEquivalent: "")
+        let install = NSMenuItem(title: chinese ? "安装命令行工具…" : "Install Command Line Tool…", action: #selector(installCLI), keyEquivalent: "")
         install.target = self
         applicationMenu.addItem(install)
-        let disconnect = NSMenuItem(title: BrowserAccessLabels.disconnect, action: #selector(disconnectBrowsers), keyEquivalent: "")
+        let disconnect = NSMenuItem(title: chinese ? "断开浏览器连接" : "Disconnect Browser Connections", action: #selector(disconnectBrowsers), keyEquivalent: "")
         disconnect.target = self
         applicationMenu.addItem(disconnect)
         applicationMenu.addItem(.separator())
-        applicationMenu.addItem(withTitle: "Hide \(manifest.app.name)", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
-        let hideOthers = applicationMenu.addItem(withTitle: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
+        applicationMenu.addItem(withTitle: chinese ? "隐藏 \(manifest.app.name)" : "Hide \(manifest.app.name)", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        let hideOthers = applicationMenu.addItem(withTitle: chinese ? "隐藏其他" : "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
         hideOthers.keyEquivalentModifierMask = [.command, .option]
-        applicationMenu.addItem(withTitle: "Show All", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
+        applicationMenu.addItem(withTitle: chinese ? "全部显示" : "Show All", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
         applicationMenu.addItem(.separator())
-        applicationMenu.addItem(withTitle: "Quit \(manifest.app.name)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        applicationMenu.addItem(withTitle: chinese ? "退出 \(manifest.app.name)" : "Quit \(manifest.app.name)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         applicationItem.submenu = applicationMenu
         main.addItem(applicationItem)
 
-        let fileItem = NSMenuItem(title: "File", action: nil, keyEquivalent: "")
-        let fileMenu = NSMenu(title: "File")
-        fileMenu.addItem(withTitle: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        let fileItem = NSMenuItem(title: chinese ? "文件" : "File", action: nil, keyEquivalent: "")
+        let fileMenu = NSMenu(title: chinese ? "文件" : "File")
+        fileMenu.addItem(withTitle: chinese ? "关闭窗口" : "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
         fileItem.submenu = fileMenu
         main.addItem(fileItem)
 
-        let editItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
-        let editMenu = NSMenu(title: "Edit")
-        editMenu.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
-        editMenu.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        let editItem = NSMenuItem(title: chinese ? "编辑" : "Edit", action: nil, keyEquivalent: "")
+        let editMenu = NSMenu(title: chinese ? "编辑" : "Edit")
+        editMenu.addItem(withTitle: chinese ? "撤销" : "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        editMenu.addItem(withTitle: chinese ? "重做" : "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
         editMenu.addItem(.separator())
-        editMenu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
-        editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
-        editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
-        editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editMenu.addItem(withTitle: chinese ? "剪切" : "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: chinese ? "复制" : "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: chinese ? "粘贴" : "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: chinese ? "全选" : "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         editItem.submenu = editMenu
         main.addItem(editItem)
 
-        let windowItem = NSMenuItem(title: "Window", action: nil, keyEquivalent: "")
-        let windowMenu = NSMenu(title: "Window")
-        windowMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
-        windowMenu.addItem(withTitle: "Zoom", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
+        let windowItem = NSMenuItem(title: chinese ? "窗口" : "Window", action: nil, keyEquivalent: "")
+        let windowMenu = NSMenu(title: chinese ? "窗口" : "Window")
+        windowMenu.addItem(withTitle: chinese ? "最小化" : "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        windowMenu.addItem(withTitle: chinese ? "缩放" : "Zoom", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
         windowMenu.addItem(.separator())
-        windowMenu.addItem(withTitle: "Bring All to Front", action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
+        windowMenu.addItem(withTitle: chinese ? "全部置前" : "Bring All to Front", action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
         windowItem.submenu = windowMenu
         main.addItem(windowItem)
         NSApp.windowsMenu = windowMenu
@@ -164,7 +176,7 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
 
     func installStatusItem() {
         guard let configuration = manifest.statusItem else { return }
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        let item = statusItem ?? NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.image = NSImage(systemSymbolName: configuration.symbol, accessibilityDescription: configuration.tooltip)
         item.button?.toolTip = configuration.tooltip
         if let profile = manifest.localProfile {
@@ -173,18 +185,24 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
             item.button?.toolTip = manifest.app.name + " — " + (configuration.tooltip ?? manifest.app.name)
         }
         let menu = NSMenu()
-        let show = NSMenuItem(title: "Show", action: #selector(showMainWindow), keyEquivalent: "")
+        for entry in runtime.statusMenu.items {
+            let row = NSMenuItem(title: entry.label, action: #selector(applicationMenuAction(_:)), keyEquivalent: "")
+            row.target = self; row.representedObject = entry.id; row.isEnabled = entry.enabled != false
+            row.state = entry.checked == true ? .on : .off; menu.addItem(row)
+        }
+        if !runtime.statusMenu.items.isEmpty { menu.addItem(.separator()) }
+        let show = NSMenuItem(title: chinese ? "显示桌面" : "Show Desktop", action: #selector(showMainWindow), keyEquivalent: "")
         if manifest.localProfile != nil { show.title = "Show " + manifest.app.name }
         show.target = self
         menu.addItem(show)
-        let install = NSMenuItem(title: "Install Command Line Tool…", action: #selector(installCLI), keyEquivalent: "")
+        let install = NSMenuItem(title: chinese ? "安装命令行工具…" : "Install Command Line Tool…", action: #selector(installCLI), keyEquivalent: "")
         install.target = self
         menu.addItem(install)
-        let disconnect = NSMenuItem(title: BrowserAccessLabels.disconnect, action: #selector(disconnectBrowsers), keyEquivalent: "")
+        let disconnect = NSMenuItem(title: chinese ? "断开浏览器连接" : "Disconnect Browser Connections", action: #selector(disconnectBrowsers), keyEquivalent: "")
         disconnect.target = self
         menu.addItem(disconnect)
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(withTitle: chinese ? "退出" : "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         item.menu = menu
         statusItem = item
     }
@@ -202,12 +220,15 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
         try? runtime.presentMainWindow()
         NSApp.activate(ignoringOtherApps: true)
     }
+    @objc private func applicationMenuAction(_ sender: NSMenuItem) {
+        if let id = sender.representedObject as? String { runtime.statusMenuAction(id) }
+    }
     @objc private func showMainWindow() { showApplication() }
     @objc private func installCLI() {
         Task { @MainActor in
             do {
                 let result = try await runtime.manageCLI("install")
-                let alert = NSAlert(); alert.messageText = "Command installed"
+                let alert = NSAlert(); alert.messageText = chinese ? "命令已安装" : "Command installed"
                 alert.informativeText = result.pathHint ?? result.path
                 alert.runModal()
             } catch { NSAlert(error: error).runModal() }

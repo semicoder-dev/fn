@@ -8,6 +8,10 @@ import Foundation
 @MainActor
 public final class FIARuntime {
   public let windows = WindowManager()
+  public let processes = ChildProcessService()
+  var statusMenu = StatusMenuOptions(items: [], locale: nil)
+  var onStatusMenu: (() -> Void)?
+  func statusMenuAction(_ id: String) { emit("statusItem.action", StatusMenuAction(id: id)) }
   public let native = NativeMethodRegistry()
   public let resources: ResourceStore
   public let updater: CodeUpdateManager
@@ -82,6 +86,15 @@ public final class FIARuntime {
         ].map { ($0, true) }))
     windows.appName = manifest.app.name
     windows.registerNativeMethods(native)
+    processes.register(in: native)
+    processes.onExit = { [weak self] state in self?.emit("processes.exited", state) }
+    windows.onCloseRequested = { [weak self] id in self?.emit("windows.closeRequested", WindowCloseRequest(windowId: id)) }
+    native.register("runtime.statusItem.setMenu", input: StatusMenuOptions.self, output: FIAEmpty.self) { [weak self] input in
+      try await MainActor.run {
+        guard let self, input.items.count <= 100, Set(input.items.map(\.id)).count == input.items.count else { throw CancellationError() }
+        self.statusMenu = input; self.onStatusMenu?(); return FIAEmpty()
+      }
+    }
     windows.onEvent = { [weak self] event in self?.emit("windows.changed", event) }
     windows.onAction = { [weak self] id, item in
       self?.emit("windows.titlebarAction", TitlebarAction(windowId: id, itemId: item))
@@ -127,7 +140,7 @@ public final class FIARuntime {
     if let readyFile = ProcessInfo.processInfo.environment["FIA_DEV_READY_FILE"] {
       let deadline = Date().addingTimeInterval(15)
       while !FileManager.default.fileExists(atPath: readyFile) {
-        if Date() >= deadline { throw UpdateError("Vite did not become ready") }
+        if Date() >= deadline { throw UpdateError("Frontend did not become ready") }
         try await Task.sleep(for: .milliseconds(50))
       }
     }
@@ -184,6 +197,8 @@ public final class FIARuntime {
           self.frontendReady.removeAll()
           self.frontendFailure = nil
           self.windows.suspend()
+          let children = self.processes.identifiers
+          Task { try? await self.processes.stop(children) }
           self.native.cancelActive()
           self.shortcuts.clear()
           Task { await self.resources.cleanupAll() }
@@ -191,6 +206,8 @@ public final class FIARuntime {
           self.backendReady = false
           self.backendFailure = reason
           self.windows.suspend()
+          let children = self.processes.identifiers
+          Task { try? await self.processes.stop(children) }
         case .stopping, .stopped: self.backendReady = false
         }
       }
@@ -286,6 +303,7 @@ public final class FIARuntime {
     windows.setBrowserAvailable(false)
     windows.suspend()
     try await backend?.stop()
+    try await processes.stopAll()
     native.cancelActive()
     shortcuts.clear()
     await resources.cleanupAll()
@@ -409,6 +427,7 @@ public final class FIARuntime {
     let task = Task { @MainActor in
       do {
         try await self.backend?.stop()
+        try await self.processes.stopAll()
         self.shortcuts.clear()
         await self.resources.cleanupAll()
         self.lifecycle = .stopped
@@ -442,7 +461,9 @@ public final class FIARuntime {
           }
           do {
             self.windows.suspend()
+          Task { try? await self.processes.stopAll() }
             try await self.backend?.stop()
+        try await self.processes.stopAll()
             self.native.cancelActive()
             self.shortcuts.clear()
             await self.resources.cleanupAll()

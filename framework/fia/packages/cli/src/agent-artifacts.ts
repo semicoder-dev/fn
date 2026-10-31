@@ -11,31 +11,42 @@ function compileAgentType(schema: Record<string, unknown>, name: string) {
   // An allOf reference has the same meaning without replacing the root object,
   // preserving recursive identity, sibling constraints and the original $defs.
   if (typeof input.$ref === "string") {
-    input.allOf = [{ $ref: input.$ref }, ...((input.allOf as unknown[] | undefined) ?? [])];
+    input.allOf = [
+      { $ref: input.$ref },
+      ...((input.allOf as unknown[] | undefined) ?? []),
+    ];
     delete input.$ref;
   }
-  return compile(input as Parameters<typeof compile>[0], name, { bannerComment: "" });
+  return compile(input as Parameters<typeof compile>[0], name, {
+    bannerComment: "",
+  });
 }
 
-export async function generateAgentArtifacts(config: ResolvedFIAConfig, destination: string) {
+export async function generateAgentArtifacts(
+  config: ResolvedFIAConfig,
+  destination: string,
+) {
   const result = await Bun.build({
     entrypoints: [resolve(config.projectRoot, config.api.entry)],
     target: "bun",
     format: "esm",
   });
-  if (!result.success) throw new AggregateError(result.logs, "API contract failed to build");
+  if (!result.success)
+    throw new AggregateError(result.logs, "API contract failed to build");
   const module = (await import(
     "data:text/javascript;base64," +
-      Buffer.from((await result.outputs[0]!.text()) + "\n//" + crypto.randomUUID()).toString(
-        "base64",
-      )
+      Buffer.from(
+        (await result.outputs[0]!.text()) + "\n//" + crypto.randomUUID(),
+      ).toString("base64")
   )) as { default: APIContract };
   const schema = describeAPI(module.default);
   const directory = resolve(destination, config.agent.command);
   await mkdir(resolve(directory, "references"), { recursive: true });
   const command = config.agent.command;
   const commands: Record<string, { description: string; entry: string }> = {};
-  for (const [name, declaration] of Object.entries(config.agent.commands ?? {})) {
+  for (const [name, declaration] of Object.entries(
+    config.agent.commands ?? {},
+  )) {
     const staging = resolve(config.projectRoot, ".fia/build/commands");
     await mkdir(staging, { recursive: true });
     const runner = resolve(staging, name + ".ts");
@@ -52,11 +63,18 @@ export async function generateAgentArtifacts(config: ResolvedFIAConfig, destinat
       outdir: resolve(directory, "commands"),
       naming: name + ".js",
     });
-    if (!built.success) throw new AggregateError(built.logs, "Command failed to build: " + name);
-    commands[name] = { description: declaration.description, entry: `commands/${name}.js` };
+    if (!built.success)
+      throw new AggregateError(built.logs, "Command failed to build: " + name);
+    commands[name] = {
+      description: declaration.description,
+      entry: `commands/${name}.js`,
+    };
   }
   const instructions = config.agent.instructions
-    ? await readFile(resolve(config.projectRoot, config.agent.instructions), "utf8")
+    ? await readFile(
+        resolve(config.projectRoot, config.agent.instructions),
+        "utf8",
+      )
     : "";
   const skill = `---\nname: ${command}\ndescription: ${JSON.stringify(config.agent.description)}\ncompatibility: macOS 14+, Apple Silicon; requires the ${command} desktop application.\nmetadata:\n  version: ${JSON.stringify(config.app.version)}\n  build: ${JSON.stringify(String(config.app.build))}\n---\n\n# ${config.app.name}\n\nUse the installed \`${command}\` command. The application owns its runtime; no separate Node.js or Bun install is needed.\n\nRun \`${command} help\` and \`${command} schema --json\` for the active application's API. If the build differs from this skill, use the live schema. Read [API reference](references/api.md) for details.\n\nCall a method with \`${command} call METHOD --json '{...}'\`. Subscribe with \`${command} events EVENT --jsonl [--count N] [--timeout MS] [--match JSON]\`. Match is a JSON object of top-level scalar fields (AND). Reaching count exits 0; timeout exits 124 without an error frame. Events have no replay: establish the subscription before triggering work and read current state again after waiting.\n\nCompose operations in TypeScript:\n\n\`\`\`sh\n${command} exec <<'TS'\nconsole.log(help());\n// await app.call("method.name", { ... });\nTS\n\`\`\`\n\nScripts receive app.call(), app.on(), app.onReconnect(), and help(). Use console.log for results. Type definitions are in [agent.d.ts](agent.d.ts). Each invocation is independent. Scripts are trusted local code with file and network access, not sandboxed. The default timeout is 60 seconds; --timeout takes milliseconds, with 0 disabling it.\n\nCLI calls start the application in the background when necessary. Use \`${command} open\` to show the desktop UI. Do not automatically repeat a call after an execution_unknown error: effects may already have occurred. app.on(event, listener, {match}) filters events on the server. Subscription changes reconnect the shared stream and trigger onReconnect. Event reconnection does not replay history; read current state again. Long-lived business jobs must be managed through the application's API.\n\n${instructions}\n`;
   const reference = [
@@ -78,7 +96,12 @@ export async function generateAgentArtifacts(config: ResolvedFIAConfig, destinat
       JSON.stringify(method.output, null, 2),
       "```",
       ...(method.examples
-        ? ["Examples:", "```json", JSON.stringify(method.examples, null, 2), "```"]
+        ? [
+            "Examples:",
+            "```json",
+            JSON.stringify(method.examples, null, 2),
+            "```",
+          ]
         : []),
       "",
     ]),
@@ -92,7 +115,9 @@ export async function generateAgentArtifacts(config: ResolvedFIAConfig, destinat
       "",
     ]),
   ].join("\n");
-  const types: string[] = ["// Generated from the application's API contract.\n"];
+  const types: string[] = [
+    "// Generated from the application's API contract.\n",
+  ];
   const methods: string[] = [],
     events: string[] = [];
   let index = 0;
@@ -115,7 +140,9 @@ export async function generateAgentArtifacts(config: ResolvedFIAConfig, destinat
   for (const [name, event] of Object.entries(schema.events)) {
     const id = "Event" + index++;
     types.push(
-      `export namespace ${id}Types {\n` + (await compileAgentType(event.payload, id)) + "\n}",
+      `export namespace ${id}Types {\n` +
+        (await compileAgentType(event.payload, id)) +
+        "\n}",
     );
     events.push(
       `on(event: ${JSON.stringify(name)}, listener: (payload: ${id}Types.${id}) => void, options?: {match?: Readonly<Record<string, string | number | boolean | null>>}): () => void;`,
@@ -125,7 +152,10 @@ export async function generateAgentArtifacts(config: ResolvedFIAConfig, destinat
     `export interface FIAApplication {\n${methods.join("\n")}\n${events.join("\n")}\nonReconnect(listener: () => void): () => void;\nclose(): void;\n}\ndeclare global { const app: FIAApplication; function help(name?: string): string; }\n`,
   );
   const commandHelp = Object.entries(commands)
-    .map(([name, value]) => `- \`${command} ${name} --help\`: ${value.description}`)
+    .map(
+      ([name, value]) =>
+        `- \`${command} ${name} --help\`: ${value.description}`,
+    )
     .join("\n");
   await writeFile(
     resolve(directory, "SKILL.md"),
@@ -135,7 +165,10 @@ export async function generateAgentArtifacts(config: ResolvedFIAConfig, destinat
         : ""),
   );
   await writeFile(resolve(directory, "references/api.md"), reference);
-  await writeFile(resolve(directory, "schema.json"), JSON.stringify(schema, null, 2) + "\n");
+  await writeFile(
+    resolve(directory, "schema.json"),
+    JSON.stringify(schema, null, 2) + "\n",
+  );
   await writeFile(
     resolve(directory, "metadata.json"),
     JSON.stringify({ description: config.agent.description, commands }) + "\n",

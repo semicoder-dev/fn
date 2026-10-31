@@ -1,44 +1,66 @@
-# fn
+# Fn
 
-fn 是运行在 Bun＋FIA 上的 Cordis 插件平台。当前源码面向 **fn 0.6.1 / build 14** 和 **SDK 0.5.0**，采用全插件化架构。实际公开版本与下载产物以 [正式安装入口](https://semicoder.dev/fn/docs/installation) 和 GitHub Releases 为准；iPhone 内测仍为 0.3.0（4），不与本版桌面提供聊天同步。
+Fn 是一个本地多应用平台。桌面卡片显示应用状态，点击后打开独立窗口；翻译、笔记和看板各自拥有页面与 Bun 后台。宿主统一管理模型、标准 UI、小组件、安装更新。手机文字中转保留为开发预览。
 
-默认组合提供紧凑侧栏、模型连接、插件管理、外观和应用更新，启动进入应用中心。聊天用途尚未定稿，Chat 页面、默认助手、卡片和 iCloud 同步暂不纳入本阶段首版发行。Agent、Session、模型适配及工具调度使用锁定的原版 dsh；布局和全部产品页面也是插件。关闭页面或断线不终止后台 Agent。界面统一使用原版 dsh 控件与主题，仅保留浅色、深色和跟随系统，不再提供自定义配色。
+桌面顶部只有一行搜索、整理桌面和添加应用。底部 Dock 常驻应用、通知和设置，点击以弹窗打开；运行中的普通应用排在竖线另一侧，支持打开、聚焦和关闭。模型连接位于设置；手机入口仅在开发构建中显示。
 
-聊天源码保留在独立实验组合中，使用 `bun run dev --experimental-chat` 按需启用；普通 `dev/run/build/release` 均使用无聊天的默认组合。默认运行归档不包含六个聊天专属包，Agent、Session、模型与工具底层继续供插件使用。切回普通 `bun run dev` 后会在空闲时撤下聊天组合，已有会话与插件业务数据保留。
+本次候选为 Fn 0.7.0 / SDK 0.6.0 / Fn UI 0.1.0；发布产物以 GitHub Release 和 npm 为准。文档描述当前源码契约。产品显示名称为 Fn；包名、目录、CLI 和应用 ID 使用小写。
 
-## 代码结构
+## 本地运行
 
-| 目录                      | 职责                                                        |
-| ------------------------- | ----------------------------------------------------------- |
-| `host/`、`packages/host/` | FIA 启动、配置装配、不可变运行目录、资源传输和故障恢复      |
-| `plugins/`                | 按能力拆分的后端和 UI 插件，名称为 `@semicoder/fn-<能力名>` |
-| `profiles/`               | 默认 bundle、顺序及上游 patch 配置                          |
-| `packages/sdk/`           | Cordis 插件构建、公共契约和泛型客户端；不提供业务聚合服务   |
-| `packages/ui/`            | 原版 dsh 控件共享入口、固定主题资源和少量页面组合           |
-| `clients/apple/`          | Chat v4 的 SwiftUI 客户端、协议资源与签名辅助               |
-| `framework/fia/`          | 通用窗口、原生能力、动态 API、进程和更新框架                |
-| `scripts/`、`commands/`   | 构建、验证和开发工具                                        |
-
-## 开发
-
-要求 Apple Silicon macOS 14+、Bun 1.4.3、Swift 6 / Xcode。在本仓库根执行：
+需要 macOS 14+ Apple Silicon、Bun 1.4.4 和 Xcode/Swift 6。框架源码位于 `framework/fia/`；根目录安装依赖。
 
 ```sh
 bun install --frozen-lockfile --ignore-scripts
 bun run dev
-bun run agent open --browser
-bun run agent schema --json
-bun run check
-bun run test
-bun run build
-bun run npm:pack
-bun run framework:verify
+# 打包代码的隔离预览
+bun run run
+# 构建本地安装包
+bun run build --dmg
 ```
 
-插件后端直接执行 ESM TypeScript，前端通过 `exports["./client"]` 提供上游模块工厂。`bun run agent plugin check/build/pack <目录>` 验证、构建、打包；纯服务、纯前端和双端插件均可。0.6.1 支持普通外部插件安装、更新和启停在空闲后增量生效，保留页面根节点和未变化实例；共享内核/基础组合变化及不可安全热更新的插件仍重启。0.6.0 的统一后台重启行为保留在旧发行中。安装先校验不可变候选目录，前后端确认后切换；见 [热更新](docs/plugin-hot-update.md)。运行阶段关闭自动安装，禁止修改已生效目录。
+Dev、Preview、正式构建分别使用独立身份和数据目录。验收使用隔离预览；构建不表示发布，也不替换日常应用。
 
-新源码仅使用 `Backend/plugins-v1/` 与 Chat v4 数据空间，不读取、迁移或删除既有数据。不保留旧 SDK、应用 Bridge、公开 KV、网页抓取或网页搜索接口；fn 不再依赖 agent-webtool。旧三个测试插件从本地市场源码移除，生产市场尚未更改。插件属于可信本地代码，Cordis 不提供安全沙箱。
+`bun dev` 与 `bun run dev` 等价，启动后进入 Fn 桌面；终端需保持运行，按 Ctrl-C 退出。开发网关的本机通信自动直连，使用 HTTP 代理时无需关闭代理或手动修改 `NO_PROXY`。
 
-[架构](docs/cordis-runtime.md) · [插件开发](docs/plugin-development.md) · [SDK](packages/sdk/README.md) · [验收](docs/runtime-validation.md) · [Apple 客户端](clients/apple/README.md) · [待发布清单](release/notes/unreleased.md)。
+首次进入桌面后，点击 Dock 的「应用」，在「应用中心 → 本地安装」选择独立 `fn-plugins` 仓库打包的 `.fn.tgz`。当前三个本地包为：
 
-日常开发不升版、不推送、不发布。发布必须另行授权，并分别验证应用、SDK、市场、手机、CloudKit 和官网；FIA 独立 npm 仍暂停。
+- `plugins/translate/fn-translate-0.2.0.fn.tgz`
+- `plugins/notes/fn-notes-0.2.0.fn.tgz`
+- `plugins/kanban/fn-kanban-0.2.0.fn.tgz`
+
+安装后点击桌面卡片打开应用。笔记和看板可以直接使用；翻译需先在「设置 → 模型」登录 ChatGPT 并选择默认模型。标题栏右侧「在浏览器中打开」可打开同一开发实例的浏览器界面。
+
+## 应用与数据
+
+- 打开启动后台，重复打开聚焦窗口；最小化继续运行，关闭应用停止其后台和受管理进程组。
+- 关闭桌面窗口隐藏桌面；退出 Fn 停止全部应用。重启恢复桌面布局和小组件快照，应用保持关闭。
+- 浏览器与原生窗口连接同一真实宿主。关闭浏览器标签只断开该视图并取消所属请求；显式关闭应用才停止后台。
+- 业务数据位于宿主提供的应用专属目录，由应用使用 Bun SQLite 或文件管理；代码安装目录不可写。
+- ChatGPT 官方账号在设置中授权，宿主持有凭证，应用使用 OpenResponses。工具与 Agent loop 由应用实现。
+- 开发构建中的手机按桌面和应用发送文字。关闭的应用不会被消息唤醒；启动后处理等待消息。真机验收状态见验收记录。
+
+三个官方应用在独立 `fn-plugins` 仓库构建，宿主构建不依赖它。没有后台或没有自定义页面的应用也可安装。
+
+## 开发与验证
+
+```sh
+bun run check
+bun run test
+bun run framework:check
+bun run framework:pack
+bun run framework:verify
+bun run npm:check
+bun run npm:pack
+```
+
+Bun 负责构建、测试、依赖、归档及格式化，`bun run format` 使用 `bun fmt`。前端以同一 Bun 构建路径进行开发和生产构建；开发修改重建并刷新页面，不保留 React 内存状态。
+
+- [架构与生命周期](docs/architecture.md)
+- [应用定义与 SDK](docs/plugin-development.md)
+- [小组件](docs/widgets.md)
+- [安装更新](docs/plugin-marketplace.md)
+- [验收与未验证项目](docs/ui-validation.md)
+- [手机开发](clients/apple/README.md)
+- [FIA 联调](docs/fia-integration.md)
+- [发布流程](docs/github-release.md)

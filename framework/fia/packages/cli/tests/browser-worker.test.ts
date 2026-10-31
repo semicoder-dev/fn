@@ -28,7 +28,8 @@ function worker() {
     clearTimeout,
     self: {
       location: { origin },
-      addEventListener: (name: string, fn: (event: any) => void) => handlers.set(name, fn),
+      addEventListener: (name: string, fn: (event: any) => void) =>
+        handlers.set(name, fn),
       clients: { get: async (id: string) => clients.get(id) },
     },
     fetch: async (request: Request) => {
@@ -83,19 +84,29 @@ test("browser worker authenticates scripts, styles and streams only for their ow
   const token = "a".repeat(64);
   w.page("one", token);
   w.page("two", "b".repeat(64));
-  for (const path of ["/api/plugin/page.js", "/api/plugin/style.css", "/_fia/api/events"])
+  for (const path of [
+    "/api/plugin/page.js",
+    "/api/plugin/style.css",
+    "/_fia/api/events",
+  ])
     expect((await w.request(path))?.status).toBe(200);
-  expect(w.requests.map((request) => request.headers.get("authorization"))).toEqual(
-    Array(3).fill("Bearer " + token),
-  );
   expect(
-    w.requests.every((request) => request.redirect === "error" && request.cache === "no-store"),
+    w.requests.map((request) => request.headers.get("authorization")),
+  ).toEqual(Array(3).fill("Bearer " + token));
+  expect(
+    w.requests.every(
+      (request) => request.redirect === "error" && request.cache === "no-store",
+    ),
   ).toBe(true);
-  expect(w.forwarding.every((init) => init.credentials === "omit" && init.mode === "cors")).toBe(
-    true,
-  );
+  expect(
+    w.forwarding.every(
+      (init) => init.credentials === "omit" && init.mode === "cors",
+    ),
+  ).toBe(true);
   await w.request("/api/second", "two");
-  expect(w.requests.at(-1)!.headers.get("authorization")).toBe("Bearer " + "b".repeat(64));
+  expect(w.requests.at(-1)!.headers.get("authorization")).toBe(
+    "Bearer " + "b".repeat(64),
+  );
   expect((await w.request("/api/private", "unknown"))?.status).toBe(401);
   for (const path of [
     "http://127.0.0.1:1234/api/private",
@@ -122,10 +133,13 @@ test("worker recovery only consults the requesting tab and rejects a foreign mes
   expect(w.requests).toHaveLength(2);
   expect(
     w.requests.every(
-      (request) => request.headers.get("authorization") === "Bearer " + "c".repeat(64),
+      (request) =>
+        request.headers.get("authorization") === "Bearer " + "c".repeat(64),
     ),
   ).toBe(true);
-  expect(w.notices.filter((value: any) => value.type === "fia:need-auth")).toHaveLength(1);
+  expect(
+    w.notices.filter((value: any) => value.type === "fia:need-auth"),
+  ).toHaveLength(1);
   w.status(401);
   expect((await w.request("/api/private"))?.status).toBe(401);
   expect(w.notices.at(-1)).toEqual({ type: "fia:expired" });
@@ -135,6 +149,8 @@ test("framework HTML injects its early browser bootstrap exactly once", () => {
   const html =
     '<!doctype html><html><head><script type="module" src="/app.js"></script></head></html>';
   const output = injectBrowserRuntime(html);
-  expect(output.indexOf("/_fia/browser/runtime.js")).toBeLessThan(output.indexOf("/app.js"));
+  expect(output.indexOf("/_fia/browser/runtime.js")).toBeLessThan(
+    output.indexOf("/app.js"),
+  );
   expect(injectBrowserRuntime(output)).toBe(output);
 });

@@ -1,6 +1,6 @@
 # @semicoder/fia
 
-FIA 4 creates macOS 14+ Apple Silicon apps for humans and agents with one typed API, React UI, bundled CLI, TypeScript script SDK and agent skill. React, Vite, Bun and the precompiled Swift host remain the runtime architecture.
+FIA 4 creates macOS 14+ Apple Silicon apps for humans and agents with one typed API, React UI, bundled CLI, TypeScript script SDK and agent skill. React, Bun and the precompiled Swift host remain the runtime architecture.
 
 ```bash
 fia create my-app
@@ -13,21 +13,21 @@ There is one project template. `create` accepts `--yes`, `--git/--no-git`, `--in
 
 ## Commands
 
-| Command                               | Purpose                                                    |
-| ------------------------------------- | ---------------------------------------------------------- |
-| `agent [--preview] <args>`            | Invoke this project’s development or preview application   |
-| `dev [--open-browser]`                | Native window, Vite HMR and supervised Bun restart         |
-| `run`                                 | Build and launch an isolated Preview app without HMR       |
-| `build`                               | Assemble and sign a local `.app` without Swift compilation |
-| `build --dmg`                         | Create and mount-check a local test DMG                    |
-| `release`                             | Developer ID signing, notarization, stapling and DMG       |
-| `release --update`                    | Signed frontend/backend code release                       |
-| `check` / `test`                      | Validate config and TypeScript / run application Bun tests |
-| `doctor --target dev\|release --json` | Check runtime assets, OS and publishing tools              |
-| `status` / `logs` / `stop`            | Inspect or stop this project's development session         |
-| `smoke --json`                        | Production launch, frontend readiness and orderly shutdown |
-| `icon F`                              | Render a text icon using the precompiled host              |
-| `update keygen --output <directory>`  | Generate an Ed25519 release key pair                       |
+| Command                               | Purpose                                                              |
+| ------------------------------------- | -------------------------------------------------------------------- |
+| `agent [--preview] <args>`            | Invoke this project’s development or preview application             |
+| `dev [--open-browser]`                | Native window, Bun build and page refresh and supervised Bun restart |
+| `run`                                 | Build and launch an isolated Preview app without HMR                 |
+| `build`                               | Assemble and sign a local `.app` without Swift compilation           |
+| `build --dmg`                         | Create and mount-check a local test DMG                              |
+| `release`                             | Developer ID signing, notarization, stapling and DMG                 |
+| `release --update`                    | Signed frontend/backend code release                                 |
+| `check` / `test`                      | Validate config and TypeScript / run application Bun tests           |
+| `doctor --target dev\|release --json` | Check runtime assets, OS and publishing tools                        |
+| `status` / `logs` / `stop`            | Inspect or stop this project's development session                   |
+| `smoke --json`                        | Production launch, frontend readiness and orderly shutdown           |
+| `icon F`                              | Render a text icon using the precompiled host                        |
+| `update keygen --output <directory>`  | Generate an Ed25519 release key pair                                 |
 
 `icon` accepts `--background`, `--foreground`, `--output`, and `--force` for exported files. In a project it writes the configured app icon, or `assets/icon.icns`; the standard path is discovered automatically. It does not rewrite executable TypeScript configuration. Keep private update keys outside the repository.
 
@@ -41,8 +41,16 @@ Development keeps its existing `.fia/dev/data/<identifier>` storage; Preview use
 import { defineConfig } from "@semicoder/fia/config";
 
 export default defineConfig({
-  app: { name: "My App", identifier: "com.example.my-app", version: "1.0.0", build: 1 },
-  agent: { command: "my-app", description: "Describe what the application can do." },
+  app: {
+    name: "My App",
+    identifier: "com.example.my-app",
+    version: "1.0.0",
+    build: 1,
+  },
+  agent: {
+    command: "my-app",
+    description: "Describe what the application can do.",
+  },
   statusItem: { symbol: "terminal", tooltip: "My App" },
   signing: {
     releaseIdentity: "Developer ID Application: Example (TEAMID)",
@@ -56,7 +64,7 @@ export default defineConfig({
 });
 ```
 
-The minimal config needs `app` and `agent.command/description`. The shared API defaults to `shared/api.ts`; override with `api.entry`. `agent.instructions` can point to application-specific Markdown workflows. Optional backend settings are `entry` and `assets`; optional web settings are `root` and `dist`, which must match Vite's output. There are no enabled, mode, template or Swift settings.
+The minimal config needs `app` and `agent.command/description`. The shared API defaults to `shared/api.ts`; override with `api.entry`. `agent.instructions` can point to application-specific Markdown workflows. Optional backend settings are `entry` and `assets`; optional web settings are `root` and `dist`, which must match Bun's output. There are no enabled, mode, template or Swift settings.
 
 Paths in `backend.assets` are relative to `context.app.codeDirectory`: the project root in development, and the packaged code directory in production. For example, `assets: ["assets/model.wasm"]` can be read with `Bun.file(context.app.codeDirectory + "/assets/model.wasm")`. Store writable user data in `context.app.dataDirectory`.
 
@@ -98,7 +106,7 @@ Calls automatically start the app without presenting a window. `open` presents t
 
 The CLI launcher, command name and Bun are part of the immutable runtime. API handlers, schema, UI, skill and type definitions are a single signed code release. Active calls/scripts or an application `beforeUpdate` veto postpone activation. CLI calls return `updating` during the switch and observation period. Candidate skills remain unpublished until commit; rollback retains the previous skill.
 
-See [FIA 4 migration](docs/framework/migration-v4.md) and [framework contract](docs/framework/README.md).
+See the [framework contract](docs/framework/README.md).
 
 ## Browser debugging and event waits
 
@@ -131,6 +139,6 @@ Native web windows include a pin icon to the left of Open in Browser. Click to t
 
 ## 框架与首个应用共同开发（未发布）
 
-FIA 活跃源码现位于麻辣烫仓库的 `framework/fia/`，保留独立 API、模板、测试与打包边界；麻辣烫稳定后再拆回独立仓库。公开 npm 0.18.0 不包含本次联调工具或 Bun 1.4.3 运行时。普通消费已发布 npm 包的应用仍不需要 Swift；维护共仓源码需要 Bun 1.4.3 和 Swift 6 工具链。框架维护流程保存在源码仓库的 `docs/co-development.md`，不作为应用依赖。
+FIA 活跃源码位于 Fn 仓库的 `framework/fia/`，保留独立 API、模板、测试与打包边界。维护源码需要 Bun 1.4.4 和 Swift 6；使用当前经过验证的框架归档创建应用。共仓构建报告和独立消费是交付依据。
 
 开发 CLI 新增可重复的 `fia dev --watch-ignore <相对目录>`，按目录边界排除指定子树，不影响相似前缀的其他目录。该参数仅供外层工具已经负责构建/重启的目录；默认生成应用无需设置。嵌套的 node_modules、.git、.fia、.build、dist 也不会触发后端重载。

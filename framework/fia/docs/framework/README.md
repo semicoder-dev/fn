@@ -4,7 +4,9 @@ FIA 只支持一种应用架构：预编译 Swift Host + 必选 Bun + WebView，
 
 ## 进程与通信
 
-Host 是 `.app` 的入口，负责 NSApplication、窗口、原生服务、Bun 进程组和代码更新。Bun 是唯一 HTTP/WebSocket 服务；开发时 Vite 代理 `/api`、`/_fia` 到 Bun，生产时 Bun 直接提供静态资源。
+Host 是 `.app` 的入口，负责 NSApplication、窗口、原生服务、Bun 进程组和代码更新。Bun 是唯一 HTTP/WebSocket 服务；开发时 Bun 构建服务代理 `/api`、`/_fia` 到 Bun，生产时 Bun 直接提供静态资源。
+
+开发服务器到已校验的本机后端使用直连 HTTP/SSE/WebSocket，不经过 shell 的代理环境变量，也不要求手工配置 `NO_PROXY`。应用自身的外网请求仍沿用代理配置。
 
 后端启动时保留 Host 的 `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY`（含小写）及 `NO_PROXY` 配置；若未显式设置代理变量，则读取 macOS 手动 HTTP / HTTPS 系统代理及例外列表，供 Bun 的网络请求使用。生产进程仍不继承其他任意环境变量或凭证。两种模式都为 `NO_PROXY` 补上 localhost / 127.0.0.1 / ::1，避免本地框架通信经过代理。配置在每次后端启动时读取，系统代理变更后需重启应用；暂不转换 PAC、SOCKS 或 `<local>` 例外规则，也不读取代理应用私有配置。显式设置空代理变量可停用系统代理回退。
 
@@ -14,7 +16,7 @@ Host 与 Bun 使用 stdio protocol 5，JSON Lines，stdout 只能输出协议；
 
 原生窗口通过一次性 HMAC 引导票据取得独立随机 HttpOnly、SameSite=Strict Cookie；宿主内部密钥不下发为 Cookie。浏览器使用独立的当前标签页会话，CLI 使用独立 token。HTTP/WS 检查会话、Host、Origin 与跨站标记，服务只监听 127.0.0.1。框架私有方法不能从前端 RPC 调用。截图等原生资源只在 stdio 中返回描述符，Bun 验证资源路径后流式读取受控临时文件。
 
-系统浏览器的 OAuth 重定向可通过 `http.callbacks: { "/oauth/callback": handler }` 接收，URL 使用 `start` 上下文的 `url("/api/oauth/callback")`。它复用 Bun 的实际 loopback 端口，仅接受显式完整路径上的 GET，无通配、参数路由或 WebSocket；开发期不可使用 Vite 地址。回调不要求或签发 FIA 会话，也不放开普通 `/api`、`/_fia` 路由。**应用必须自行校验有期限、单次使用的随机 state 和 PKCE 等协议参数**。框架强制 no-store / no-referrer、禁止脚本及 iframe 的 CSP，并移除 Set-Cookie；回调应返回不含凭证的简短完成页。登录开始、状态、取消等业务仍声明在共享 API 中；不要另起 HTTP 服务。
+系统浏览器的 OAuth 重定向可通过 `http.callbacks: { "/oauth/callback": handler }` 接收，URL 使用 `start` 上下文的 `url("/api/oauth/callback")`。它复用 Bun 的实际 loopback 端口，仅接受显式完整路径上的 GET，无通配、参数路由或 WebSocket；开发期也使用后端网关地址。回调不要求或签发 FIA 会话，也不放开普通 `/api`、`/_fia` 路由。**应用必须自行校验有期限、单次使用的随机 state 和 PKCE 等协议参数**。框架强制 no-store / no-referrer、禁止脚本及 iframe 的 CSP，并移除 Set-Cookie；回调应返回不含凭证的简短完成页。登录开始、状态、取消等业务仍声明在共享 API 中；不要另起 HTTP 服务。
 
 ## 共享 API 与 agent
 
@@ -36,7 +38,7 @@ exec 支持 --file FILE、-e CODE 或 stdin，注入 app SDK 和 help。独立 B
 
 ### 本地开发与打包预览
 
-`fia dev` 生成 `.fia/dev/<name> Dev.app`，使用 macOS Bundle ID `<identifier>.dev`、黄色 `DEV` Dock 标记和菜单栏文字。`fia run` 现在生成并运行 `.fia/preview/<name> Preview.app`，使用 `<identifier>.preview`、蓝色 `PREV` 标记；它运行打包后的代码，不使用 Vite/HMR。二者均禁用正式更新源。`fia build` / `release` 仍生成正式身份的产物。
+`fia dev` 生成 `.fia/dev/<name> Dev.app`，使用 macOS Bundle ID `<identifier>.dev`、黄色 `DEV` Dock 标记和菜单栏文字。`fia run` 现在生成并运行 `.fia/preview/<name> Preview.app`，使用 `<identifier>.preview`、蓝色 `PREV` 标记；它运行打包后的代码，不使用 开发监听。二者均禁用正式更新源。`fia build` / `release` 仍生成正式身份的产物。
 
 开发数据保留在 `<project>/.fia/dev/data/<identifier>/Backend`；预览数据位于 `<project>/.fia/preview/data/<identifier>/Backend`。路径固化在本地 bundle 中，直接打开预览包也使用隔离数据；显式 `FIA_DATA_DIRECTORY` 仍可覆盖根目录。预览数据跨重启保留。不要将本地 bundle 当作可搬运的发行包。
 
@@ -54,7 +56,7 @@ OS Bundle ID 与逻辑应用 identifier 分开：`context.app.identifier`、已�
 
 标题栏 items 为 button、text、spacer；每项都有唯一 id，button/text 有 label，按钮可指定 SF Symbol、tooltip、enabled。`setTitlebar({id, items})` 仅更新应用项目；FIA 在最右侧固定提供“在浏览器中打开”图标按钮，清空或重复更新不会移除或复制它。启动、重连、更新切换和打开请求期间按钮禁用，失败通过原生提示展示。点击应用自定义按钮产生 `windows.titlebarAction`，携带 windowId 和 itemId。回调留在 TS，禁止序列化函数或插入 Swift/HTML 标题栏。
 
-从 FIA 0.18.0 开始，每个原生网页窗口在浏览器入口左侧默认提供“置顶窗口”图标按钮，再次点击“取消置顶”恢复普通窗口层级。置顶时图标填充并高亮，提示文字和辅助功能标签同步变化。它只作用于当前窗口，在当前桌面的普通窗口之上显示；不跨桌面、不覆盖系统全屏空间。按钮由 Host 本地处理，加载或后端重连期间也可使用，`setTitlebar` 不会移除或复制它。隐藏再显示、后端重启保留置顶状态；真正关闭后重建窗口或重启应用恢复默认不置顶。浏览器自身窗口不受此按钮控制。默认模板无需额外配置；已有应用需升级 FIA 后重新构建并分发完整安装包。
+原生标题栏提供窗口置顶按钮，状态保留至窗口关闭或应用退出。
 
 WebView 默认关闭页面视口横向、纵向的边缘拉伸回弹，保留正常内容滚动和嵌套滚动区域。该默认行为由宿主在每次文档加载时设置，覆盖加载页、页面跳转和子框架，不要求业务添加 CSS。
 
@@ -64,7 +66,7 @@ WebView 默认关闭页面视口横向、纵向的边缘拉伸回弹，保留正
 
 ## 构建与代码更新
 
-固定运行时包含 Host、通用 CLI 客户端和 Bun 1.4.3；代码版本包含 `backend/index.js`、`web/index.html` 和依赖资源。业务数据使用 `context.app.dataDirectory`，不能写入代码目录。
+固定运行时包含 Host、通用 CLI 客户端和 Bun 1.4.4；代码版本包含 `backend/index.js`、`web/index.html` 和依赖资源。业务数据使用 `context.app.dataDirectory`，不能写入代码目录。
 
 需要按路径读取的业务资源可在 `backend.assets` 声明项目相对路径；`context.app.codeDirectory` 在开发时指向项目根目录，生产时指向包含这些资源的代码目录，保持相同相对路径。例如配置 `assets: ["assets/model.wasm"]` 后，使用 `Bun.file(context.app.codeDirectory + "/assets/model.wasm")`。普通模块依赖由 Bun bundler 打包。
 
@@ -134,7 +136,10 @@ import api from "../shared/api";
 
 type Status = "running" | "done" | "cancelled" | "failed";
 const jobs = new Map<string, { status: Status }>();
-const active = new Map<string, { abort: AbortController; done: Promise<void> }>();
+const active = new Map<
+  string,
+  { abort: AbortController; done: Promise<void> }
+>();
 let publish: APIEmitter<typeof api>["emit"];
 
 export default defineBackend({
@@ -148,7 +153,9 @@ export default defineBackend({
           await runJob(abort.signal); // 应用实现；应响应 AbortSignal。
           jobs.set(id, { status: "done" });
         } catch (error) {
-          jobs.set(id, { status: abort.signal.aborted ? "cancelled" : "failed" });
+          jobs.set(id, {
+            status: abort.signal.aborted ? "cancelled" : "failed",
+          });
           if (!abort.signal.aborted) console.error(error);
         } finally {
           active.delete(id);
@@ -177,7 +184,7 @@ export default defineBackend({
 
 `http.websocket` 的 `maxPayloadLength`、`backpressureLimit`、`closeOnBackpressureLimit`、`idleTimeout` 和 `sendPings` 等是 **Bun 服务级选项**，同时影响业务与 FIA native WebSocket。设置时应考虑两者；native 消息仍单独限制为 1 MiB，业务回调不会收到 native 消息。框架不承诺按连接隔离这些选项。
 
-## 完整浏览器界面（0.17.0）
+## 完整浏览器界面
 
 FIA 默认支持开发、隔离预览和正式构建的浏览器界面，无需应用配置。点击任意网页窗口标题栏最右侧 `arrow.up.forward.square` 按钮，系统浏览器打开该窗口配置的应用内 route；原生窗口继续保留。`fia create` 默认计数器也包含此入口。原生和浏览器共享后端与持久数据，不复制未保存的页面状态。
 
@@ -191,9 +198,9 @@ my-app open --browser --url       # 显式输出授权链接，适用于自动�
 
 普通启动和打开操作不打印凭证；只有显式 `--url` 输出链接。裸 IP + 端口不授予 API 权限。票据为 256 位随机值，60 秒有效、单次消费，绑定当前实例和目标路由；仅由宿主内部通道或已鉴权 Unix Socket 签发。引导页从 fragment 读取后立即清除，通过同源 POST 兑换独立会话。会话服务端仅驻留内存，客户端仅存当前标签页 sessionStorage；刷新与 Worker 重启可恢复，后端重启、更新或菜单“断开浏览器连接”使其失效。不要分享授权链接。
 
-框架引导脚本与 Service Worker 在 Vite 和正式静态页面自动注入。Worker 只为绑定客户端的精确同源 `/api`、`/_fia` 子资源请求附加认证，支持动态模块、CSS、资源与 SSE；不为导航、跨源请求或重定向发送凭证，不缓存业务响应。初始化失败拒绝访问；失效显示统一提示、停止重连，不自动重放写操作。应用应保留 FIA Worker，避免注册覆盖根 scope 的其他 Worker。
+框架引导脚本与 Service Worker 在 Bun 开发和正式静态页面自动注入。Worker 只为绑定客户端的精确同源 `/api`、`/_fia` 子资源请求附加认证，支持动态模块、CSS、资源与 SSE；不为导航、跨源请求或重定向发送凭证，不缓存业务响应。初始化失败拒绝访问；失效显示统一提示、停止重连，不自动重放写操作。应用应保留 FIA Worker，避免注册覆盖根 scope 的其他 Worker。
 
-本地 `file:` 依赖刷新后需要重启开发进程。FIA 的 Vite 插件将实际安装的 client / api 文件内容纳入依赖缓存指纹，同时更新浏览器模块 URL；即使版本号和锁文件未改变，也不会复用旧 SDK 的认证协议。文件对话框本来就在浏览器白名单内，连接失败应检查运行版本和传输，不能以关闭鉴权或放开全部 Native 方法处理。
+本地依赖刷新后重新构建。开发与生产共用 Bun.build，CSS Modules 合并后统一输出，不依赖额外模块转换插件。
 
 `dialogs.openFiles` / `dialogs.saveFile` 默认等待用户完成或取消，不采用普通 Native 调用的 30 秒期限；调用者仍可提供 `timeoutMs` / `signal`，浏览器会话撤销仍取消在途调用。
 
@@ -208,8 +215,6 @@ socket.addEventListener("open", () => socket.send("hello"));
 `createClient()`、业务契约和 SDK 不变，请求仍为 `source: "ui"`。浏览器身份由服务端会话决定，修改参数不能冒充原生窗口，`native.ready()` 不参与原生更新健康判定。撤销会中断已建 SSE/WS、取消连接尚未完成的调用；已提交后台任务由应用管理。
 
 浏览器 Native 权限按方法白名单执行：应用信息/显示/外观，窗口 UI 操作，文件对话框，剪贴板，通知，屏幕列表，系统链接/文件定位，资源读取/释放，应用更新。钥匙串、CLI 管理、退出、全局快捷键、屏幕捕获、内部和未知方法拒绝访问。`native.capabilities()` 的 flags 和可选 `methods` 列表反映权限。原生操作作用于同一真实宿主；应用业务与可信插件仍沿用原有信任边界。
-
-此能力从 FIA 0.17.0 开始提供；旧 npm 0.16.1 和麻辣烫 dd430c851192 固定归档不包含它。宿主变化需要完整安装包，不能仅通过代码更新获得；应用须锁定并验收新 runtime 后重新构建分发。
 
 401/403 分别报告 `unauthorized`/`forbidden`；收到完整但无效的响应报告 `protocol_error`；调用输入无法序列化报告 `invalid_argument`。真正的传输中断仍可能报告 `execution_unknown`，此时不要自动重放写操作，应检查应用状态。
 
@@ -229,7 +234,7 @@ socket.addEventListener("open", () => socket.send("hello"));
 
 ## 框架与首个应用共同开发（未发布）
 
-FIA 活跃源码现位于麻辣烫仓库的 `framework/fia/`，保留独立 API、模板、测试与打包边界；麻辣烫稳定后再拆回独立仓库。公开 npm 0.18.0 不包含本次联调工具或 Bun 1.4.3 运行时。普通消费已发布 npm 包的应用仍不需要 Swift；维护共仓源码需要 Bun 1.4.3 和 Swift 6 工具链。框架维护流程保存在源码仓库的 `docs/co-development.md`。
+FIA 活跃源码位于 Fn 仓库的 `framework/fia/`，保留独立 API、模板、测试与打包边界。维护源码需要 Bun 1.4.4 和 Swift 6；使用当前经过验证的框架归档创建应用。共仓构建报告和独立消费是交付依据。
 
 开发 CLI 新增可重复的 `fia dev --watch-ignore <相对目录>`，按目录边界排除指定子树，不影响相似前缀的其他目录。该参数仅供外层工具已经负责构建/重启的目录；默认生成应用无需设置。嵌套的 node_modules、.git、.fia、.build、dist 也不会触发后端重载。
 
@@ -243,4 +248,22 @@ FIA 活跃源码现位于麻辣烫仓库的 `framework/fia/`，保留独立 API�
 
 应用配置 `signing.application` 可按 `development`、`preview`、`production` 分别指定 `entitlements`、`provisioningProfile` 和 `cloudKitContainers`。一旦声明该映射，缺少当前模式配置会失败，不跨模式回退；CloudKit 配置必须包含 profile，构建校验 bundle/container entitlement 绑定并嵌入 profile。Bun 的签名权限单独保留。未声明应用签名配置的普通应用沿用原路径。
 
-本地签名 FIA Host 已真实验证账号访问、记录写入/回读、旧 change tag 拒绝、游标和订阅；双端原型验证了不同 App ID 共用开发容器和 iPhone 锁屏可见通知。生产 Developer ID/CloudKit 组合、业务可靠性及多设备全矩阵仍需独立验收。公开 npm 0.18.0 不包含本节能力。
+本地签名 FIA Host 已真实验证账号访问、记录写入/回读、旧 change tag 拒绝、游标和订阅；双端原型验证了不同 App ID 共用开发容器和 iPhone 锁屏可见通知。生产 Developer ID/CloudKit 组合、业务可靠性及多设备全矩阵仍需独立验收。
+
+## 受管理的应用进程与窗口
+
+`native.processes.spawn({id, executable, arguments, directory, environment})` 仅供后端调用，返回进程状态。每个子进程使用独立受管理进程组，最多 64 个。`state({id})` 读取，`stop({id})` 终止进程组；`processes.exited` 通知退出。宿主后端重启与退出清理全部受管理组，不自动重放子进程任务。进程组是生命周期边界，不是沙箱。
+
+窗口 create/update 可传 `managedClose:true`。用户点击关闭时发出 `windows.closeRequested`，应用决定确认或取消；应用调用 windows.close 执行真正关闭。main 窗口关闭默认隐藏桌面。业务负责窗口关闭和后台任务的协调。
+
+`native.statusItem.setMenu({items:[{id,label,enabled,checked}],locale})` 设置动态应用菜单；点击发出 `statusItem.action`。locale 支持 en/zh-CN，原生菜单与默认标题栏提示跟随。所有业务标签由应用提供。
+
+## HTTP 扩展
+
+`http.pages(request)` 仅接收 `/pages/` 下的 GET/HEAD，用于公开静态代码。不要在此返回用户数据、凭证或无需鉴权的业务结果。应用需校验资源路径及运行代。浏览器认证脚本由页面构建/宿主注入。
+
+`http.authorize(request)` 可以验证非浏览器后台凭证，仅作用于 /api 路由；携带浏览器 Origin 或 Sec-Fetch-Site 的请求不能用它绕过 FIA 会话检查。`context.browserURL(path)` 签发单次授权页面链接。公开应用 SDK 可使用 HTTP/SSE/WebSocket，无需依赖 FIA 的内部 stdio 协议。
+
+## Bun 页面构建
+
+`@semicoder/fia/web` 导出 buildWeb/startWebDevelopment。开发与生产均从 HTML 入口调用 Bun.build，React 和 CSS Modules 使用同一路径。文件修改自动重建、刷新页面；后台源码修改受控重启。首期不承诺组件状态保留。运行时、CLI、本机开发和 CI 均固定 Bun 1.4.4；格式化为 bun fmt。

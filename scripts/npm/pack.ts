@@ -1,77 +1,96 @@
-import { cp, mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { cp, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { assert, packageName, registry, root, validatePackage } from "./check";
-
-async function run(command: string[], cwd: string) {
-  const child = Bun.spawn(command, { cwd, stdout: "inherit", stderr: "inherit" });
-  assert((await child.exited) === 0, `Failed: ${command[0]} ${command[1]}`);
+import { resolve, join } from "node:path";
+const root = process.cwd();
+const artifacts = await Bun.file("artifacts/sdk/manifest.json").json();
+const temporary = await mkdtemp(join(tmpdir(), "fn-sdk-consumer-"));
+async function run(args: string[]) {
+  const child = Bun.spawn(args, {
+    cwd: temporary,
+    stdout: "inherit",
+    stderr: "inherit",
+    env: process.env,
+  });
+  if (await child.exited)
+    throw new Error("Independent SDK command failed: " + args.join(" "));
 }
-
-// Validate the actual archive, then use it outside the source workspace.
-const release = validatePackage(await Bun.file(join(root, "packages/sdk/package.json")).json());
-const output = join(root, "artifacts/npm");
-await mkdir(output, { recursive: true });
-const archive = join(output, release.filename);
-await rm(archive, { force: true });
-await run(
-  ["npm", "pack", "--workspace", packageName, "--pack-destination", output, "--ignore-scripts"],
-  root,
-);
-const temporary = await mkdtemp(join(tmpdir(), "fn-sdk-"));
 try {
-  await run(["tar", "-xzf", archive, "-C", temporary], root);
-  const unpacked = join(temporary, "package");
-  const pkg = await Bun.file(join(unpacked, "package.json")).json();
-  assert(validatePackage(pkg).version === release.version, "Packed SDK version differs");
-  const allowed = new Set(["package.json", "README.md", "src", "build.ts"]);
-  for (const entry of await readdir(unpacked, { withFileTypes: true })) {
-    assert(
-      allowed.has(entry.name) && !entry.isSymbolicLink(),
-      `Unexpected SDK archive entry: ${entry.name}`,
-    );
+  const dependencies: Record<string, string> = {
+    react: "19.2.7",
+    "react-dom": "19.2.7",
+    "@types/bun": "1.4.0",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    typescript: "7.0.2",
+  };
+  for (const [name, item] of Object.entries(artifacts) as [
+    string,
+    { file: string; sha256: string },
+  ][]) {
+    const bytes = await Bun.file(resolve("artifacts/sdk", item.file)).bytes();
+    if (
+      new Bun.CryptoHasher("sha256").update(bytes).digest("hex") !== item.sha256
+    )
+      throw new Error("Archive hash mismatch");
+    await cp(resolve("artifacts/sdk", item.file), join(temporary, item.file));
+    dependencies[name] = "file:./" + item.file;
+    const files = await new Bun.Archive(bytes).files();
+    for (const [path, file] of files) {
+      if (path.endsWith(".ts") || path.endsWith(".tsx"))
+        if (!(await file.bytes()).length)
+          throw new Error("Empty source in SDK: " + path);
+    }
   }
-  for (const name of [".", "./client", "./build"]) {
-    const target = pkg.exports?.[name];
-    assert(
-      typeof target === "string" && target.startsWith("./") && !target.split("/").includes(".."),
-      `Missing/unsafe SDK export: ${name}`,
-    );
-    assert(await Bun.file(resolve(unpacked, target)).exists(), `Missing SDK export file: ${name}`);
-  }
-  assert(await Bun.file(join(unpacked, "README.md")).exists(), "SDK README is missing");
-  const consumer = join(temporary, "consumer");
-  await mkdir(consumer);
-  const digest = new Bun.CryptoHasher("sha256")
-    .update(await Bun.file(archive).arrayBuffer())
-    .digest("hex");
-  const consumerArchive = `fn-sdk-${digest}.tgz`;
-  await cp(archive, join(consumer, consumerArchive));
-  const react = await Bun.file(join(root, "node_modules/react/package.json")).json();
-  const developmentDependencies: Record<string, string> = {};
-  for (const name of ["typescript", "@types/bun", "@types/react", "@types/react-dom"])
-    developmentDependencies[name] = (
-      await Bun.file(join(root, "node_modules", name, "package.json")).json()
-    ).version;
   await Bun.write(
-    join(consumer, "package.json"),
+    join(temporary, "package.json"),
     JSON.stringify({
-      name: "sdk-package-smoke",
+      name: "independent-fn-sdk",
       private: true,
       type: "module",
-      dependencies: {
-        ...pkg.peerDependencies,
-        [packageName]: `file:./${consumerArchive}`,
-        react: react.version,
-        "react-dom": react.version,
-      },
-      devDependencies: developmentDependencies,
+      dependencies,
     }),
   );
-  await run([process.execPath, "install", "--ignore-scripts", "--registry", registry], consumer);
-  await cp(new URL("./plugin-smoke.fixture.ts", import.meta.url), join(consumer, "smoke.ts"));
-  await run([process.execPath, "run", "smoke.ts"], consumer);
-  console.log(`Verified SDK archive and standalone plugin consumption: ${archive}`);
+  await cp("scripts/npm/plugin-smoke.fixture.ts", join(temporary, "smoke.ts"));
+  await run([process.execPath, "install", "--ignore-scripts"]);
+  if (
+    /cordis|@deepseek-ai|pi-ai|"vite"|"oxfmt"/.test(
+      await Bun.file(join(temporary, "bun.lock")).text(),
+    )
+  )
+    throw new Error("Independent consumer resolved a forbidden dependency");
+  await run([process.execPath, "smoke.ts"]);
+  await Bun.write(
+    join(temporary, "tsconfig.json"),
+    JSON.stringify({
+      compilerOptions: {
+        target: "ESNext",
+        module: "ESNext",
+        moduleResolution: "bundler",
+        jsx: "react-jsx",
+        strict: true,
+        noEmit: true,
+        allowImportingTsExtensions: true,
+        types: ["bun"],
+      },
+      include: ["app/src"],
+    }),
+  );
+  await run([process.execPath, "run", "tsc", "--noEmit"]);
+  await mkdir(resolve(root, "artifacts/npm"), { recursive: true });
+  for (const [name, item] of Object.entries(artifacts) as [
+    string,
+    { file: string; version: string },
+  ][]) {
+    await cp(
+      resolve(root, "artifacts/sdk", item.file),
+      resolve(
+        root,
+        "artifacts/npm",
+        name.replace("@", "").replace("/", "-") + "-" + item.version + ".tgz",
+      ),
+    );
+  }
+  console.log("Independent SDK/UI archive, backend and page verified");
 } finally {
   await rm(temporary, { recursive: true, force: true });
 }

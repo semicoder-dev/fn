@@ -9,17 +9,14 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "lib": ["ESNext", "DOM"],
-    "types": ["bun", "vite/client"]
+    "types": ["bun"]
   },
   "include": [
     "host",
     "frontend",
-    "plugins",
     "packages",
-    "scripts",
-    "tests",
     "fia.config.ts",
-    "vite.config.ts",
-    "commands"
+    "commands",
+    "scripts"
   ]
 }

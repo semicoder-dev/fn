@@ -1,17 +1,110 @@
-# 插件开发（fn 0.6 / SDK 0.5）
+# Fn 应用开发
 
-先阅读 [SDK](../packages/sdk/README.md) 和[架构](cordis-runtime.md)。当前契约与 SDK 0.4 的 API 不同，插件必须使用 SDK 0.5 重建。通用 SDK 使用精确 npm 版本；宿主专属 UI/服务类型从匹配 fn 0.6 的官方插件仓库 vendor 归档获取，其来源与 SHA-256 固定，不依赖相邻源码。
+需要 Bun 1.4.4。安装本轮验证的 SDK/UI 归档，不能用相同包版本号推断内容一致。宿主根 `bun run npm:pack` 产生 `artifacts/sdk/manifest.json` 和摘要命名的归档；独立应用使用 `file:` 依赖固定它们。应用可以在 workspace 外开发。
 
-后端是普通 Cordis 插件：apply、Service、inject、Config、事件、effect。纯服务无需页面；纯前端只导出 `./client`；双端包同时导出两个入口。名称为 `@semicoder/fn-<能力名>`，实例 ID 在 profile 中设置。具体业务类型从所属插件导出，Agent/Session/Tools 从 dsh 导入。
+```sh
+fn plugin init my-app
+cd my-app
+# 将 @semicoder/fn-sdk、@semicoder/fn-ui 指向同批本地归档
+bun install --ignore-scripts
+fn plugin check .
+fn plugin dev . --browser
+fn plugin build .
+fn plugin pack .
+```
 
-插件按需 inject connections/sessionController/rpc 等具体服务。chat/cards 及 Chat UI 插槽仅在实验组合可用，暂不属于首版发行依赖；开发时需显式使用 `bun run dev --experimental-chat`。外部应用可注册自己的 session target、Chat 入口或命名空间 API，不使用 ctx.app/ctx.clientApp。接口由服务所有者定义，不能通过导入另一个产品页面实现复用业务。
+`dev` 使用真实宿主、后台和模型。修改源码会构建、停止并重新启动对应开发实例，浏览器自动刷新；任务被中断，不重放。Ctrl-C 停止开发实例。仅关闭浏览器标签不停止实例。CLI 使用当前选中的 Fn Dev/Preview 实例。
 
-前端按父插件声明的 typed Slot 注册贡献。布局可整体替换；新布局必须声明其贡献使用的插槽，并提供 layoutSlots 等相应依赖。UI、监听和样式通过 effect 清理，纯前端生命周期由独立 Cordis 根控制。后台禁用通过命名空间依赖使 UI 停用。
+`--browser --url` 输出一次性授权链接，便于选择调试浏览器；不加 `--url` 时自动打开浏览器。链接不要写入共享日志。Fn UI 通过 peer 复用应用安装的 SDK。
 
-UI 使用 [fn-ui](../packages/ui/README.md) 提供的原版 dsh Button、Input、Menu、Modal 等控件，包声明精确 peer，由宿主共享。SDK 不再导出 UI。基础主题由 `fn-ui-base` 统一加载；页面使用 CSS Modules 与 `--dsw-*` 语义 token，不写全局控件样式、不引入另一套组件库或 Tailwind。Select 组合上游 Menu；明暗模式和 FIA 标题栏同步由 `fn-ui-theme` 管理，颜色直接使用原版 dsh 主题，不提供自定义配色覆盖。模态框用 `data-modal-autofocus` 指定初始焦点，表单提交按钮明确 `type="submit"`。
+## Manifest
 
-`bun run styles:check` 校验旧依赖/token、原生替代控件、CSS Modules 与原样主题文件 SHA。主题快照仅因上游发行包缺少独立 CSS 导出而存在，来源固定在 `packages/ui/upstream/manifest.json`；升级需复核控件、主题和依赖闭包。还需实际检查浅/深色、菜单与弹窗键盘、窄窗口、插件撤销，不能用静态规则代替视觉验收。
+`fn.app.json` 是应用定义。文件路径相对包根，名称与静态文案使用词条；入口均可选，无页面时由宿主显示标准状态页。
 
-安装阶段先验证 npm peer 与共享核心单实例，生成候选目录；运行阶段不安装依赖。配置修改使用 `plugins.configure`，支持完整条目或 bundles/patches；等待 fn-activity 空闲再重启。不直接修改活动目录。调试用 FIA 生成 schema 和浏览器入口，不启动旁路服务。
+```json
+{
+  "manifestVersion": 1,
+  "id": "my-app",
+  "version": "0.1.0",
+  "hostApi": 1,
+  "name": { "key": "app.name" },
+  "entries": { "backend": "src/backend.ts", "page": "src/page.tsx" },
+  "locales": { "default": "en", "messages": { "en": "locales/en.json", "zh-CN": "locales/zh-CN.json" } },
+  "uses": ["models.responses", "widgets.publish"],
+  "contributes": { "widgets": [{ "id": "summary", "size": "1x1", "initial": "widgets/summary.json" }] }
+}
+```
 
-发布不属于日常开发。三个旧测试插件已从本地官方市场删除，回归夹具仅位于测试目录，不上架。
+可选 `description`、包内 `icon`；可选 `contributes.chat: {id,name}` 需要后台和 `chat.receive`。能力为 `models.responses / widgets.publish / chat.receive`。声明和调用均接受 Zod 校验。
+
+## 类型化契约
+
+```ts
+// src/contract.ts
+import { defineContract, method, stream, z } from "@semicoder/fn-sdk/contract";
+export default defineContract({
+  echo: method({ input: z.string(), output: z.string() }),
+  translate: stream({ input: z.object({ text: z.string() }), chunk: z.string() }),
+});
+```
+
+```ts
+// src/backend.ts
+import { defineBackend } from "@semicoder/fn-sdk/backend";
+import api from "./contract.ts";
+export default defineBackend({
+  api,
+  setup({ host }) {
+    return {
+      handlers: {
+        echo: (text) => text,
+        translate: async function* ({ text }, { signal }) {
+          const model = await host.models.default();
+          for await (const event of host.models.responses({
+            model: model.id,
+            instructions: "Translate the user's text into English.",
+            input: [{ role: "user", content: [{ type: "input_text", text }] }],
+            stream: true,
+            store: false,
+          }, { connectionId: model.connectionId, signal })) {
+            if (event.type === "response.output_text.delta") yield String(event.delta);
+          }
+        },
+      },
+      stop: async () => { /* 关闭数据库、清理定时器与业务资源 */ },
+    };
+  },
+});
+```
+
+`host.paths.data/cache/logs` 是应用专属目录。后台可使用 Bun SQLite 或文件。`host.widgets.publish(id, snapshot)` 发布完整快照。`host.ui.toast(text, {viewId})` 定向到发起视图；没有视图时进入宿主通知。`host.ui.confirm(text, {viewId})` 需要活跃视图，视图关闭后取消。
+
+聊天通过 setup 返回 `chat: { [manifestChatId]: async ({message, signal, reply}) => { ...; await reply.complete({text}); } }`。`reply.complete` 将最终文本写入宿主 outbox。手机消息不带页面视图，不能等待视图弹窗。
+
+## 页面
+
+```tsx
+import React, { useState } from "react";
+import { createRoot } from "react-dom/client";
+import { connectView } from "@semicoder/fn-sdk/client";
+import { useI18n } from "@semicoder/fn-sdk/react";
+import { ApplicationProvider, Button, Surface } from "@semicoder/fn-ui";
+import api from "./contract.ts";
+const view = connectView(api);
+function Page() {
+  const { t } = useI18n(view);
+  const [text, setText] = useState("");
+  return <Surface><Button onClick={() => void view.call("echo", "Hello").then(setText)}>{t("refresh")}</Button><p>{text}</p></Surface>;
+}
+createRoot(document.getElementById("root")!).render(<ApplicationProvider view={view}><Page /></ApplicationProvider>);
+```
+
+流式方法使用 `for await (const chunk of view.stream("translate", {text}, {signal}))`。`view.models` 也可直接使用模型目录和 Responses；页面所属流会随视图断开取消。`view.ui.toast/confirm`、`view.application.close/minimize/maximize` 提供公共交互。编辑器使用 `useUnsavedChanges(view, dirty)`，多编辑区域分别登记；关闭时统一确认。
+
+页面自包含打包 React、SDK 和 Fn UI。通过 ApplicationProvider 接收主题、语言和公共弹窗。配色统一来自 Fn UI 的语义变量，见 [UI 主题与配色](ui-theme.md)。业务词条在应用 locales 中，用户输入内容不翻译。
+
+## 归档
+
+`.fn-build/` 包含后台 TypeScript、冻结的运行依赖、构建页面、词条和小组件资源；`<id>-<version>.fn.tgz` 为发行归档。宿主安装不执行 bun install 或依赖脚本。前端不引用 workspace 外路径；构建器拒绝未冻结依赖。运行代码不得写入安装目录。
+
+[小组件](widgets.md) · [安装更新](plugin-marketplace.md) · [FIA 联调](fia-integration.md)

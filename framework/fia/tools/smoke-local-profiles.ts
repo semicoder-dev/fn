@@ -1,6 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { buildApplication, defaultRunner } from "../packages/cli/src/application.ts";
+import {
+  buildApplication,
+  defaultRunner,
+} from "../packages/cli/src/application.ts";
 import { localProfile } from "../packages/cli/src/local-profile.ts";
 import type { ResolvedFIAConfig } from "../packages/cli/src/project-config.ts";
 import { sha256 } from "../packages/cli/src/artifacts.ts";
@@ -14,7 +17,10 @@ export async function smokeLocalProfiles(
   const preview = await buildApplication(config, { preview: true });
   const profile = localProfile(config, "preview");
   const manifest = JSON.parse(
-    await readFile(resolve(preview.app, "Contents/Resources/fia.runtime.json"), "utf8"),
+    await readFile(
+      resolve(preview.app, "Contents/Resources/fia.runtime.json"),
+      "utf8",
+    ),
   );
   if (
     manifest.updates ||
@@ -51,11 +57,19 @@ export async function smokeLocalProfiles(
           ...args,
         ]
       : [preview.executable, "--cli", ...args];
-    const result = await defaultRunner(command, { cwd: config.projectRoot, env });
-    if (result.exitCode !== 0) throw new Error("Preview CLI failed: " + result.stderr);
+    const result = await defaultRunner(command, {
+      cwd: config.projectRoot,
+      env,
+    });
+    if (result.exitCode !== 0)
+      throw new Error("Preview CLI failed: " + result.stderr);
     return result.stdout;
   };
-  const instancePath = resolve(profile.dataRoot, config.app.identifier, "Agent/instance.json");
+  const instancePath = resolve(
+    profile.dataRoot,
+    config.app.identifier,
+    "Agent/instance.json",
+  );
   let pid: number | undefined;
   const quit = async () => {
     await run(["quit"]);
@@ -74,17 +88,34 @@ export async function smokeLocalProfiles(
     pid = undefined;
   };
   try {
-    if (JSON.parse(await run(["call", "counter.increment", "--json", '{"by":7}'])).value !== 7)
+    if (
+      JSON.parse(await run(["call", "counter.increment", "--json", '{"by":7}']))
+        .value !== 7
+    )
       throw new Error("Preview did not start with isolated data");
     pid = JSON.parse(await readFile(instancePath, "utf8")).hostPID;
-    const duplicate = await defaultRunner([preview.executable], { cwd: config.projectRoot, env });
-    if (duplicate.exitCode === 0 || !duplicate.stderr.includes("already running"))
-      throw new Error("Preview did not retain same-profile single-instance protection");
+    const duplicate = await defaultRunner([preview.executable], {
+      cwd: config.projectRoot,
+      env,
+    });
+    if (
+      duplicate.exitCode === 0 ||
+      !duplicate.stderr.includes("already running")
+    )
+      throw new Error(
+        "Preview did not retain same-profile single-instance protection",
+      );
     await development();
-    if (JSON.parse(await run(["call", "counter.get", "--json", "{}"], true)).value !== 7)
+    if (
+      JSON.parse(await run(["call", "counter.get", "--json", "{}"], true))
+        .value !== 7
+    )
       throw new Error("Development changed preview state");
     await quit();
-    if (JSON.parse(await run(["call", "counter.get", "--json", "{}"], true)).value !== 7)
+    if (
+      JSON.parse(await run(["call", "counter.get", "--json", "{}"], true))
+        .value !== 7
+    )
       throw new Error("Preview CLI restart lost persistent data");
     pid = JSON.parse(await readFile(instancePath, "utf8")).hostPID;
     await quit();

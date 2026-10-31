@@ -9,7 +9,12 @@ import { resolve } from "node:path";
 test("local profiles separate macOS identity and preview storage without migrating development keys", () => {
   const config = validateConfig(
     {
-      app: { name: "Example", identifier: "com.example.app", version: "1.0.0", build: 1 },
+      app: {
+        name: "Example",
+        identifier: "com.example.app",
+        version: "1.0.0",
+        build: 1,
+      },
       agent: { command: "example", description: "Example" },
       updates: {
         url: "https://example.com/latest.json",
@@ -33,7 +38,9 @@ test("local profiles separate macOS identity and preview storage without migrati
   const plist = infoPlist(dev.config, dev.bundleIdentifier, true);
   expect(plist).toContain("<string>Example Dev</string>");
   expect(plist).toContain("<string>com.example.app.dev</string>");
-  expect(plist).toContain("<key>CFBundleIconFile</key><string>AppIcon</string>");
+  expect(plist).toContain(
+    "<key>CFBundleIconFile</key><string>AppIcon</string>",
+  );
   expect(infoPlist(config)).toContain("<string>com.example.app</string>");
   expect(JSON.stringify(config)).toBe(before);
 });
@@ -50,7 +57,11 @@ test("a Dev bundle CLI never cold-starts without the managed development session
         runtimeId: "test",
         app: { name: "Example Dev", identifier: "com.example.app" },
         agent: { command: "example-dev" },
-        localProfile: { mode: "development", dataRoot: resolve(root, "data"), label: "DEV" },
+        localProfile: {
+          mode: "development",
+          dataRoot: resolve(root, "data"),
+          label: "DEV",
+        },
       }),
     );
     const source = new URL("../src/agent-cli.ts", import.meta.url).href;
@@ -62,7 +73,10 @@ test("a Dev bundle CLI never cold-starts without the managed development session
       ],
       { stdout: "pipe", stderr: "pipe" },
     );
-    const [code, stderr] = await Promise.all([child.exited, new Response(child.stderr).text()]);
+    const [code, stderr] = await Promise.all([
+      child.exited,
+      new Response(child.stderr).text(),
+    ]);
     expect(code).toBe(75);
     expect(stderr).toContain("not_running");
     await expect(

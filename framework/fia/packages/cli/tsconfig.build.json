@@ -10,7 +10,7 @@
   "include": [
     "src/client.ts",
     "src/backend.ts",
-    "src/vite.ts",
+    "src/web.ts",
     "src/config.ts",
     "src/business-api.ts"
   ]

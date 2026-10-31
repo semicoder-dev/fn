@@ -12,7 +12,11 @@ export async function doctor(root: string, target: "dev" | "release" = "dev") {
     {
       id: "bun",
       ok: Bun.semver.satisfies(Bun.version, ">=1.4.0"),
-      message: "Development Bun " + Bun.version + "; bundled runtime " + BUNDLED_BUN_VERSION,
+      message:
+        "Development Bun " +
+        Bun.version +
+        "; bundled runtime " +
+        BUNDLED_BUN_VERSION,
     },
   ];
   try {
@@ -23,31 +27,46 @@ export async function doctor(root: string, target: "dev" | "release" = "dev") {
       message: "Host and Bun checksums verified",
     });
   } catch (error) {
-    checks.push({ id: "precompiled-runtime", ok: false, message: String(error) });
+    checks.push({
+      id: "precompiled-runtime",
+      ok: false,
+      message: String(error),
+    });
   }
-  const version = await defaultRunner(["/usr/bin/sw_vers", "-productVersion"], { cwd: root });
+  const version = await defaultRunner(["/usr/bin/sw_vers", "-productVersion"], {
+    cwd: root,
+  });
   checks.push({
     id: "macos",
     ok: Number.parseInt(version.stdout) >= 14,
     message: version.stdout.trim(),
   });
-  const signature = await defaultRunner(["/usr/bin/codesign", "--version"], { cwd: root });
-  checks.push({ id: "codesign", ok: signature.exitCode === 0, message: signature.stderr.trim() });
+  const signature = await defaultRunner(["/usr/bin/codesign", "--version"], {
+    cwd: root,
+  });
+  checks.push({
+    id: "codesign",
+    ok: signature.exitCode === 0,
+    message: signature.stderr.trim(),
+  });
   if (target === "release") {
     try {
       const config = await loadProjectConfig(root);
       checks.push({
         id: "signing",
         ok:
-          !!config.signing?.releaseIdentity?.startsWith("Developer ID Application:") &&
-          !!config.signing?.notarizationProfile,
+          !!config.signing?.releaseIdentity?.startsWith(
+            "Developer ID Application:",
+          ) && !!config.signing?.notarizationProfile,
         message: "Developer ID identity and notarization profile required",
       });
     } catch (error) {
       checks.push({ id: "config", ok: false, message: String(error) });
     }
     for (const tool of ["notarytool", "stapler"]) {
-      const result = await defaultRunner(["/usr/bin/xcrun", "--find", tool], { cwd: root });
+      const result = await defaultRunner(["/usr/bin/xcrun", "--find", tool], {
+        cwd: root,
+      });
       checks.push({
         id: tool,
         ok: result.exitCode === 0,
@@ -55,5 +74,10 @@ export async function doctor(root: string, target: "dev" | "release" = "dev") {
       });
     }
   }
-  return { schemaVersion: 1, ok: checks.every((check) => check.ok), target, checks };
+  return {
+    schemaVersion: 1,
+    ok: checks.every((check) => check.ok),
+    target,
+    checks,
+  };
 }

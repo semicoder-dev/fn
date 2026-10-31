@@ -19,17 +19,18 @@ export function validVersion(version: unknown): version is string {
   );
 }
 
-export function validatePackage(pkg: Record<string, any>) {
-  assert(pkg.name === packageName, "Unexpected SDK package name");
+export function validatePackage(pkg: Record<string, any>, kind = "sdk") {
+  assert(pkg.name === `@semicoder/fn-${kind}`, "Unexpected package name");
   assert(validVersion(pkg.version), "SDK version must be stable x.y.z");
   assert(pkg.private !== true, "SDK must be publishable");
   assert(
     pkg.repository?.url === `git+https://github.com/${repository}.git` &&
-      pkg.repository.directory === "packages/sdk",
+      pkg.repository.directory === `packages/${kind}`,
     "SDK repository metadata differs from the publisher",
   );
   assert(
-    pkg.publishConfig?.access === "public" && pkg.publishConfig.registry === registry,
+    pkg.publishConfig?.access === "public" &&
+      pkg.publishConfig.registry === registry,
     "SDK must publish publicly to npm",
   );
   for (const kind of [
@@ -40,7 +41,8 @@ export function validatePackage(pkg: Record<string, any>) {
   ]) {
     for (const version of Object.values(pkg[kind] ?? {})) {
       assert(
-        typeof version === "string" && !/^(workspace:|file:|link:|\.\.?\/|\/)/.test(version),
+        typeof version === "string" &&
+          !/^(workspace:|file:|link:|\.\.?\/|\/)/.test(version),
         "Published SDK cannot depend on local workspace paths",
       );
     }
@@ -48,33 +50,55 @@ export function validatePackage(pkg: Record<string, any>) {
   return {
     version: pkg.version as string,
     tag: `sdk-v${pkg.version}`,
-    filename: `semicoder-fn-sdk-${pkg.version}.tgz`,
+    filename: `semicoder-fn-${kind}-${pkg.version}.tgz`,
   };
 }
 
-export function validateTrigger(version: string, env: Record<string, string | undefined>) {
+export function validateTrigger(
+  version: string,
+  env: Record<string, string | undefined>,
+) {
   if (!env.GITHUB_ACTIONS) return;
   assert(
     env.GITHUB_REPOSITORY === repository,
     "SDK publishing is only enabled in the configured repository",
   );
   if (env.GITHUB_EVENT_NAME === "push") {
-    assert(env.GITHUB_REF === `refs/tags/sdk-v${version}`, "Tag and SDK version differ");
+    assert(
+      env.GITHUB_REF === `refs/tags/sdk-v${version}`,
+      "Tag and SDK version differ",
+    );
   } else {
-    assert(env.GITHUB_EVENT_NAME === "workflow_dispatch", "Unexpected SDK release trigger");
+    assert(
+      env.GITHUB_EVENT_NAME === "workflow_dispatch",
+      "Unexpected SDK release trigger",
+    );
   }
 }
 
 if (import.meta.main) {
-  assert(Bun.version === "1.4.3", "Use Bun 1.4.3");
+  assert(Bun.version === "1.4.4", "Use Bun 1.4.4");
   const release = validatePackage(
-    await Bun.file(new URL("../../packages/sdk/package.json", import.meta.url)).json(),
+    await Bun.file(
+      new URL("../../packages/sdk/package.json", import.meta.url),
+    ).json(),
   );
-  if (process.argv.includes("--release")) validateTrigger(release.version, process.env);
+  const uiPackage = await Bun.file(
+    new URL("../../packages/ui/package.json", import.meta.url),
+  ).json();
+  const ui = validatePackage(uiPackage, "ui");
+  assert(
+    uiPackage.peerDependencies?.[packageName] === release.version,
+    "UI must use this SDK release",
+  );
+  if (process.argv.includes("--release"))
+    validateTrigger(release.version, process.env);
   if (process.env.GITHUB_OUTPUT)
     await appendFile(
       process.env.GITHUB_OUTPUT,
-      `version=${release.version}\nfilename=${release.filename}\n`,
+      `version=${release.version}\nfilename=${release.filename}\nui_filename=${ui.filename}\n`,
     );
-  console.log(`SDK configuration valid: ${packageName}@${release.version} (${release.tag})`);
+  console.log(
+    `SDK/UI configuration valid: ${packageName}@${release.version}, @semicoder/fn-ui@${ui.version} (${release.tag})`,
+  );
 }

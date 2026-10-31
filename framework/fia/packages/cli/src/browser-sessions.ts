@@ -2,7 +2,8 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 import { APIError } from "./api-client.ts";
 
 export const secretEqual = (a: string, b: string) =>
-  Buffer.byteLength(a) === Buffer.byteLength(b) && timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  Buffer.byteLength(a) === Buffer.byteLength(b) &&
+  timingSafeEqual(Buffer.from(a), Buffer.from(b));
 const random = () => randomBytes(32).toString("hex");
 export function applicationRoute(route: string): boolean {
   try {
@@ -34,14 +35,20 @@ export class BrowserSessions {
   readonly cookieName = "fia_native_" + random().slice(0, 12);
   private tickets = new Map<string, Ticket>();
   private sessions = new Map<string, BrowserSession>();
-  private sockets = new Map<string, { expires: number; path: string; session: BrowserSession }>();
+  private sockets = new Map<
+    string,
+    { expires: number; path: string; session: BrowserSession }
+  >();
   constructor(readonly generation: string) {}
   issue(origin: string, route: string): string {
     if (!applicationRoute(route))
       throw new APIError("invalid_argument", "Invalid application route");
     this.prune();
     if (this.tickets.size >= 64 || this.sessions.size >= 64)
-      throw new APIError("resource_limit", "Disconnect browser sessions before opening more pages");
+      throw new APIError(
+        "resource_limit",
+        "Disconnect browser sessions before opening more pages",
+      );
     const ticket = random();
     this.tickets.set(ticket, { expires: Date.now() + 60_000, route, origin });
     return origin + "/_fia/browser/open#" + ticket;
@@ -51,7 +58,8 @@ export class BrowserSessions {
     if (!entry || entry.expires <= Date.now() || entry.origin !== origin)
       throw new APIError("forbidden", "Invalid or expired browser ticket");
     this.tickets.delete(ticket);
-    if (this.sessions.size >= 64) throw new APIError("resource_limit", "Too many browser sessions");
+    if (this.sessions.size >= 64)
+      throw new APIError("resource_limit", "Too many browser sessions");
     const token = random();
     this.sessions.set(token, {
       token,
@@ -80,7 +88,10 @@ export class BrowserSessions {
       url.searchParams.has("fiaSocketTicket") ||
       (url.pathname !== "/_fia/native" && !url.pathname.startsWith("/api/"))
     )
-      throw new APIError("invalid_argument", "WebSocket path must be an application endpoint");
+      throw new APIError(
+        "invalid_argument",
+        "WebSocket path must be an application endpoint",
+      );
     this.prune();
     if (this.sockets.size >= 256)
       throw new APIError("resource_limit", "Too many pending WebSockets");
@@ -114,7 +125,8 @@ export class BrowserSessions {
     this.sockets.clear();
     for (const session of this.sessions.values()) {
       session.controller.abort();
-      for (const socket of session.sockets) socket.close(4001, "Browser authorization ended");
+      for (const socket of session.sockets)
+        socket.close(4001, "Browser authorization ended");
     }
     this.sessions.clear();
   }

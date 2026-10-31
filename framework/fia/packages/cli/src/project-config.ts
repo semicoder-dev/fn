@@ -8,7 +8,11 @@ export interface ResolvedFIAConfig extends FIAConfig {
   projectRoot: string;
   configPath: string;
   api: { entry: string };
-  backend: { entry: string; assets: readonly string[]; startupTimeoutMs: number };
+  backend: {
+    entry: string;
+    assets: readonly string[];
+    startupTimeoutMs: number;
+  };
   runtime: { assets: readonly string[] };
   web: { root: string; dist: string };
   permissions: Readonly<Record<string, string>>;
@@ -26,10 +30,16 @@ function object(value: unknown, name: string): Record<string, unknown> {
 }
 function keys(value: Record<string, unknown>, allowed: string[], name: string) {
   for (const key of Object.keys(value))
-    if (!allowed.includes(key)) fail(name + "." + key + " is not supported in FIA 4");
+    if (!allowed.includes(key))
+      fail(name + "." + key + " is not supported in FIA 4");
 }
 function nonempty(value: unknown, name: string): asserts value is string {
-  if (typeof value !== "string" || !value.trim() || value.trim() !== value || value.includes("\0"))
+  if (
+    typeof value !== "string" ||
+    !value.trim() ||
+    value.trim() !== value ||
+    value.includes("\0")
+  )
     fail(name + " must be a non-empty string");
 }
 export function safeRelative(value: string): boolean {
@@ -38,18 +48,25 @@ export function safeRelative(value: string): boolean {
     !isAbsolute(value) &&
     !value.includes("\\") &&
     !/[\p{Cc}%?#:]/u.test(value) &&
-    value.split("/").every((part) => part !== "" && part !== "." && part !== "..")
+    value
+      .split("/")
+      .every((part) => part !== "" && part !== "." && part !== "..")
   );
 }
 export function httpsURL(value: string): boolean {
   try {
     const url = new URL(value);
-    return url.protocol === "https:" && !url.username && !url.password && !url.hash;
+    return (
+      url.protocol === "https:" && !url.username && !url.password && !url.hash
+    );
   } catch {
     return false;
   }
 }
-export function validateConfig(input: unknown, root: string): ResolvedFIAConfig {
+export function validateConfig(
+  input: unknown,
+  root: string,
+): ResolvedFIAConfig {
   const value = object(input, "config");
   keys(
     value,
@@ -69,13 +86,16 @@ export function validateConfig(input: unknown, root: string): ResolvedFIAConfig 
   );
   const app = object(value.app, "app");
   keys(app, ["name", "identifier", "version", "build", "icon"], "app");
-  for (const key of ["name", "identifier", "version"]) nonempty(app[key], "app." + key);
+  for (const key of ["name", "identifier", "version"])
+    nonempty(app[key], "app." + key);
   if (
     !/^[^/\\:\p{Cc}]{1,100}$/u.test(app.name as string) ||
     [".", ".."].includes(app.name as string)
   )
     fail("app.name must be a safe application filename");
-  if (!/^[a-zA-Z][a-zA-Z0-9-]*(\.[a-zA-Z0-9-]+)+$/u.test(app.identifier as string))
+  if (
+    !/^[a-zA-Z][a-zA-Z0-9-]*(\.[a-zA-Z0-9-]+)+$/u.test(app.identifier as string)
+  )
     fail("app.identifier must be a reverse DNS identifier");
   if (!/^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/u.test(app.version as string))
     fail("app.version must be a semantic version");
@@ -96,7 +116,8 @@ export function validateConfig(input: unknown, root: string): ResolvedFIAConfig 
     keys(command, ["description", "entry"], "agent.commands." + name);
     nonempty(command.description, "Command description");
     nonempty(command.entry, "Command entry");
-    if (command.description.length > 1024) fail("Command description exceeds 1024 characters");
+    if (command.description.length > 1024)
+      fail("Command description exceeds 1024 characters");
     commandEntries.push(command.entry);
   }
   nonempty(agent.command, "agent.command");
@@ -106,8 +127,11 @@ export function validateConfig(input: unknown, root: string): ResolvedFIAConfig 
     agent.command.length > 64 ||
     agent.command === "fia"
   )
-    fail("agent.command must be a skill-compatible command name, other than fia");
-  if (agent.description.length > 1024) fail("agent.description must be at most 1024 characters");
+    fail(
+      "agent.command must be a skill-compatible command name, other than fia",
+    );
+  if (agent.description.length > 1024)
+    fail("agent.description must be at most 1024 characters");
   const api = object(value.api ?? {}, "api");
   keys(api, ["entry"], "api");
   const apiEntry = api.entry ?? "shared/api.ts";
@@ -129,8 +153,10 @@ export function validateConfig(input: unknown, root: string): ResolvedFIAConfig 
   const dist = web.dist ?? "frontend/dist";
   const assets = backend.assets ?? [];
   const runtimeAssets = runtime.assets ?? [];
-  if (!Array.isArray(assets)) fail("backend.assets must be an array of relative paths");
-  if (!Array.isArray(runtimeAssets)) fail("runtime.assets must be an array of relative file paths");
+  if (!Array.isArray(assets))
+    fail("backend.assets must be an array of relative paths");
+  if (!Array.isArray(runtimeAssets))
+    fail("runtime.assets must be an array of relative file paths");
   for (const path of [
     entry,
     apiEntry,
@@ -144,16 +170,22 @@ export function validateConfig(input: unknown, root: string): ResolvedFIAConfig 
   ]) {
     if (typeof path !== "string" || !safeRelative(path))
       fail("Project paths must be safe relative paths");
-    if ([".git", "node_modules", ".fia"].includes((path as string).split("/")[0]!))
+    if (
+      [".git", "node_modules", ".fia"].includes((path as string).split("/")[0]!)
+    )
       fail("Project path is reserved: " + path);
   }
-  const runtimeNames = (runtimeAssets as string[]).map((path) => path.toLowerCase());
+  const runtimeNames = (runtimeAssets as string[]).map((path) =>
+    path.toLowerCase(),
+  );
   if (new Set(runtimeNames).size !== runtimeNames.length)
     fail("runtime.assets contains duplicate or case-insensitive paths");
   for (const path of runtimeNames) {
     if (
       (assets as string[]).some(
-        (asset) => path === asset.toLowerCase() || path.startsWith(asset.toLowerCase() + "/"),
+        (asset) =>
+          path === asset.toLowerCase() ||
+          path.startsWith(asset.toLowerCase() + "/"),
       )
     )
       fail("runtime.assets must not be included in backend.assets");
@@ -168,7 +200,8 @@ export function validateConfig(input: unknown, root: string): ResolvedFIAConfig 
     const item = object(value.statusItem, "statusItem");
     keys(item, ["symbol", "tooltip"], "statusItem");
     nonempty(item.symbol, "statusItem.symbol");
-    if (item.tooltip !== undefined) nonempty(item.tooltip, "statusItem.tooltip");
+    if (item.tooltip !== undefined)
+      nonempty(item.tooltip, "statusItem.tooltip");
   }
   if (value.updates !== undefined) {
     const updates = object(value.updates, "updates");
@@ -183,7 +216,8 @@ export function validateConfig(input: unknown, root: string): ResolvedFIAConfig 
       fail("updates.publicKey must be a base64 Ed25519 public key (32 bytes)");
     if (
       updates.downloadURL !== undefined &&
-      (typeof updates.downloadURL !== "string" || !httpsURL(updates.downloadURL))
+      (typeof updates.downloadURL !== "string" ||
+        !httpsURL(updates.downloadURL))
     )
       fail("updates.downloadURL must be HTTPS");
   }
@@ -191,14 +225,23 @@ export function validateConfig(input: unknown, root: string): ResolvedFIAConfig 
     const signing = object(value.signing, "signing");
     keys(
       signing,
-      ["developmentIdentity", "releaseIdentity", "notarizationProfile", "application"],
+      [
+        "developmentIdentity",
+        "releaseIdentity",
+        "notarizationProfile",
+        "application",
+      ],
       "signing",
     );
     for (const [key, item] of Object.entries(signing))
       if (key !== "application") nonempty(item, "signing." + key);
     if (signing.application !== undefined) {
       const profiles = object(signing.application, "signing.application");
-      keys(profiles, ["development", "preview", "production"], "signing.application");
+      keys(
+        profiles,
+        ["development", "preview", "production"],
+        "signing.application",
+      );
       for (const [mode, entry] of Object.entries(profiles)) {
         const profile = object(entry, "signing.application." + mode);
         keys(
@@ -208,14 +251,18 @@ export function validateConfig(input: unknown, root: string): ResolvedFIAConfig 
         );
         nonempty(profile.entitlements, "application entitlements");
         if (profile.provisioningProfile !== undefined)
-          nonempty(profile.provisioningProfile, "application provisioning profile");
+          nonempty(
+            profile.provisioningProfile,
+            "application provisioning profile",
+          );
         if (profile.cloudKitContainers !== undefined) {
           if (
             !Array.isArray(profile.cloudKitContainers) ||
             profile.cloudKitContainers.length === 0 ||
             profile.cloudKitContainers.length > 8 ||
             profile.cloudKitContainers.some(
-              (id: unknown) => typeof id !== "string" || !/^iCloud\.[A-Za-z0-9.-]+$/.test(id),
+              (id: unknown) =>
+                typeof id !== "string" || !/^iCloud\.[A-Za-z0-9.-]+$/.test(id),
             )
           )
             fail("Invalid CloudKit container identifiers");
@@ -240,7 +287,9 @@ export function validateConfig(input: unknown, root: string): ResolvedFIAConfig 
     permissions: permissions as Record<string, string>,
   };
 }
-export async function loadProjectConfig(root: string): Promise<ResolvedFIAConfig> {
+export async function loadProjectConfig(
+  root: string,
+): Promise<ResolvedFIAConfig> {
   root = await realpath(root);
   const path = resolve(root, "fia.config.ts");
   try {
@@ -262,7 +311,8 @@ export async function loadProjectConfig(root: string): Promise<ResolvedFIAConfig
       "import.meta.url": JSON.stringify(pathToFileURL(path).href),
     },
   });
-  if (!built.success) fail("Cannot load fia.config.ts: " + built.logs.join("\n"));
+  if (!built.success)
+    fail("Cannot load fia.config.ts: " + built.logs.join("\n"));
   const source = await built.outputs[0]!.text();
   const moduleURL =
     "data:text/javascript;base64," +
@@ -271,12 +321,17 @@ export async function loadProjectConfig(root: string): Promise<ResolvedFIAConfig
     default: unknown;
   };
   const config = validateConfig(imported.default, root);
-  if (!config.app.icon && (await Bun.file(resolve(root, "assets/icon.icns")).exists()))
+  if (
+    !config.app.icon &&
+    (await Bun.file(resolve(root, "assets/icon.icns")).exists())
+  )
     config.app.icon = "assets/icon.icns";
   for (const entry of [
     config.backend.entry,
     config.api.entry,
-    ...Object.values(config.agent.commands ?? {}).map((command) => command.entry),
+    ...Object.values(config.agent.commands ?? {}).map(
+      (command) => command.entry,
+    ),
     ...(config.agent.instructions ? [config.agent.instructions] : []),
     config.web.root,
     ...config.backend.assets,
@@ -300,13 +355,15 @@ export async function runtimeAssetSources(
   const root = await realpath(config.projectRoot);
   const files: { path: string; source: string }[] = [];
   for (const path of [...config.runtime.assets].sort()) {
-    if (!safeRelative(path)) fail("Runtime assets must be safe relative file paths");
+    if (!safeRelative(path))
+      fail("Runtime assets must be safe relative file paths");
     let source = root;
     const parts = path.split("/");
     for (const [index, part] of parts.entries()) {
       source = resolve(source, part);
       const info = await lstat(source);
-      if (info.isSymbolicLink()) fail("Runtime asset path cannot contain a symlink: " + path);
+      if (info.isSymbolicLink())
+        fail("Runtime asset path cannot contain a symlink: " + path);
       if (index < parts.length - 1 ? !info.isDirectory() : !info.isFile())
         fail("Runtime assets must be regular files: " + path);
     }

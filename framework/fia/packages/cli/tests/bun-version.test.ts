@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { isBunVersionSupported, MINIMUM_BUN_VERSION } from "../src/bun-version.ts";
+import {
+  isBunVersionSupported,
+  MINIMUM_BUN_VERSION,
+} from "../src/bun-version.ts";
 
 describe("Bun version support", () => {
   test("accepts the minimum and newer versions", () => {

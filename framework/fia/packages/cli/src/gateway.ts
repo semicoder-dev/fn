@@ -3,20 +3,32 @@ import { APIError } from "./api-client.ts";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import { resolve, sep } from "node:path";
-import { BrowserSessions, browserNativeMethods, type BrowserSession } from "./browser-sessions.ts";
+import {
+  BrowserSessions,
+  browserNativeMethods,
+  type BrowserSession,
+} from "./browser-sessions.ts";
 import {
   browserBootstrap,
   browserRuntime,
   browserWorker,
   injectBrowserRuntime,
 } from "./browser-assets.ts";
-import type { BackendDefinition, BackendRouteContext, InitializeFrame } from "./backend.ts";
+import type {
+  BackendDefinition,
+  BackendRouteContext,
+  InitializeFrame,
+} from "./backend.ts";
 
 const equal = (a: string, b: string) =>
-  Buffer.byteLength(a) === Buffer.byteLength(b) && timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  Buffer.byteLength(a) === Buffer.byteLength(b) &&
+  timingSafeEqual(Buffer.from(a), Buffer.from(b));
 const response = (message: string, status: number) =>
   status === 401 || status === 403
-    ? apiError(new APIError(status === 401 ? "unauthorized" : "forbidden", message), status)
+    ? apiError(
+        new APIError(status === 401 ? "unauthorized" : "forbidden", message),
+        status,
+      )
     : new Response(message, { status });
 const safePath = (path: string) =>
   path.startsWith("/") &&
@@ -28,7 +40,8 @@ type Socket = Bun.ServerWebSocket<unknown>;
 /** Bun is the only HTTP authority. All native operations leave it over stdio. */
 export function createGateway<Data, Paths extends string>(
   input: BackendDefinition<Data, Paths>,
-  routeContext: Omit<BackendRouteContext, "emit"> & Partial<Pick<BackendRouteContext, "emit">>,
+  routeContext: Omit<BackendRouteContext, "emit"> &
+    Partial<Pick<BackendRouteContext, "emit">>,
   init: InitializeFrame,
   api?: APIServer,
   update?: (action: "prepare" | "resume") => Promise<void>,
@@ -50,26 +63,31 @@ export function createGateway<Data, Paths extends string>(
   const nativeSockets = new Map<Socket, Map<number, AbortController>>();
   const callbacks = new Map(Object.entries(definition.http.callbacks ?? {}));
   for (const path of callbacks.keys()) {
-    if (!/^\/[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*$/.test(path) || path.startsWith("/_fia"))
+    if (
+      !/^\/[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*$/.test(path) ||
+      path.startsWith("/_fia")
+    )
       throw new Error("Callback routes require an exact path: " + path);
   }
-  const rules = Object.entries(definition.http.routes ?? {}).map(([path, handler]) => {
-    if (!path.startsWith("/") || path.startsWith("/_fia"))
-      throw new Error("Invalid backend route: " + path);
-    const names: string[] = [];
-    const pattern = path
-      .split("/")
-      .map((segment) => {
-        if (segment === "*") return ".*";
-        if (segment.startsWith(":")) {
-          names.push(segment.slice(1));
-          return "([^/]+)";
-        }
-        return segment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      })
-      .join("/");
-    return { pattern: new RegExp("^" + pattern + "$"), names, handler };
-  });
+  const rules = Object.entries(definition.http.routes ?? {}).map(
+    ([path, handler]) => {
+      if (!path.startsWith("/") || path.startsWith("/_fia"))
+        throw new Error("Invalid backend route: " + path);
+      const names: string[] = [];
+      const pattern = path
+        .split("/")
+        .map((segment) => {
+          if (segment === "*") return ".*";
+          if (segment.startsWith(":")) {
+            names.push(segment.slice(1));
+            return "([^/]+)";
+          }
+          return segment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        })
+        .join("/");
+      return { pattern: new RegExp("^" + pattern + "$"), names, handler };
+    },
+  );
   const validOrigins = (server: Bun.Server<unknown>) => [
     "http://127.0.0.1:" + server.port,
     ...(init.developmentOrigin ? [init.developmentOrigin] : []),
@@ -84,18 +102,34 @@ export function createGateway<Data, Paths extends string>(
     if (internal && equal(internal, init.sessionSecret)) return "internal";
     const origin = request.headers.get("origin");
     if (origin && !validOrigins(server).includes(origin)) return;
-    if (["cross-site", "same-site"].includes(request.headers.get("sec-fetch-site") ?? "")) return;
+    if (
+      ["cross-site", "same-site"].includes(
+        request.headers.get("sec-fetch-site") ?? "",
+      )
+    )
+      return;
     if (url.searchParams.has("fiaSocketTicket")) {
-      if (request.method !== "GET" || request.headers.get("upgrade")?.toLowerCase() !== "websocket")
+      if (
+        request.method !== "GET" ||
+        request.headers.get("upgrade")?.toLowerCase() !== "websocket"
+      )
         return;
       const session = sessions.consumeSocket(url, origin);
-      if (session) Object.defineProperty(request, "url", { value: url.href, configurable: true });
+      if (session)
+        Object.defineProperty(request, "url", {
+          value: url.href,
+          configurable: true,
+        });
       return session;
     }
     const bearer = request.headers.get("authorization");
     if (bearer) {
-      const session = sessions.get(bearer.startsWith("Bearer ") ? bearer.slice(7) : "");
-      return session && (!origin || session.origin === origin) ? session : undefined;
+      const session = sessions.get(
+        bearer.startsWith("Bearer ") ? bearer.slice(7) : "",
+      );
+      return session && (!origin || session.origin === origin)
+        ? session
+        : undefined;
     }
     const cookie = request.headers
       .get("cookie")
@@ -134,7 +168,10 @@ export function createGateway<Data, Paths extends string>(
         throw new APIError("updating", "Application is not ready");
       return sessions.issue(init.developmentOrigin ?? gateway.origin, route);
     },
-    async fetch(request: Request, server: Bun.Server<unknown>): Promise<Response | undefined> {
+    async fetch(
+      request: Request,
+      server: Bun.Server<unknown>,
+    ): Promise<Response | undefined> {
       if (!validOrigins(server).includes(new URL(request.url).origin))
         return response("Invalid host", 403);
       const principal = authorized(request, server);
@@ -149,10 +186,16 @@ export function createGateway<Data, Paths extends string>(
         ? new Proxy(server, {
             get(target, property) {
               if (property === "upgrade")
-                return (req: Request, options?: { data?: unknown; headers?: HeadersInit }) =>
+                return (
+                  req: Request,
+                  options?: { data?: unknown; headers?: HeadersInit },
+                ) =>
                   target.upgrade(req, {
                     ...options,
-                    data: { fiaBrowserSession: browser, originalData: options?.data },
+                    data: {
+                      fiaBrowserSession: browser,
+                      originalData: options?.data,
+                    },
                   });
               const value = Reflect.get(target, property, target);
               return typeof value === "function" ? value.bind(target) : value;
@@ -177,8 +220,11 @@ export function createGateway<Data, Paths extends string>(
             void reader.cancel().catch(() => {});
             remove();
           };
-          browser.controller.signal.addEventListener("abort", abort, { once: true });
-          remove = () => browser.controller.signal.removeEventListener("abort", abort);
+          browser.controller.signal.addEventListener("abort", abort, {
+            once: true,
+          });
+          remove = () =>
+            browser.controller.signal.removeEventListener("abort", abort);
         },
         async pull(controller) {
           try {
@@ -218,9 +264,14 @@ export function createGateway<Data, Paths extends string>(
       const path = url.pathname;
       const browser = typeof principal === "object" ? principal : undefined;
       if (
-        ["/_fia/browser/open", "/_fia/browser/runtime.js", "/_fia/browser/worker.js"].includes(path)
+        [
+          "/_fia/browser/open",
+          "/_fia/browser/runtime.js",
+          "/_fia/browser/worker.js",
+        ].includes(path)
       ) {
-        if (request.method !== "GET") return response("Method Not Allowed", 405);
+        if (request.method !== "GET")
+          return response("Method Not Allowed", 405);
         return new Response(
           path.endsWith("worker.js")
             ? browserWorker
@@ -236,7 +287,8 @@ export function createGateway<Data, Paths extends string>(
               "referrer-policy": "no-referrer",
               "x-content-type-options": "nosniff",
               "service-worker-allowed": "/",
-              "content-security-policy": "frame-ancestors 'none'; base-uri 'none'",
+              "content-security-policy":
+                "frame-ancestors 'none'; base-uri 'none'",
             },
           },
         );
@@ -249,15 +301,26 @@ export function createGateway<Data, Paths extends string>(
           !validOrigins(server).includes(origin) ||
           request.headers.get("x-fia-browser-bootstrap") !== "1" ||
           request.headers.get("content-type") !== "application/json" ||
-          ["cross-site", "same-site"].includes(request.headers.get("sec-fetch-site") ?? "")
+          ["cross-site", "same-site"].includes(
+            request.headers.get("sec-fetch-site") ?? "",
+          )
         )
           return response("Forbidden", 403);
-        if (!gateway.ready || api?.updating) return response("Application is not ready", 503);
+        if (!gateway.ready || api?.updating)
+          return response("Application is not ready", 503);
         try {
           const input = await json(request);
           return Response.json(
-            sessions.exchange(typeof input.ticket === "string" ? input.ticket : "", origin),
-            { headers: { "cache-control": "no-store", "referrer-policy": "no-referrer" } },
+            sessions.exchange(
+              typeof input.ticket === "string" ? input.ticket : "",
+              origin,
+            ),
+            {
+              headers: {
+                "cache-control": "no-store",
+                "referrer-policy": "no-referrer",
+              },
+            },
           );
         } catch {
           return response("Invalid or expired browser ticket", 403);
@@ -273,7 +336,11 @@ export function createGateway<Data, Paths extends string>(
           }
           const input = await json(request);
           return Response.json(
-            { url: gateway.issueBrowserURL(typeof input.route === "string" ? input.route : "/") },
+            {
+              url: gateway.issueBrowserURL(
+                typeof input.route === "string" ? input.route : "/",
+              ),
+            },
             { headers: { "cache-control": "no-store" } },
           );
         } catch {
@@ -307,24 +374,37 @@ export function createGateway<Data, Paths extends string>(
           headers: {
             location: target.pathname + target.search,
             "set-cookie":
-              cookieName + "=" + sessions.nativeToken + "; HttpOnly; SameSite=Strict; Path=/",
+              cookieName +
+              "=" +
+              sessions.nativeToken +
+              "; HttpOnly; SameSite=Strict; Path=/",
             "cache-control": "no-store",
             "referrer-policy": "no-referrer",
           },
         });
       }
-      const callback = path.startsWith("/api/") ? callbacks.get(path.slice(4)) : undefined;
+      const callback = path.startsWith("/api/")
+        ? callbacks.get(path.slice(4))
+        : undefined;
       if (callback) {
-        // Only the actual loopback authority, never the Vite proxy or a forged Host.
+        // Only the actual loopback authority, never the frontend proxy or a forged Host.
         if (url.origin !== "http://127.0.0.1:" + server.port)
           return response("Invalid callback host", 403);
-        if (request.method !== "GET") return response("Method Not Allowed", 405);
-        if (request.headers.has("upgrade")) return response("Invalid callback request", 400);
+        if (request.method !== "GET")
+          return response("Method Not Allowed", 405);
+        if (request.headers.has("upgrade"))
+          return response("Invalid callback request", 400);
         const target = new URL(url);
         target.pathname = path.slice(4);
         const forwarded = request as Bun.BunRequest;
-        Object.defineProperty(forwarded, "url", { value: target.href, configurable: true });
-        Object.defineProperty(forwarded, "params", { value: {}, configurable: true });
+        Object.defineProperty(forwarded, "url", {
+          value: target.href,
+          configurable: true,
+        });
+        Object.defineProperty(forwarded, "params", {
+          value: {},
+          configurable: true,
+        });
         const result = await callback(forwarded, server, context);
         if (!result) return response("Empty callback response", 500);
         const headers = new Headers(result.headers);
@@ -342,18 +422,40 @@ export function createGateway<Data, Paths extends string>(
           headers,
         });
       }
-      if (path.startsWith("/_fia") || path === "/api" || path.startsWith("/api/")) {
-        if (!principal) return response("Unauthorized", 401);
+      if (
+        path.startsWith("/_fia") ||
+        path === "/api" ||
+        path.startsWith("/api/")
+      ) {
+        if (
+          !principal &&
+          !(
+            path.startsWith("/api/") &&
+            !request.headers.has("origin") &&
+            !request.headers.has("sec-fetch-site") &&
+            (await definition.http.authorize?.(request))
+          )
+        )
+          return response("Unauthorized", 401);
       }
-      if (path === "/_fia/browser/session" && browser && request.method === "GET")
+      if (
+        path === "/_fia/browser/session" &&
+        browser &&
+        request.method === "GET"
+      )
         return Response.json(
           { generation: init.generation },
           { headers: { "cache-control": "no-store" } },
         );
-      if (path === "/_fia/browser/socket" && browser && request.method === "POST") {
+      if (
+        path === "/_fia/browser/socket" &&
+        browser &&
+        request.method === "POST"
+      ) {
         try {
           const input = await json(request);
-          if (typeof input.path !== "string") return response("Invalid WebSocket path", 400);
+          if (typeof input.path !== "string")
+            return response("Invalid WebSocket path", 400);
           return Response.json(
             { url: sessions.socketTicket(browser, input.path) },
             { headers: { "cache-control": "no-store" } },
@@ -363,10 +465,13 @@ export function createGateway<Data, Paths extends string>(
         }
       }
       if (path.startsWith("/_fia/update/") && request.method === "POST") {
-        if (!equal(request.headers.get("x-fia-session") ?? "", init.sessionSecret))
+        if (
+          !equal(request.headers.get("x-fia-session") ?? "", init.sessionSecret)
+        )
           return response("Forbidden", 403);
         const action = path.slice("/_fia/update/".length);
-        if (action !== "prepare" && action !== "resume") return response("Not Found", 404);
+        if (action !== "prepare" && action !== "resume")
+          return response("Not Found", 404);
         try {
           await update?.(action);
           return Response.json({ result: { ready: true } });
@@ -381,7 +486,11 @@ export function createGateway<Data, Paths extends string>(
       }
       if (path === "/_fia/health")
         return Response.json(
-          { ready: gateway.ready, generation: init.generation, build: init.build },
+          {
+            ready: gateway.ready,
+            generation: init.generation,
+            build: init.build,
+          },
           { status: gateway.ready ? 200 : 503 },
         );
       if (path === "/_fia/ready" && request.method === "POST") {
@@ -390,7 +499,8 @@ export function createGateway<Data, Paths extends string>(
           generation?: string;
           browser?: boolean;
         };
-        if (body.generation !== init.generation) return response("Stale frontend", 409);
+        if (body.generation !== init.generation)
+          return response("Stale frontend", 409);
         if (browser) {
           return Response.json({ ok: true });
         }
@@ -398,7 +508,8 @@ export function createGateway<Data, Paths extends string>(
         return Response.json({ ok: true });
       }
       if (path === "/_fia/native") {
-        if (server.upgrade(request, { data: { fiaNative: true } })) return undefined;
+        if (server.upgrade(request, { data: { fiaNative: true } }))
+          return undefined;
         return response("WebSocket required", 426);
       }
       if (
@@ -408,20 +519,23 @@ export function createGateway<Data, Paths extends string>(
         const id = path.slice("/_fia/resources/".length);
         if (!/^[a-f0-9-]{36}$/u.test(id)) return response("Not Found", 404);
         try {
-          const resource = await context.native.call<{ path: string; contentType: string }>(
-            "resources.resolve",
-            { id },
-          );
+          const resource = await context.native.call<{
+            path: string;
+            contentType: string;
+          }>("resources.resolve", { id });
           const file = await realpath(resource.path);
           const root = await realpath(init.resourceDirectory);
           if (!file.startsWith(root + sep)) return response("Forbidden", 403);
-          return new Response(request.method === "HEAD" ? null : Bun.file(file), {
-            headers: {
-              "content-type": resource.contentType,
-              "cache-control": "no-store",
-              "x-content-type-options": "nosniff",
+          return new Response(
+            request.method === "HEAD" ? null : Bun.file(file),
+            {
+              headers: {
+                "content-type": resource.contentType,
+                "cache-control": "no-store",
+                "x-content-type-options": "nosniff",
+              },
             },
-          });
+          );
         } catch {
           return response("Not Found", 404);
         }
@@ -431,13 +545,19 @@ export function createGateway<Data, Paths extends string>(
         const target = new URL(url);
         target.pathname = path.slice(4) || "/";
         const forwarded = request as Bun.BunRequest;
-        Object.defineProperty(forwarded, "url", { value: target.href, configurable: true });
+        Object.defineProperty(forwarded, "url", {
+          value: target.href,
+          configurable: true,
+        });
         for (const rule of rules) {
           const match = rule.pattern.exec(target.pathname);
           if (!match) continue;
           Object.defineProperty(forwarded, "params", {
             value: Object.fromEntries(
-              rule.names.map((name, i) => [name, decodeURIComponent(match[i + 1]!)]),
+              rule.names.map((name, i) => [
+                name,
+                decodeURIComponent(match[i + 1]!),
+              ]),
             ),
             configurable: true,
           });
@@ -446,13 +566,17 @@ export function createGateway<Data, Paths extends string>(
               ? rule.handler
               : rule.handler[request.method as Bun.Serve.HTTPMethod];
           if (!handler) return response("Method Not Allowed", 405);
-          return (await handler(forwarded as never, server, context)) ?? undefined;
+          return (
+            (await handler(forwarded as never, server, context)) ?? undefined
+          );
         }
         return definition.http.fetch
-          ? ((await definition.http.fetch(forwarded, server, context)) ?? undefined)
+          ? ((await definition.http.fetch(forwarded, server, context)) ??
+              undefined)
           : response("Not Found", 404);
       }
-      if (!["GET", "HEAD"].includes(request.method)) return response("Method Not Allowed", 405);
+      if (!["GET", "HEAD"].includes(request.method))
+        return response("Method Not Allowed", 405);
       let decoded: string;
       try {
         decoded = decodeURIComponent(path);
@@ -460,19 +584,41 @@ export function createGateway<Data, Paths extends string>(
         return response("Bad Request", 400);
       }
       if (!safePath(decoded)) return response("Bad Request", 400);
+      if (decoded.startsWith("/pages/") && definition.http.pages) {
+        const result = await definition.http.pages(request);
+        const headers = new Headers(result.headers);
+        headers.set("cache-control", "no-store");
+        headers.set("referrer-policy", "no-referrer");
+        headers.set("x-content-type-options", "nosniff");
+        headers.set(
+          "content-security-policy",
+          "frame-ancestors 'none'; base-uri 'none'",
+        );
+        return new Response(request.method === "HEAD" ? null : result.body, {
+          status: result.status,
+          headers,
+        });
+      }
       const root = await realpath(init.webRoot);
-      let candidate = resolve(root, "." + (decoded === "/" ? "/index.html" : decoded));
+      let candidate = resolve(
+        root,
+        "." + (decoded === "/" ? "/index.html" : decoded),
+      );
       try {
         candidate = await realpath(candidate);
       } catch {
-        if (decoded.split("/").pop()?.includes(".")) return response("Not Found", 404);
+        if (decoded.split("/").pop()?.includes("."))
+          return response("Not Found", 404);
         try {
           candidate = await realpath(resolve(root, "index.html"));
         } catch {
           return response("Not Found", 404);
         }
       }
-      if (!candidate.startsWith(root + sep) || !(await Bun.file(candidate).exists()))
+      if (
+        !candidate.startsWith(root + sep) ||
+        !(await Bun.file(candidate).exists())
+      )
         return response("Not Found", 404);
       return new Response(
         request.method === "HEAD"
@@ -488,14 +634,16 @@ export function createGateway<Data, Paths extends string>(
               : Bun.file(candidate).type,
             "x-content-type-options": "nosniff",
             "referrer-policy": "no-referrer",
-            "content-security-policy": "frame-ancestors 'none'; base-uri 'none'",
+            "content-security-policy":
+              "frame-ancestors 'none'; base-uri 'none'",
           },
         },
       );
     },
     websocket: {
       ...definition.http.websocket,
-      maxPayloadLength: definition.http.websocket?.maxPayloadLength ?? 1024 * 1024,
+      maxPayloadLength:
+        definition.http.websocket?.maxPayloadLength ?? 1024 * 1024,
       open(socket: Socket) {
         const envelope = socket.data as
           | { fiaBrowserSession?: BrowserSession; originalData?: unknown }
@@ -524,7 +672,13 @@ export function createGateway<Data, Paths extends string>(
           socket.close(1009, "Native frame is too large");
           return;
         }
-        let frame: { v: number; type: string; id: number; method?: string; params?: unknown };
+        let frame: {
+          v: number;
+          type: string;
+          id: number;
+          method?: string;
+          params?: unknown;
+        };
         try {
           frame = JSON.parse(String(message));
         } catch {
@@ -551,7 +705,10 @@ export function createGateway<Data, Paths extends string>(
         const controller = new AbortController();
         pending.set(frame.id, controller);
         try {
-          if (frame.method.startsWith("runtime.") || frame.method === "resources.resolve")
+          if (
+            frame.method.startsWith("runtime.") ||
+            frame.method === "resources.resolve"
+          )
             throw new Error("Private native method");
           const browser = socketSessions.get(socket);
           if (browser && !browserNativeMethods.has(frame.method))
@@ -559,18 +716,25 @@ export function createGateway<Data, Paths extends string>(
               "permission_denied",
               "Native capability is not available in the browser",
             );
-          let result = await context.native.call(frame.method, frame.params ?? {}, {
-            signal: browser
-              ? AbortSignal.any([controller.signal, browser.controller.signal])
-              : controller.signal,
-            timeoutMs:
-              frame.method.startsWith("updates.") ||
-              frame.method.startsWith("keychain.") ||
-              frame.method === "dialogs.openFiles" ||
-              frame.method === "dialogs.saveFile"
-                ? 0
-                : 30_000,
-          });
+          let result = await context.native.call(
+            frame.method,
+            frame.params ?? {},
+            {
+              signal: browser
+                ? AbortSignal.any([
+                    controller.signal,
+                    browser.controller.signal,
+                  ])
+                : controller.signal,
+              timeoutMs:
+                frame.method.startsWith("updates.") ||
+                frame.method.startsWith("keychain.") ||
+                frame.method === "dialogs.openFiles" ||
+                frame.method === "dialogs.saveFile"
+                  ? 0
+                  : 30_000,
+            },
+          );
           if (browser && frame.method === "native.capabilities") {
             const value = result as { capabilities: Record<string, boolean> };
             result = {
@@ -587,7 +751,9 @@ export function createGateway<Data, Paths extends string>(
             };
           }
           if (nativeSockets.has(socket) && !browser?.controller.signal.aborted)
-            socket.send(JSON.stringify({ v: 1, type: "response", id: frame.id, result }));
+            socket.send(
+              JSON.stringify({ v: 1, type: "response", id: frame.id, result }),
+            );
         } catch (error) {
           if (nativeSockets.has(socket))
             socket.send(
@@ -618,13 +784,16 @@ export function createGateway<Data, Paths extends string>(
         } else definition.http.websocket?.close?.(socket, code, reason);
       },
       drain(socket: Socket) {
-        if (!nativeSockets.has(socket)) definition.http.websocket?.drain?.(socket);
+        if (!nativeSockets.has(socket))
+          definition.http.websocket?.drain?.(socket);
       },
       ping(socket: Socket, data: Buffer) {
-        if (!nativeSockets.has(socket)) definition.http.websocket?.ping?.(socket, data);
+        if (!nativeSockets.has(socket))
+          definition.http.websocket?.ping?.(socket, data);
       },
       pong(socket: Socket, data: Buffer) {
-        if (!nativeSockets.has(socket)) definition.http.websocket?.pong?.(socket, data);
+        if (!nativeSockets.has(socket))
+          definition.http.websocket?.pong?.(socket, data);
       },
     } satisfies Bun.WebSocketHandler<unknown>,
   };

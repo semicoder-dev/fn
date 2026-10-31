@@ -10,8 +10,8 @@
     "fia": "bun run packages/cli/src/index.ts",
     "cli:build": "bun run --cwd packages/cli build",
     "lint": "oxlint .",
-    "format": "oxfmt .",
-    "format:check": "oxfmt --check .",
+    "format": "bun fmt --no-script .",
+    "format:check": "bun fmt --no-script --check .",
     "typecheck": "tsc --noEmit",
     "test:cli": "bun run cli:build && bun test packages/cli/tests",
     "test:swift": "CLANG_MODULE_CACHE_PATH=\"$PWD/.build/module-cache\" SWIFTPM_MODULECACHE_OVERRIDE=\"$PWD/.build/module-cache\" swift test --disable-sandbox --no-parallel",
@@ -23,11 +23,10 @@
   },
   "devDependencies": {
     "@types/bun": "1.4.0",
-    "oxfmt": "^0.61.0",
     "oxlint": "^1.76.0",
     "typescript": "7.0.2"
   },
   "engines": {
-    "bun": ">=1.4.0"
+    "bun": ">=1.4.4"
   }
 }

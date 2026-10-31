@@ -4,7 +4,10 @@ import { resolve } from "node:path";
 import { CLI_VERSION } from "./metadata.ts";
 import type { CreateOptions } from "./create-options.ts";
 
-export async function createProject(options: CreateOptions, cwd = process.cwd()) {
+export async function createProject(
+  options: CreateOptions,
+  cwd = process.cwd(),
+) {
   const name = options.name;
   if (!name || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(name))
     throw new Error("Project name must be lowercase kebab-case");
@@ -45,7 +48,9 @@ export async function createProject(options: CreateOptions, cwd = process.cwd())
       stderr: "inherit",
     });
     if ((await child.exited) !== 0)
-      throw new Error("Project created at " + root + "; command failed: " + command.join(" "));
+      throw new Error(
+        "Project created at " + root + "; command failed: " + command.join(" "),
+      );
   }
   return { projectRoot: root };
 }

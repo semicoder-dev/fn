@@ -1,7 +1,7 @@
 {
   "name": "@semicoder/fn-sdk",
-  "version": "0.5.0",
-  "description": "Cordis plugin contracts and build tools for fn",
+  "version": "0.6.0",
+  "description": "TypeScript application SDK and tools for Fn",
   "homepage": "https://semicoder.dev/fn",
   "bugs": {
     "url": "https://github.com/semicoder-dev/fn/issues"
@@ -19,7 +19,14 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./backend": "./src/backend.ts",
     "./client": "./src/client.ts",
+    "./contract": "./src/contract.ts",
+    "./manifest": "./src/manifest.ts",
+    "./widgets": "./src/widgets.ts",
+    "./types": "./src/types.ts",
+    "./react": "./src/react.tsx",
+    "./sse": "./src/sse.ts",
     "./build": "./build.ts"
   },
   "publishConfig": {
@@ -30,14 +37,14 @@
     "zod": "4.6.5"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "4.0.5",
-    "@deepseek-ai/dsh-client-ui-renderer": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-client-ui-slots": "0.2.1-rc.2",
-    "@semicoder/fia": "0.18.0",
-    "react": ">=19 <20",
-    "react-dom": ">=19 <20"
+    "react": ">=19 <20"
   },
   "engines": {
-    "bun": ">=1.4.2"
+    "bun": ">=1.4.4"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   }
 }

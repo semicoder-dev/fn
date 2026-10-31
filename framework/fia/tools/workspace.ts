@@ -17,7 +17,9 @@ export async function findWorkspace(frameworkRoot = repositoryRoot) {
       return { root, lock, packagePath };
     const parent = dirname(root);
     if (parent === root)
-      throw new Error("FIA workspace lockfile missing; run bun install at the repository root");
+      throw new Error(
+        "FIA workspace lockfile missing; run bun install at the repository root",
+      );
     root = parent;
   }
 }

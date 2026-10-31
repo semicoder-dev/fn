@@ -30,21 +30,30 @@ export function parseIconArguments(args: readonly string[]): IconArguments {
   for (let index = 0; index < args.length; index++) {
     const argument = args[index]!;
     if (["--background", "--foreground", "--output"].includes(argument)) {
-      if (values.has(argument)) throw new Error(`${argument} may only be specified once`);
+      if (values.has(argument))
+        throw new Error(`${argument} may only be specified once`);
       const value = args[++index];
-      if (!value || value.startsWith("--")) throw new Error(`${argument} requires a value`);
+      if (!value || value.startsWith("--"))
+        throw new Error(`${argument} requires a value`);
       values.set(argument, value);
     } else if (argument === "--force") {
       if (force) throw new Error("--force may only be specified once");
       force = true;
-    } else if (argument.startsWith("-")) throw new Error(`unknown icon option: ${argument}`);
-    else if (text !== undefined) throw new Error("icon accepts exactly one character");
+    } else if (argument.startsWith("-"))
+      throw new Error(`unknown icon option: ${argument}`);
+    else if (text !== undefined)
+      throw new Error("icon accepts exactly one character");
     else text = argument;
   }
-  if (text === undefined) throw new Error("icon requires one letter, number or Chinese character");
+  if (text === undefined)
+    throw new Error("icon requires one letter, number or Chinese character");
   text = text.normalize("NFC");
   if (
-    [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text)].length !== 1 ||
+    [
+      ...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(
+        text,
+      ),
+    ].length !== 1 ||
     !/^[\p{L}\p{N}][\p{L}\p{N}\p{M}]*$/u.test(text) ||
     /[\p{Extended_Pictographic}\u20E3\uFE0E\uFE0F]/u.test(text)
   )
@@ -57,14 +66,23 @@ export function parseIconArguments(args: readonly string[]): IconArguments {
     ["--background", background],
     ["--foreground", foreground],
   ]) {
-    if (!/^#[0-9A-F]{6}$/.test(value!)) throw new Error(`${name} must be a #RRGGBB color`);
+    if (!/^#[0-9A-F]{6}$/.test(value!))
+      throw new Error(`${name} must be a #RRGGBB color`);
   }
   if (background === foreground)
     throw new Error("background and foreground must be different colors");
   const output = values.get("--output");
   if (force && output === undefined)
-    throw new Error("--force is only used with --output; project icons are updated directly");
-  return { text, background, foreground, ...(output === undefined ? {} : { output }), force };
+    throw new Error(
+      "--force is only used with --output; project icons are updated directly",
+    );
+  return {
+    text,
+    background,
+    foreground,
+    ...(output === undefined ? {} : { output }),
+    force,
+  };
 }
 
 export interface IconDependencies {
@@ -75,13 +93,18 @@ export interface IconDependencies {
 }
 
 async function run(command: readonly string[]): Promise<void> {
-  const child = Bun.spawn([...command], { stdin: "ignore", stdout: "pipe", stderr: "pipe" });
+  const child = Bun.spawn([...command], {
+    stdin: "ignore",
+    stdout: "pipe",
+    stderr: "pipe",
+  });
   const [status, stderr] = await Promise.all([
     child.exited,
     new Response(child.stderr).text(),
     new Response(child.stdout).text(),
   ]);
-  if (status !== 0) throw new Error(`${command[0]} failed (${status}): ${stderr.trim()}`);
+  if (status !== 0)
+    throw new Error(`${command[0]} failed (${status}): ${stderr.trim()}`);
 }
 
 async function renderIcon(
@@ -134,23 +157,35 @@ export async function generateIcon(
   if ((dependencies.platform ?? process.platform) !== "darwin")
     throw new Error("fia icon is only supported on macOS");
   const project = options.output === undefined;
-  const projectConfig = project ? await loadProjectConfig(options.cwd) : undefined;
-  const projectIcon = resolve(options.cwd, projectConfig?.app.icon ?? "assets/icon.icns");
-  const output = project ? dirname(projectIcon) : resolve(options.cwd, options.output!);
+  const projectConfig = project
+    ? await loadProjectConfig(options.cwd)
+    : undefined;
+  const projectIcon = resolve(
+    options.cwd,
+    projectConfig?.app.icon ?? "assets/icon.icns",
+  );
+  const output = project
+    ? dirname(projectIcon)
+    : resolve(options.cwd, options.output!);
   const outputs = [
     resolve(output, "icon.png"),
     project ? projectIcon : resolve(output, "icon.icns"),
   ];
   const destinations = outputs;
   const directoryState = await fileState(output);
-  if (directoryState && (!directoryState.isDirectory() || directoryState.isSymbolicLink()))
+  if (
+    directoryState &&
+    (!directoryState.isDirectory() || directoryState.isSymbolicLink())
+  )
     throw new Error(`Icon output must be a real directory: ${output}`);
   for (const path of destinations) {
     const state = await fileState(path);
     if (state && !state.isFile())
       throw new Error(`Refusing to replace a non-regular file: ${path}`);
     if (state && !project && !options.force)
-      throw new Error(`File already exists: ${path}; use --force to replace exported icons`);
+      throw new Error(
+        `File already exists: ${path}; use --force to replace exported icons`,
+      );
   }
   const temporary = await mkdtemp(resolve(tmpdir(), "fia-icon-"));
   const stages: {
@@ -165,7 +200,8 @@ export async function generateIcon(
   try {
     await (
       dependencies.render ??
-      ((args, directory) => renderIcon(args, directory, dependencies.runner ?? run))
+      ((args, directory) =>
+        renderIcon(args, directory, dependencies.runner ?? run))
     )(options, temporary);
     const png = await readFile(resolve(temporary, "icon.png"));
     const icns = await readFile(resolve(temporary, "icon.icns"));
@@ -191,7 +227,13 @@ export async function generateIcon(
       if (state && (!state.isFile() || (!project && !options.force)))
         throw new Error(`Output changed while generating: ${path}`);
       const directory = await mkdtemp(resolve(dirname(path), ".fia-icon-"));
-      stages.push({ directory, path, old: state !== undefined, installed: false, backedUp: false });
+      stages.push({
+        directory,
+        path,
+        old: state !== undefined,
+        installed: false,
+        backedUp: false,
+      });
       await writeFile(resolve(directory, "new"), content[index]!, {
         mode: state ? state.mode & 0o777 : 0o644,
       });
@@ -211,7 +253,8 @@ export async function generateIcon(
     for (const stage of stages.toReversed()) {
       try {
         if (stage.installed) await rm(stage.path);
-        if (stage.backedUp) await rename(resolve(stage.directory, "old"), stage.path);
+        if (stage.backedUp)
+          await rename(resolve(stage.directory, "old"), stage.path);
       } catch (failure) {
         failures.push(failure);
       }
@@ -227,7 +270,8 @@ export async function generateIcon(
   } finally {
     await rm(temporary, { recursive: true, force: true });
     if (!preserveBackups)
-      for (const stage of stages) await rm(stage.directory, { recursive: true, force: true });
+      for (const stage of stages)
+        await rm(stage.directory, { recursive: true, force: true });
     if (createdOutput)
       await rmdir(output).catch((error: NodeJS.ErrnoException) => {
         if (error.code !== "ENOTEMPTY" && error.code !== "ENOENT") throw error;

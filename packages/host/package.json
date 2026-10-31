@@ -4,25 +4,11 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./copy-generation": "./src/copy-generation.ts",
-    "./contract": "./src/contract.ts",
-    "./pagination": "./src/pagination.ts",
-    "./document": "./src/document.ts",
-    "./git-source": "./src/git-source.ts",
-    "./profile": "./src/profile.ts",
-    "./generations": "./src/generations.ts",
-    "./client-assets": "./src/client-assets.ts",
-    "./generation-progress": "./src/generation-progress.ts",
-    "./profile-schema": "./src/profile-schema.ts"
+    ".": "./src/index.ts"
   },
   "dependencies": {
-    "@deepseek-ai/cordis": "4.0.5",
-    "@deepseek-ai/cordis-plugin-include": "1.0.10",
-    "@deepseek-ai/cordis-plugin-loader": "1.0.6",
-    "@deepseek-ai/dsh-client-modules": "0.2.1-rc.2",
+    "@semicoder/fn-sdk": "workspace:*",
     "@semicoder/fia": "workspace:*",
-    "immer": "10.2.0",
-    "zustand": "4.5.7"
+    "zod": "4.6.5"
   }
 }

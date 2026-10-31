@@ -1,4 +1,8 @@
-export function projectFiles(name: string, title: string, spec: string): Record<string, string> {
+export function projectFiles(
+  name: string,
+  title: string,
+  spec: string,
+): Record<string, string> {
   const json = (value: unknown) => JSON.stringify(value, null, 2) + "\n";
   return {
     "package.json": json({
@@ -15,14 +19,16 @@ export function projectFiles(name: string, title: string, spec: string): Record<
         check: "fia check",
         test: "fia test",
       },
-      dependencies: { "@semicoder/fia": spec, react: "^19.2.7", "react-dom": "^19.2.7" },
+      dependencies: {
+        "@semicoder/fia": spec,
+        react: "^19.2.7",
+        "react-dom": "^19.2.7",
+      },
       devDependencies: {
         "@types/bun": "1.4.0",
         "@types/react": "19.2.17",
         "@types/react-dom": "19.2.3",
         typescript: "7.0.2",
-        vite: "^7.1.3",
-        "@vitejs/plugin-react": "^5.0.0",
       },
     }),
     "fia.config.ts": `import { defineConfig } from "@semicoder/fia/config";
@@ -102,10 +108,11 @@ import "./style.css";
 function Root() { useEffect(() => { void native.ready(); }, []); return <App />; }
 createRoot(document.getElementById("root")!).render(<Root />);
 `,
-    "frontend/index.html": `<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title></head><body><div id="root"></div><script type="module" src="/main.tsx"></script></body></html>\n`,
+    "frontend/env.d.ts":
+      'declare module "*.css";\ndeclare module "*.module.css" { const classes: Record<string, string>; export default classes; }\n',
+    "frontend/index.html": `<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title></head><body><div id="root"></div><script type="module" src="./main.tsx"></script></body></html>\n`,
     "frontend/style.css":
       ":root{font:16px system-ui;color-scheme:light dark}body{margin:0}main{max-width:720px;margin:12vh auto;padding:32px}span{font-weight:700;letter-spacing:.15em}h1{font-size:42px}output{font-size:64px;font-variant-numeric:tabular-nums}button{font:inherit;padding:10px 18px;border:1px solid #8888;border-radius:8px;cursor:pointer}code{font-size:13px}\n",
-    "vite.config.ts": `import { defineConfig } from "vite";\nimport react from "@vitejs/plugin-react";\nimport fia from "@semicoder/fia/vite";\nexport default defineConfig({ root: "frontend", plugins: [react(), fia()], build: { outDir: "dist", emptyOutDir: true } });\n`,
     "tsconfig.json": json({
       compilerOptions: {
         strict: true,
@@ -117,11 +124,12 @@ createRoot(document.getElementById("root")!).render(<Root />);
         noEmit: true,
         allowImportingTsExtensions: true,
         lib: ["ESNext", "DOM"],
-        types: ["bun", "vite/client"],
+        types: ["bun"],
       },
-      include: ["frontend", "backend", "shared", "fia.config.ts", "vite.config.ts"],
+      include: ["frontend", "backend", "shared", "fia.config.ts"],
     }),
-    ".gitignore": "node_modules/\n.fia/\ndist/\nfrontend/dist/\n.DS_Store\n.env*\n*private*.pem\n",
+    ".gitignore":
+      "node_modules/\n.fia/\ndist/\nfrontend/dist/\n.DS_Store\n.env*\n*private*.pem\n",
     "README.md": `# ${title}\n\nRun bun install and bun run dev (or bun run dev --open-browser). Every window includes a framework-owned Open in Browser button at the far right of its titlebar, in development, preview and production. Browser and native UI share backend data; unsaved page state is separate. Use bun run agent open --browser, or bun run agent --preview open --browser for previews. Explicit --url prints a one-use link valid for 60 seconds; ordinary startup never prints credentials. Reopen after backend restart, or use Disconnect Browser Sessions in the app/tray menu to revoke access. In another terminal run bun run agent call counter.increment --json '{"by":1}'.\n\nEdit shared/api.ts for the contract, backend/ for handlers, frontend/ for UI, and agent/instructions.md for business guidance. bun run build produces an application with its own CLI and Bun runtime. Use the app menu to install the command; then run ${name} skill install to install its skill.\n\nCLI startup stays in the tray; ${name} open shows the window and ${name} open --browser opens the main route in your browser. Explicitly quit to stop the backend. Scripts are trusted local code.\n`,
     "AGENTS.md":
       "# FIA 4 application\n\nDeclare shared operations and events in shared/api.ts. Implement them in backend/ with implementAPI; call them from frontend/ using createClient. Keep the contract module free of backend initialization and side effects. Update agent/instructions.md with business workflows. Do not start another server, port or CLI; use defineBackend.http for custom HTTP and WebSocket routes relative to /api. Custom routes are not available through the application CLI. Use fia agent for the current development instance. Run bun run check and bun run build before delivery. Call native.ready() on first frontend mount even when hidden. windows.create declares windows; use open to present them. Persist business data under context.app.dataDirectory. Scripts are trusted local code; persistent jobs belong in your backend. Return a task ID promptly, use context.emit in start/routes for background events, veto updates in beforeUpdate while busy, and cancel tasks in stop. API messages are limited to 1 MiB of UTF-8. Use events --count N --timeout MS --match JSON to wait for matching events; timeout exits 124. Events have no replay, so subscribe before triggering work and reread state after waiting. FIA provides browser UI access by default in all build modes through the rightmost native titlebar button. Do not add another app-level entry or manage credentials. setTitlebar only replaces application items. Browser access uses tab-scoped sessions; restart or Disconnect Browser Sessions invalidates them. Use openWebSocket from @semicoder/fia/client for custom business sockets so short-lived handshake tickets are handled automatically. Browser Native calls are allowlisted; inspect native.capabilities().methods. fia agent open --browser opens the main route; --preview selects preview, and explicit --url prints a one-use 60-second authorization link. Framework documentation is included at node_modules/@semicoder/fia/docs/framework/README.md.\n",

@@ -1,3 +1,4 @@
+import { buildWeb, startWebDevelopment } from "./web.ts";
 import { agentFetch, connectAgent } from "./agent-cli.ts";
 import { readResult } from "./api-client.ts";
 import { generateAgentArtifacts } from "./agent-artifacts.ts";
@@ -42,7 +43,10 @@ export type ApplicationProcessRunner = (
   command: readonly string[],
   settings: RunSettings,
 ) => Promise<{ exitCode: number; stdout: string; stderr: string }>;
-export const defaultRunner: ApplicationProcessRunner = async (command, settings) => {
+export const defaultRunner: ApplicationProcessRunner = async (
+  command,
+  settings,
+) => {
   const child = Bun.spawn([...command], {
     cwd: settings.cwd,
     env: { ...process.env, ...settings.env },
@@ -57,10 +61,16 @@ export const defaultRunner: ApplicationProcessRunner = async (command, settings)
   ]);
   return { exitCode, stdout, stderr };
 };
-async function checked(runner: ApplicationProcessRunner, command: readonly string[], cwd: string) {
+async function checked(
+  runner: ApplicationProcessRunner,
+  command: readonly string[],
+  cwd: string,
+) {
   const result = await runner(command, { cwd });
   if (result.exitCode !== 0)
-    throw new Error(command[0] + " failed: " + (result.stderr || result.stdout));
+    throw new Error(
+      command[0] + " failed: " + (result.stderr || result.stdout),
+    );
   return result;
 }
 const xml = (value: string) =>
@@ -86,13 +96,18 @@ export function infoPlist(
     CFBundlePackageType: "APPL",
     LSMinimumSystemVersion: "14.0",
     ...config.permissions,
-    ...(cloudKitContainers.length ? { FIACloudKitContainers: cloudKitContainers.join(",") } : {}),
+    ...(cloudKitContainers.length
+      ? { FIACloudKitContainers: cloudKitContainers.join(",") }
+      : {}),
     ...(hasIcon ? { CFBundleIconFile: "AppIcon" } : {}),
   };
   return (
     '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict>' +
     Object.entries(values)
-      .map(([key, value]) => "<key>" + xml(key) + "</key><string>" + xml(value) + "</string>")
+      .map(
+        ([key, value]) =>
+          "<key>" + xml(key) + "</key><string>" + xml(value) + "</string>",
+      )
       .join("") +
     "<key>NSHighResolutionCapable</key><true/><key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict></dict></plist>"
   );
@@ -141,8 +156,10 @@ export async function buildCode(
       resolve(destination, "web/index.html"),
     );
   } else {
-    const vite = resolve(config.projectRoot, "node_modules/vite/bin/vite.js");
-    await checked(runner, [process.execPath, vite, "build"], config.projectRoot);
+    await buildWeb({
+      root: resolve(config.projectRoot, config.web.root),
+      dist: resolve(config.projectRoot, config.web.dist),
+    });
     const result = await Bun.build({
       entrypoints: [entry],
       target: "bun",
@@ -156,18 +173,27 @@ export async function buildCode(
       packages: "bundle",
       minify: true,
     });
-    if (!result.success) throw new AggregateError(result.logs, "Backend build failed");
-    await cp(resolve(config.projectRoot, config.web.dist), resolve(destination, "web"), {
-      recursive: true,
-    });
+    if (!result.success)
+      throw new AggregateError(result.logs, "Backend build failed");
+    await cp(
+      resolve(config.projectRoot, config.web.dist),
+      resolve(destination, "web"),
+      {
+        recursive: true,
+      },
+    );
   }
   for (const path of development ? [] : config.backend.assets)
-    await cp(resolve(config.projectRoot, path), resolve(destination, "backend", path), {
-      recursive: true,
-      verbatimSymlinks: true,
-      force: false,
-      errorOnExist: true,
-    });
+    await cp(
+      resolve(config.projectRoot, path),
+      resolve(destination, "backend", path),
+      {
+        recursive: true,
+        verbatimSymlinks: true,
+        force: false,
+        errorOnExist: true,
+      },
+    );
   const release: CodeRelease = {
     schema: 1,
     identifier: config.app.identifier,
@@ -177,10 +203,15 @@ export async function buildCode(
     baseURL: config.updates
       ? new URL("releases/" + config.app.build + "/", config.updates.url).href
       : "https://invalid.local/",
-    ...(config.updates?.downloadURL ? { downloadURL: config.updates.downloadURL } : {}),
+    ...(config.updates?.downloadURL
+      ? { downloadURL: config.updates.downloadURL }
+      : {}),
     files: await releaseFiles(destination),
   };
-  await writeFile(resolve(destination, "manifest.json"), JSON.stringify(release, null, 2) + "\n");
+  await writeFile(
+    resolve(destination, "manifest.json"),
+    JSON.stringify(release, null, 2) + "\n",
+  );
   return release;
 }
 export async function buildApplication(
@@ -199,7 +230,9 @@ export async function buildApplication(
     (options.development && options.preview) ||
     (options.distribution && (options.development || options.preview))
   )
-    throw new Error("Local builds cannot be combined with distribution or another local mode");
+    throw new Error(
+      "Local builds cannot be combined with distribution or another local mode",
+    );
   const profile =
     options.development || options.preview
       ? localProfile(config, options.development ? "development" : "preview")
@@ -234,14 +267,23 @@ export async function buildApplication(
       options.development,
       immutableAssets,
     );
-    await cp(resolve(assetDirectory, "FIAHost"), resolve(contents, "MacOS/FIAHost"));
+    await cp(
+      resolve(assetDirectory, "FIAHost"),
+      resolve(contents, "MacOS/FIAHost"),
+    );
     await cp(resolve(assetDirectory, "bun"), resolve(contents, "Helpers/bun"));
     for (const name of ["agent-cli", "script-preload"])
-      await cp(resolve(import.meta.dir, "../dist", name + ".js"), resolve(resources, name + ".js"));
+      await cp(
+        resolve(import.meta.dir, "../dist", name + ".js"),
+        resolve(resources, name + ".js"),
+      );
     for (const path of ["MacOS/FIAHost", "Helpers/bun"])
       await chmod(resolve(contents, path), 0o755);
     if (config.app.icon)
-      await cp(resolve(root, config.app.icon), resolve(resources, "AppIcon.icns"));
+      await cp(
+        resolve(root, config.app.icon),
+        resolve(resources, "AppIcon.icns"),
+      );
     if (profile) {
       const icons = resolve(temporary, "local-icon");
       await checked(
@@ -271,9 +313,12 @@ export async function buildApplication(
     const identity = options.distribution
       ? config.signing?.releaseIdentity
       : (config.signing?.developmentIdentity ?? "-");
-    if (!identity) throw new Error("signing.releaseIdentity is required for distribution");
+    if (!identity)
+      throw new Error("signing.releaseIdentity is required for distribution");
     if (applicationSigning && identity === "-")
-      throw new Error("Application entitlements require a real signing identity");
+      throw new Error(
+        "Application entitlements require a real signing identity",
+      );
     if (applicationSigning?.provisioningProfile)
       await cp(
         resolve(root, applicationSigning.provisioningProfile),
@@ -282,10 +327,20 @@ export async function buildApplication(
     const applicationEntitlements = applicationSigning
       ? resolve(root, applicationSigning.entitlements)
       : undefined;
-    if (applicationSigning?.cloudKitContainers?.length && applicationEntitlements) {
+    if (
+      applicationSigning?.cloudKitContainers?.length &&
+      applicationEntitlements
+    ) {
       const parsed = await checked(
         runner,
-        ["/usr/bin/plutil", "-convert", "json", "-o", "-", applicationEntitlements],
+        [
+          "/usr/bin/plutil",
+          "-convert",
+          "json",
+          "-o",
+          "-",
+          applicationEntitlements,
+        ],
         root,
       );
       validateCloudKitEntitlements(
@@ -324,7 +379,10 @@ export async function buildApplication(
       JSON.stringify(
         {
           schema: 4,
-          agent: { command: config.agent.command, description: config.agent.description },
+          agent: {
+            command: config.agent.command,
+            description: config.agent.description,
+          },
           frameworkVersion: CLI_VERSION,
           app: config.app,
           ...(profile
@@ -341,10 +399,10 @@ export async function buildApplication(
           backendStartupTimeoutMs: config.backend.startupTimeoutMs,
           ...(options.development
             ? {
-                developmentEntry: resolve(resources, "code/backend/index.js").replace(
-                  app,
-                  resolve(parent, config.app.name + ".app"),
-                ),
+                developmentEntry: resolve(
+                  resources,
+                  "code/backend/index.js",
+                ).replace(app, resolve(parent, config.app.name + ".app")),
               }
             : {}),
           ...(config.statusItem ? { statusItem: config.statusItem } : {}),
@@ -364,7 +422,11 @@ export async function buildApplication(
       ),
     );
     await sign(app, false, true);
-    await checked(runner, ["/usr/bin/codesign", "--verify", "--deep", "--strict", app], root);
+    await checked(
+      runner,
+      ["/usr/bin/codesign", "--verify", "--deep", "--strict", app],
+      root,
+    );
     const destination = resolve(parent, config.app.name + ".app");
     const backup = destination + ".previous";
     await rm(backup, { recursive: true, force: true });
@@ -402,8 +464,13 @@ export async function packageDiskImage(
 ) {
   const identity = config.signing?.releaseIdentity;
   const profile = config.signing?.notarizationProfile;
-  if (options.distribution && (!identity?.startsWith("Developer ID Application:") || !profile))
-    throw new Error("A Developer ID Application identity and notarizationProfile are required");
+  if (
+    options.distribution &&
+    (!identity?.startsWith("Developer ID Application:") || !profile)
+  )
+    throw new Error(
+      "A Developer ID Application identity and notarizationProfile are required",
+    );
   const root = config.projectRoot;
   const runner = options.runner ?? defaultRunner;
   const run = (command: string[]) => checked(runner, command, root);
@@ -416,7 +483,11 @@ export async function packageDiskImage(
   let mounted = false;
   try {
     await mkdir(payload);
-    await run(["/usr/bin/ditto", app, resolve(payload, config.app.name + ".app")]);
+    await run([
+      "/usr/bin/ditto",
+      app,
+      resolve(payload, config.app.name + ".app"),
+    ]);
     await symlink("/Applications", resolve(payload, "Applications"));
     await run([
       "/usr/bin/hdiutil",
@@ -455,17 +526,32 @@ export async function packageDiskImage(
         "json",
       ]);
       // notarytool can exit successfully even when Apple rejects the submission.
-      const submission = JSON.parse(notarization.stdout) as { id?: string; status?: string };
+      const submission = JSON.parse(notarization.stdout) as {
+        id?: string;
+        status?: string;
+      };
       if (submission.status !== "Accepted") {
         let details = notarization.stdout;
-        if (typeof submission.id === "string" && /^[a-f0-9-]{36}$/i.test(submission.id)) {
+        if (
+          typeof submission.id === "string" &&
+          /^[a-f0-9-]{36}$/i.test(submission.id)
+        ) {
           const log = await runner(
-            ["/usr/bin/xcrun", "notarytool", "log", submission.id, "--keychain-profile", profile!],
+            [
+              "/usr/bin/xcrun",
+              "notarytool",
+              "log",
+              submission.id,
+              "--keychain-profile",
+              profile!,
+            ],
             { cwd: root },
           );
           details += "\n" + (log.stdout || log.stderr);
         }
-        throw new Error("Apple notarization rejected the installer: " + details);
+        throw new Error(
+          "Apple notarization rejected the installer: " + details,
+        );
       }
       await run(["/usr/bin/xcrun", "stapler", "staple", image]);
       await run(["/usr/bin/xcrun", "stapler", "validate", image]);
@@ -494,12 +580,31 @@ export async function packageDiskImage(
     mounted = true;
     const mountedApp = resolve(mount, config.app.name + ".app");
     if ((await readlink(resolve(mount, "Applications"))) !== "/Applications")
-      throw new Error("Disk image is missing the Applications install shortcut");
-    await run(["/usr/bin/codesign", "--verify", "--deep", "--strict", mountedApp]);
+      throw new Error(
+        "Disk image is missing the Applications install shortcut",
+      );
+    await run([
+      "/usr/bin/codesign",
+      "--verify",
+      "--deep",
+      "--strict",
+      mountedApp,
+    ]);
     if (options.distribution)
-      await run(["/usr/sbin/spctl", "--assess", "--type", "execute", "--verbose=4", mountedApp]);
-    const report = await (options.smoke ?? smokeApplication)(config, mountedApp);
-    if (!report.ok) throw new Error("Disk image application smoke check failed");
+      await run([
+        "/usr/sbin/spctl",
+        "--assess",
+        "--type",
+        "execute",
+        "--verbose=4",
+        mountedApp,
+      ]);
+    const report = await (options.smoke ?? smokeApplication)(
+      config,
+      mountedApp,
+    );
+    if (!report.ok)
+      throw new Error("Disk image application smoke check failed");
     await run(["/usr/bin/hdiutil", "detach", mount]);
     mounted = false;
     const dmg = resolve(
@@ -508,8 +613,14 @@ export async function packageDiskImage(
     );
     // Keep any previous artifact intact until the final container passes every check.
     await rename(image, dmg);
-    await writeFile(dmg + ".sha256", (await sha256(dmg)) + "  " + basename(dmg) + "\n");
-    await writeFile(dmg + ".report.json", JSON.stringify(report, null, 2) + "\n");
+    await writeFile(
+      dmg + ".sha256",
+      (await sha256(dmg)) + "  " + basename(dmg) + "\n",
+    );
+    await writeFile(
+      dmg + ".report.json",
+      JSON.stringify(report, null, 2) + "\n",
+    );
     return { app, dmg, report };
   } finally {
     if (mounted) {
@@ -522,10 +633,15 @@ export async function packageDiskImage(
     await rm(temporary, { recursive: true, force: true });
   }
 }
-export async function releaseApplication(config: ResolvedFIAConfig, update = false) {
+export async function releaseApplication(
+  config: ResolvedFIAConfig,
+  update = false,
+) {
   if (update) {
     if (!config.updates)
-      throw new Error("Configure updates.url and updates.publicKey before publishing code updates");
+      throw new Error(
+        "Configure updates.url and updates.publicKey before publishing code updates",
+      );
     const parent = resolve(config.projectRoot, "dist/updates");
     await mkdir(parent, { recursive: true });
     const staging = await mkdtemp(resolve(parent, ".release-"));
@@ -533,7 +649,10 @@ export async function releaseApplication(config: ResolvedFIAConfig, update = fal
       const release = await buildCode(config, staging);
       await rm(resolve(staging, "manifest.json"));
       const manifest = resolve(parent, "latest.json");
-      const signed = resolve(parent, ".latest-" + crypto.randomUUID() + ".json");
+      const signed = resolve(
+        parent,
+        ".latest-" + crypto.randomUUID() + ".json",
+      );
       await writeSignedRelease(release, config.updates.publicKey, signed);
       const output = resolve(parent, "releases", String(config.app.build));
       await mkdir(dirname(output), { recursive: true });
@@ -548,7 +667,9 @@ export async function releaseApplication(config: ResolvedFIAConfig, update = fal
     !config.signing?.releaseIdentity?.startsWith("Developer ID Application:") ||
     !config.signing.notarizationProfile
   )
-    throw new Error("A Developer ID Application identity and notarizationProfile are required");
+    throw new Error(
+      "A Developer ID Application identity and notarizationProfile are required",
+    );
   const output = await buildApplication(config, { distribution: true });
   return packageDiskImage(config, output.app, { distribution: true });
 }
@@ -566,27 +687,38 @@ export async function launchPreview(
     stdin: "ignore",
     stdout: "inherit",
     stderr: "inherit",
-    env: { ...process.env, FIA_DEVELOPMENT: "0", FIA_DATA_DIRECTORY: profile.dataRoot },
+    env: {
+      ...process.env,
+      FIA_DEVELOPMENT: "0",
+      FIA_DATA_DIRECTORY: profile.dataRoot,
+    },
   });
   return await child.exited;
 }
-export function hasProcessExited(child: Pick<Bun.Subprocess, "exitCode" | "signalCode">) {
+export function hasProcessExited(
+  child: Pick<Bun.Subprocess, "exitCode" | "signalCode">,
+) {
   // Bun leaves exitCode null when a process exits because of a signal.
   return child.exitCode !== null || child.signalCode !== null;
 }
 export function isDevelopmentServerReady(port: number): Promise<boolean> {
   // This probe is always local. Unlike Bun 1.4.2 fetch, node:http ignores proxy env.
   return new Promise((resolve) => {
-    const request = get({ hostname: "127.0.0.1", port, path: "/", timeout: 1000 }, (response) => {
-      response.resume();
-      resolve(
-        response.statusCode !== undefined &&
-          response.statusCode >= 200 &&
-          response.statusCode < 300,
-      );
-    });
+    const request = get(
+      { hostname: "127.0.0.1", port, path: "/", timeout: 1000 },
+      (response) => {
+        response.resume();
+        resolve(
+          response.statusCode !== undefined &&
+            response.statusCode >= 200 &&
+            response.statusCode < 300,
+        );
+      },
+    );
     request.on("error", () => resolve(false));
-    request.on("timeout", () => request.destroy(new Error("Local readiness probe timed out")));
+    request.on("timeout", () =>
+      request.destroy(new Error("Local readiness probe timed out")),
+    );
   });
 }
 export async function runDevelopment(
@@ -603,7 +735,8 @@ export async function runDevelopment(
       stop = true;
     },
     () => readInspection(control).then((x) => x ?? null),
-    (event) => output("[" + event.component + "] " + (event.message ?? event.event)),
+    (event) =>
+      output("[" + event.component + "] " + (event.message ?? event.event)),
   );
   const onSignal = () => {
     stop = true;
@@ -614,10 +747,17 @@ export async function runDevelopment(
     do {
       let changedConfig = false;
       const built = await buildApplication(config, { development: true });
-      control = resolve(config.projectRoot, ".fia/dev/runtime-" + crypto.randomUUID());
+      control = resolve(
+        config.projectRoot,
+        ".fia/dev/runtime-" + crypto.randomUUID(),
+      );
       await mkdir(control, { mode: 0o700 });
-      const probe = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response() });
-      const vitePort = probe.port;
+      const probe = Bun.serve({
+        hostname: "127.0.0.1",
+        port: 0,
+        fetch: () => new Response(),
+      });
+      const webPort = probe.port;
       await probe.stop(true);
       const host = Bun.spawn([built.executable], {
         cwd: config.projectRoot,
@@ -632,11 +772,14 @@ export async function runDevelopment(
           FIA_DEVELOPMENT: "1",
           FIA_CONTROL_DIRECTORY: control,
           FIA_DATA_DIRECTORY: resolve(config.projectRoot, ".fia/dev/data"),
-          FIA_WEB_DEV_URL: "http://127.0.0.1:" + vitePort,
-          FIA_DEV_READY_FILE: resolve(control, "vite.ready"),
+          FIA_WEB_DEV_URL: "http://127.0.0.1:" + webPort,
+          FIA_DEV_READY_FILE: resolve(control, "web.ready"),
         },
       });
-      const drain = async (stream: ReadableStream<Uint8Array>, component: string) => {
+      const drain = async (
+        stream: ReadableStream<Uint8Array>,
+        component: string,
+      ) => {
         for await (const bytes of stream)
           session.emit({
             event: "log",
@@ -644,16 +787,22 @@ export async function runDevelopment(
             message: new TextDecoder().decode(bytes).trim(),
           });
       };
-      const drains = [drain(host.stdout, "host"), drain(host.stderr, "backend")];
-      let vite: ReturnType<typeof Bun.spawn> | undefined;
+      const drains = [
+        drain(host.stdout, "host"),
+        drain(host.stderr, "backend"),
+      ];
+      let web: Awaited<ReturnType<typeof startWebDevelopment>> | undefined;
       let watcher: ReturnType<typeof watch> | undefined;
       let debounce: ReturnType<typeof setTimeout> | undefined;
       try {
         const endpoint = await waitUntil(
           async () => {
-            if (hasProcessExited(host)) throw new Error("Host exited before its backend was ready");
+            if (hasProcessExited(host))
+              throw new Error("Host exited before its backend was ready");
             try {
-              return JSON.parse(await readFile(resolve(control, "backend.json"), "utf8")) as {
+              return JSON.parse(
+                await readFile(resolve(control, "backend.json"), "utf8"),
+              ) as {
                 origin: string;
               };
             } catch {
@@ -663,49 +812,18 @@ export async function runDevelopment(
           15_000,
           "Bun endpoint",
         );
-        vite = Bun.spawn(
-          [
-            process.execPath,
-            resolve(config.projectRoot, "node_modules/vite/bin/vite.js"),
-            "--host",
-            "127.0.0.1",
-            "--port",
-            String(vitePort),
-            "--strictPort",
-          ],
-          {
-            cwd: config.projectRoot,
-            detached: true,
-            env: {
-              ...process.env,
-              FIA_BACKEND_ORIGIN: endpoint.origin,
-              FIA_BACKEND_ENDPOINT_FILE: resolve(control, "backend.json"),
-            },
-            stdin: "ignore",
-            stdout: "pipe",
-            stderr: "pipe",
-          },
-        );
-        drains.push(
-          drain(vite.stdout as ReadableStream<Uint8Array>, "vite"),
-          drain(vite.stderr as ReadableStream<Uint8Array>, "vite"),
-        );
-        await waitUntil(
-          async () => {
-            if (hasProcessExited(vite!)) throw new Error("Vite failed to start");
-            try {
-              return (await isDevelopmentServerReady(vitePort!)) ? true : undefined;
-            } catch {
-              return undefined;
-            }
-          },
-          15_000,
-          "Vite",
-        );
-        await writeFile(resolve(control, "vite.ready"), "");
+        web = await startWebDevelopment({
+          root: resolve(config.projectRoot, config.web.root),
+          dist: resolve(config.projectRoot, config.web.dist),
+          projectRoot: config.projectRoot,
+          port: webPort!,
+          endpointFile: resolve(control, "backend.json"),
+        });
+        await writeFile(resolve(control, "web.ready"), "");
         const record = await waitUntil(
           async () => {
-            if (stop || hasProcessExited(host)) throw new Error("Development startup stopped");
+            if (stop || hasProcessExited(host))
+              throw new Error("Development startup stopped");
             const inspection = await readInspection(control!);
             if (inspection?.backend === "failed")
               throw new Error("Development backend failed during startup");
@@ -715,10 +833,17 @@ export async function runDevelopment(
                   bundlePath: built.app,
                   identifier: config.app.identifier,
                   command: config.agent.command,
-                  supportPath: resolve(config.projectRoot, ".fia/dev/data", config.app.identifier),
+                  supportPath: resolve(
+                    config.projectRoot,
+                    ".fia/dev/data",
+                    config.app.identifier,
+                  ),
                 },
                 JSON.parse(
-                  await readFile(resolve(built.app, "Contents/Resources/fia.runtime.json"), "utf8"),
+                  await readFile(
+                    resolve(built.app, "Contents/Resources/fia.runtime.json"),
+                    "utf8",
+                  ),
                 ).runtimeId,
                 false,
               );
@@ -728,57 +853,69 @@ export async function runDevelopment(
           },
           15_000,
           "Development agent endpoint",
-          async () => (await readInspection(control!))?.waitingOnNative === true,
+          async () =>
+            (await readInspection(control!))?.waitingOnNative === true,
         );
         session.emit({
           event: "ready",
           component: "dev",
-          message: "Application ready; frontend HMR and backend restart enabled",
+          message:
+            "Application ready; frontend reload and backend restart enabled",
         });
-        output("Open in browser: use the window titlebar button or fia agent open --browser");
+        output(
+          "Open in browser: use the window titlebar button or fia agent open --browser",
+        );
         if (options.openBrowser) {
           const { url } = (await readResult(
             await agentFetch(record)("/browser", { method: "POST" }),
           )) as { url: string };
-          const opened = Bun.spawn(["/usr/bin/open", url], { stdout: "ignore", stderr: "ignore" });
-          if (await opened.exited) throw new Error("The default browser could not be opened");
+          const opened = Bun.spawn(["/usr/bin/open", url], {
+            stdout: "ignore",
+            stderr: "ignore",
+          });
+          if (await opened.exited)
+            throw new Error("The default browser could not be opened");
         }
-        watcher = watch(config.projectRoot, { recursive: true }, (_event, file) => {
-          const path = file?.toString();
-          if (
-            !path ||
-            isIgnoredDevelopmentPath(path, options.watchIgnore) ||
-            path.startsWith(config.web.root + "/")
-          )
-            return;
-          if (["fia.config.ts", "vite.config.ts", "package.json", "bun.lock"].includes(path)) {
-            changedConfig = true;
-            return;
-          }
-          // Command entrypoints bundle transitive project imports. Rebuild the application
-          // when server-side source changes so development never executes stale commands.
-          if (
-            Object.keys(config.agent.commands ?? {}).length &&
-            /\.(?:[cm]?[jt]sx?)$/u.test(path)
-          ) {
-            changedConfig = true;
-            return;
-          }
-          const assetChanged = config.backend.assets.some(
-            (asset) => path === asset || path.startsWith(asset + "/"),
-          );
-          if (!assetChanged && !/\.(?:[cm]?[jt]sx?|json)$/u.test(path)) return;
-          clearTimeout(debounce);
-          debounce = setTimeout(() => {
-            void writeFile(resolve(control, "reload"), "");
-          }, 150);
-        });
+        watcher = watch(
+          config.projectRoot,
+          { recursive: true },
+          (_event, file) => {
+            const path = file?.toString();
+            if (
+              !path ||
+              isIgnoredDevelopmentPath(path, options.watchIgnore) ||
+              path.startsWith(config.web.root + "/")
+            )
+              return;
+            if (["fia.config.ts", "package.json", "bun.lock"].includes(path)) {
+              changedConfig = true;
+              return;
+            }
+            // Command entrypoints bundle transitive project imports. Rebuild the application
+            // when server-side source changes so development never executes stale commands.
+            if (
+              Object.keys(config.agent.commands ?? {}).length &&
+              /\.(?:[cm]?[jt]sx?)$/u.test(path)
+            ) {
+              changedConfig = true;
+              return;
+            }
+            const assetChanged = config.backend.assets.some(
+              (asset) => path === asset || path.startsWith(asset + "/"),
+            );
+            if (!assetChanged && !/\.(?:[cm]?[jt]sx?|json)$/u.test(path))
+              return;
+            clearTimeout(debounce);
+            debounce = setTimeout(() => {
+              void writeFile(resolve(control, "reload"), "");
+            }, 150);
+          },
+        );
         while (!stop && !changedConfig) {
           if (hasProcessExited(host)) {
             stop = true;
             break;
           }
-          if (hasProcessExited(vite)) throw new Error("Vite exited unexpectedly");
           await Bun.sleep(100);
         }
       } finally {
@@ -796,14 +933,12 @@ export async function runDevelopment(
             host.kill("SIGTERM");
             await host.exited;
           }
-          if (vite) {
-            vite.kill("SIGTERM");
-            await vite.exited;
-          }
+          await web?.stop();
           await Promise.all(drains);
         }
       }
-      if (changedConfig && !stop) config = await loadProjectConfig(config.projectRoot);
+      if (changedConfig && !stop)
+        config = await loadProjectConfig(config.projectRoot);
     } while (!stop);
   } finally {
     process.off("SIGINT", onSignal);
@@ -832,7 +967,8 @@ export function validateCloudKitEntitlements(
   entitlements: Record<string, unknown>,
   bundleIdentifier: string,
 ) {
-  const allowed = entitlements["com.apple.developer.icloud-container-identifiers"];
+  const allowed =
+    entitlements["com.apple.developer.icloud-container-identifiers"];
   const services = entitlements["com.apple.developer.icloud-services"];
   const appID = entitlements["com.apple.application-identifier"];
   if (

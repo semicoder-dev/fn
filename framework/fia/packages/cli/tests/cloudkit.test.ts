@@ -7,7 +7,12 @@ import {
 import { validateConfig } from "../src/project-config.ts";
 
 const base = {
-  app: { name: "Cloud Test", identifier: "test.cloud", version: "1.0.0", build: 1 },
+  app: {
+    name: "Cloud Test",
+    identifier: "test.cloud",
+    version: "1.0.0",
+    build: 1,
+  },
   agent: { command: "cloud-test", description: "test" },
 };
 test("application signing never falls back across build environments", () => {
@@ -26,14 +31,24 @@ test("application signing never falls back across build environments", () => {
     },
     "/tmp",
   );
-  expect(selectApplicationSigning(config, "development")?.entitlements).toBe("dev.plist");
-  expect(() => selectApplicationSigning(config, "production")).toThrow("never inherited");
-  expect(() => selectApplicationSigning(config, "preview")).toThrow("never inherited");
-  expect(selectApplicationSigning(validateConfig(base, "/tmp"), "production")).toBeUndefined();
+  expect(selectApplicationSigning(config, "development")?.entitlements).toBe(
+    "dev.plist",
+  );
+  expect(() => selectApplicationSigning(config, "production")).toThrow(
+    "never inherited",
+  );
+  expect(() => selectApplicationSigning(config, "preview")).toThrow(
+    "never inherited",
+  );
+  expect(
+    selectApplicationSigning(validateConfig(base, "/tmp"), "production"),
+  ).toBeUndefined();
   expect(infoPlist(config, undefined, false, ["iCloud.test.dev"])).toContain(
     "<key>FIACloudKitContainers</key><string>iCloud.test.dev</string>",
   );
-  expect(infoPlist(validateConfig(base, "/tmp"))).not.toContain("FIACloudKitContainers");
+  expect(infoPlist(validateConfig(base, "/tmp"))).not.toContain(
+    "FIACloudKitContainers",
+  );
 });
 test("CloudKit cannot be configured without provisioning or with malformed container IDs", () => {
   for (const profile of [
@@ -45,7 +60,10 @@ test("CloudKit cannot be configured without provisioning or with malformed conta
     },
   ])
     expect(() =>
-      validateConfig({ ...base, signing: { application: { development: profile } } }, "/tmp"),
+      validateConfig(
+        { ...base, signing: { application: { development: profile } } },
+        "/tmp",
+      ),
     ).toThrow();
 });
 
@@ -57,12 +75,24 @@ test("CloudKit signing rejects mismatched bundle identities and container allowl
     "com.apple.developer.icloud-container-environment": "Development",
   };
   expect(() =>
-    validateCloudKitEntitlements(["iCloud.test.dev"], entitlements, "test.cloud.dev"),
+    validateCloudKitEntitlements(
+      ["iCloud.test.dev"],
+      entitlements,
+      "test.cloud.dev",
+    ),
   ).not.toThrow();
   expect(() =>
-    validateCloudKitEntitlements(["iCloud.test.dev"], entitlements, "test.cloud"),
+    validateCloudKitEntitlements(
+      ["iCloud.test.dev"],
+      entitlements,
+      "test.cloud",
+    ),
   ).toThrow();
   expect(() =>
-    validateCloudKitEntitlements(["iCloud.test.production"], entitlements, "test.cloud.dev"),
+    validateCloudKitEntitlements(
+      ["iCloud.test.production"],
+      entitlements,
+      "test.cloud.dev",
+    ),
   ).toThrow();
 });

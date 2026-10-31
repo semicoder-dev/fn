@@ -5,7 +5,8 @@ export function appDirectories(
   initialize: { development: boolean; webRoot: string; bundlePath?: string },
   projectRoot = process.cwd(),
 ): { codeDirectory: string; runtimeDirectory: string } {
-  if (initialize.development) return { codeDirectory: projectRoot, runtimeDirectory: projectRoot };
+  if (initialize.development)
+    return { codeDirectory: projectRoot, runtimeDirectory: projectRoot };
   return {
     codeDirectory: resolve(initialize.webRoot, "../backend"),
     runtimeDirectory: initialize.bundlePath

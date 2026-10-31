@@ -1,5 +1,8 @@
 import { expect, test } from "bun:test";
-import { isIgnoredDevelopmentPath, parseDevelopmentOptions } from "../src/development-options.ts";
+import {
+  isIgnoredDevelopmentPath,
+  parseDevelopmentOptions,
+} from "../src/development-options.ts";
 
 test("dev exclusions apply at directory boundaries and allow repeated arguments", () => {
   const options = parseDevelopmentOptions([
@@ -18,7 +21,11 @@ test("dev exclusions apply at directory boundaries and allow repeated arguments"
     "node_modules/foo/a.ts",
   ])
     expect(isIgnoredDevelopmentPath(path, options.watchIgnore)).toBe(true);
-  for (const path of ["framework/fia-extra/a.ts", "frontend/App.tsx", "backend/index.ts"])
+  for (const path of [
+    "framework/fia-extra/a.ts",
+    "frontend/App.tsx",
+    "backend/index.ts",
+  ])
     expect(isIgnoredDevelopmentPath(path, options.watchIgnore)).toBe(false);
   for (const args of [
     ["--watch-ignore"],

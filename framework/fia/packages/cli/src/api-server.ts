@@ -34,7 +34,9 @@ export class APIServer {
   readonly leases = new Set<string>();
   readonly context: BackendRouteContext;
   readonly eventBufferBytes: number;
-  private readonly streams = new Set<(data: Uint8Array, event: string, payload: unknown) => void>();
+  private readonly streams = new Set<
+    (data: Uint8Array, event: string, payload: unknown) => void
+  >();
   private readonly closeStreams = new Set<() => void>();
   constructor(
     readonly implementation: APIImplementation,
@@ -43,30 +45,47 @@ export class APIServer {
   ) {
     this.context = { ...context, emit: this.emit };
     this.eventBufferBytes = options.eventBufferBytes ?? 4 * API_MAX_BYTES;
-    if (!Number.isSafeInteger(this.eventBufferBytes) || this.eventBufferBytes < API_MAX_BYTES)
-      throw new TypeError("apiOptions.eventBufferBytes must be a safe integer of at least 1 MiB");
+    if (
+      !Number.isSafeInteger(this.eventBufferBytes) ||
+      this.eventBufferBytes < API_MAX_BYTES
+    )
+      throw new TypeError(
+        "apiOptions.eventBufferBytes must be a safe integer of at least 1 MiB",
+      );
     describeAPI(implementation.contract);
   }
   emit = (event: string, payload: unknown) => {
     const definition = this.implementation.contract.events[event];
-    if (!Object.hasOwn(this.implementation.contract.events, event) || !definition)
+    if (
+      !Object.hasOwn(this.implementation.contract.events, event) ||
+      !definition
+    )
       throw new APIError("not_found", "Unknown event: " + event);
     const parsed = definition.payload.parse(payload);
     assertJSON(parsed, `events.${event}.payload`);
     const data = new TextEncoder().encode(
       JSON.stringify({ type: "event", event, payload: parsed }) + "\n",
     );
-    if (data.byteLength > 1024 * 1024) throw new APIError("resource_limit", "Event exceeds 1 MiB");
+    if (data.byteLength > 1024 * 1024)
+      throw new APIError("resource_limit", "Event exceeds 1 MiB");
     for (const send of this.streams) send(data, event, parsed);
   };
-  async prepare(before?: () => Promise<{ ready: boolean; reason?: string } | void>): Promise<void> {
+  async prepare(
+    before?: () => Promise<{ ready: boolean; reason?: string } | void>,
+  ): Promise<void> {
     this.updating = true;
     try {
       if (this.calls.size || this.leases.size)
-        throw new APIError("update_busy", "API calls or scripts are still running");
+        throw new APIError(
+          "update_busy",
+          "API calls or scripts are still running",
+        );
       const state = await before?.();
       if (state && !state.ready)
-        throw new APIError("update_busy", state.reason ?? "Application is busy");
+        throw new APIError(
+          "update_busy",
+          state.reason ?? "Application is busy",
+        );
     } catch (error) {
       this.updating = false;
       throw error;
@@ -77,7 +96,10 @@ export class APIServer {
     for (const controller of this.calls.values()) controller.abort();
     for (const close of this.closeStreams) close();
   }
-  async fetch(request: Request, source: InvocationContext["source"]): Promise<Response> {
+  async fetch(
+    request: Request,
+    source: InvocationContext["source"],
+  ): Promise<Response> {
     try {
       if (!this.ready || this.updating)
         throw new APIError(
@@ -88,7 +110,8 @@ export class APIServer {
       const sessionId = request.headers.get("x-fia-client") ?? "ui";
       if (path === "/schema" && request.method === "GET")
         return Response.json({ result: this.schema });
-      if (path === "/events" && request.method === "GET") return this.stream(request);
+      if (path === "/events" && request.method === "GET")
+        return this.stream(request);
       if (path === "/lease" && request.method === "GET" && source === "cli") {
         const id = crypto.randomUUID();
         this.leases.add(id);
@@ -116,15 +139,25 @@ export class APIServer {
         input: unknown;
         requestId: string;
       };
-      if (typeof method !== "string" || typeof requestId !== "string" || requestId.length > 128)
+      if (
+        typeof method !== "string" ||
+        typeof requestId !== "string" ||
+        requestId.length > 128
+      )
         throw new APIError("invalid_argument", "Invalid API call");
       const definition = this.implementation.contract.methods[method];
       const handler = this.implementation.handlers[method];
-      if (!Object.hasOwn(this.implementation.contract.methods, method) || !definition || !handler)
+      if (
+        !Object.hasOwn(this.implementation.contract.methods, method) ||
+        !definition ||
+        !handler
+      )
         throw new APIError("not_found", "Unknown method: " + method);
-      if (this.calls.size >= 128) throw new APIError("resource_limit", "Too many concurrent calls");
+      if (this.calls.size >= 128)
+        throw new APIError("resource_limit", "Too many concurrent calls");
       const key = sessionId + ":" + requestId;
-      if (this.calls.has(key)) throw new APIError("conflict", "Duplicate active request");
+      if (this.calls.has(key))
+        throw new APIError("conflict", "Duplicate active request");
       assertJSON(input, "input");
       const parsed = definition.input.parse(input);
       const controller = new AbortController();
@@ -145,7 +178,8 @@ export class APIServer {
             signal: controller.signal,
           });
         } catch (error) {
-          if (controller.signal.aborted) throw new APIError("cancelled", "Call cancelled");
+          if (controller.signal.aborted)
+            throw new APIError("cancelled", "Call cancelled");
           if (error instanceof APIError) throw error;
           throw new APIError(
             "handler_failed",
@@ -164,7 +198,9 @@ export class APIServer {
         const serialized = JSON.stringify({ result });
         if (Buffer.byteLength(serialized) > 1024 * 1024)
           throw new APIError("resource_limit", "API response exceeds 1 MiB");
-        return new Response(serialized, { headers: { "content-type": "application/json" } });
+        return new Response(serialized, {
+          headers: { "content-type": "application/json" },
+        });
       } finally {
         this.calls.delete(key);
         request.signal.removeEventListener("abort", abort);
@@ -173,7 +209,11 @@ export class APIServer {
       return apiError(error);
     }
   }
-  private stream(request: Request, cleanup = () => {}, subscribe = true): Response {
+  private stream(
+    request: Request,
+    cleanup = () => {},
+    subscribe = true,
+  ): Response {
     const query = new URL(request.url).searchParams.get("subscriptions");
     let subscriptions: EventSubscription[] | undefined;
     if (subscribe && query !== null) {
@@ -205,7 +245,10 @@ export class APIServer {
             if (done) return;
             if (data.byteLength > (controller.desiredSize ?? 0)) {
               controller.error(
-                new APIError("resource_limit", "Slow event consumer exceeded byte budget"),
+                new APIError(
+                  "resource_limit",
+                  "Slow event consumer exceeded byte budget",
+                ),
               );
               close();
               return;
@@ -217,7 +260,10 @@ export class APIServer {
             }
           };
           const send = (data: Uint8Array, event: string, payload: unknown) => {
-            if (!subscriptions || subscriptions.some((item) => matchesEvent(item, event, payload)))
+            if (
+              !subscriptions ||
+              subscriptions.some((item) => matchesEvent(item, event, payload))
+            )
               enqueue(data);
           };
           const frame = (value: unknown) =>
@@ -243,10 +289,16 @@ export class APIServer {
         },
         cancel: () => close(),
       },
-      { highWaterMark: this.eventBufferBytes, size: (chunk) => chunk?.byteLength ?? 0 },
+      {
+        highWaterMark: this.eventBufferBytes,
+        size: (chunk) => chunk?.byteLength ?? 0,
+      },
     );
     return new Response(body, {
-      headers: { "content-type": "application/x-ndjson", "cache-control": "no-store" },
+      headers: {
+        "content-type": "application/x-ndjson",
+        "cache-control": "no-store",
+      },
     });
   }
 }
@@ -265,7 +317,8 @@ async function readRequest(request: Request): Promise<string> {
       const { value, done } = await reader.read();
       if (done) break;
       bytes += value.byteLength;
-      if (bytes > API_MAX_BYTES) throw new APIError("resource_limit", "API request exceeds 1 MiB");
+      if (bytes > API_MAX_BYTES)
+        throw new APIError("resource_limit", "API request exceeds 1 MiB");
       chunks.push(value);
     }
     return Buffer.concat(chunks).toString("utf8");

@@ -1,5 +1,10 @@
 import { expect, test } from "bun:test";
-import { createAPIRegistry, defineAPI, implementAPI, z } from "../src/business-api.ts";
+import {
+  createAPIRegistry,
+  defineAPI,
+  implementAPI,
+  z,
+} from "../src/business-api.ts";
 import { APIServer } from "../src/api-server.ts";
 import type { BackendNativeClient } from "../src/backend.ts";
 
@@ -20,7 +25,11 @@ function server() {
     api.fetch(
       new Request("http://localhost/call", {
         method: "POST",
-        body: JSON.stringify({ method, input: null, requestId: crypto.randomUUID() }),
+        body: JSON.stringify({
+          method,
+          input: null,
+          requestId: crypto.randomUUID(),
+        }),
       }),
       "ui",
     );
@@ -37,14 +46,19 @@ test("live registration updates schema; colliding groups fail atomically; local 
   const { registry, api, call } = server();
   const first = implementAPI(contract, { read: () => "a" });
   const disposeA = registry.register("alpha", first);
-  const disposeB = registry.register("beta", implementAPI(contract, { read: () => "b" }));
+  const disposeB = registry.register(
+    "beta",
+    implementAPI(contract, { read: () => "b" }),
+  );
   expect(Object.keys(api.schema.methods)).toEqual(["alpha.read", "beta.read"]);
   expect(() => registry.register("alpha", first)).toThrow("already registered");
   expect(await (await call("alpha.read")).json()).toEqual({ result: "a" });
   expect(await (await call("beta.read")).json()).toEqual({ result: "b" });
   await disposeA();
   expect(Object.keys(api.schema.methods)).toEqual(["beta.read"]);
-  expect(await (await call("alpha.read")).json()).toMatchObject({ error: { code: "not_found" } });
+  expect(await (await call("alpha.read")).json()).toMatchObject({
+    error: { code: "not_found" },
+  });
   expect(Object.keys(api.schema.events)).toEqual(["beta.changed"]);
   await disposeB();
   api.close();
@@ -79,12 +93,18 @@ test("unload closes admission, cancels active calls and awaits provider settleme
   expect(aborted).toBe(true);
   expect(Object.keys(api.schema.methods)).toEqual([]);
   expect(() =>
-    registry.register("provider", implementAPI(contract, { read: () => "new" })),
+    registry.register(
+      "provider",
+      implementAPI(contract, { read: () => "new" }),
+    ),
   ).toThrow();
   release.resolve();
   await stopped;
   expect(await (await response).json()).toHaveProperty("error");
-  const replacement = registry.register("provider", implementAPI(contract, { read: () => "new" }));
+  const replacement = registry.register(
+    "provider",
+    implementAPI(contract, { read: () => "new" }),
+  );
   await dispose(); // An old disposer must not remove a new registration.
   expect(await (await call("provider.read")).json()).toEqual({ result: "new" });
   await replacement();

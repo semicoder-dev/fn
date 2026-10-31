@@ -1,0 +1,122 @@
+/* Fn semantic colors mapped from DeepSeek Harness design-platform.css.
+ * Source and mappings: docs/ui-theme.md. Theme ownership stays in Fn UI. */
+:root {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+  color: var(--fn-text);
+  background: var(--fn-bg);
+  font-synthesis: none;
+  --fn-bg: #fff;
+  --fn-surface: #fff;
+  --fn-surface-raised: #fff;
+  --fn-input: #fff;
+  --fn-soft: #f5f6f7;
+  --fn-hover: #f1f3f5;
+  --fn-text: #0f1115;
+  --fn-secondary: #61666b;
+  --fn-muted: #81858c;
+  --fn-border: rgb(0 0 0 / 10%);
+  --fn-line: rgb(0 0 0 / 4%);
+  --fn-accent: #0f1115;
+  --fn-on-accent: #fff;
+  --fn-accent-hover: #43454a;
+  --fn-focus: #4176e6;
+  --fn-info: #4176e6;
+  --fn-info-soft: #e4edfd;
+  --fn-green: #22c55e;
+  --fn-green-soft: #e6faed;
+  --fn-warning: #dd8629;
+  --fn-warning-soft: #fef5e7;
+  --fn-danger: #ec1313;
+  --fn-danger-soft: rgb(236 19 19 / 5%);
+  --fn-mask: rgb(0 0 0 / 24%);
+  --fn-selection: rgb(59 130 246 / 40%);
+  --fn-toast-bg: #353638;
+  --fn-toast-text: #fff;
+  --fn-shadow: 0 2px 5px #00000003, 0 8px 24px #00000003;
+  --fn-shadow-hover: 0 10px 32px #0000000a;
+  --fn-shadow-floating: 0 8px 30px #0002;
+  --fn-shadow-dialog: 0 24px 100px #0003;
+  --fn-radius: 14px;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --fn-bg: #151517;
+  --fn-surface: #232324;
+  --fn-surface-raised: #2c2c2e;
+  --fn-input: #2c2c2e;
+  --fn-soft: #353638;
+  --fn-hover: #353638;
+  --fn-text: #f9fafb;
+  --fn-secondary: #cfd3d6;
+  --fn-muted: #adb2b8;
+  --fn-border: rgb(255 255 255 / 12%);
+  --fn-line: rgb(255 255 255 / 6%);
+  --fn-accent: #f9fafb;
+  --fn-on-accent: #0f1115;
+  --fn-accent-hover: #ebeef2;
+  --fn-focus: #7aaaff;
+  --fn-info: #7aaaff;
+  --fn-info-soft: #34415b;
+  --fn-green-soft: #233c2c;
+  --fn-warning-soft: #27241f;
+  --fn-danger: #f25a5a;
+  --fn-danger-soft: rgb(242 90 90 / 15%);
+  --fn-mask: rgb(0 0 0 / 50%);
+  --fn-toast-bg: #43454a;
+  --fn-shadow: 0 8px 24px #0002;
+  --fn-shadow-hover: 0 10px 32px #0003;
+  --fn-shadow-floating: 0 8px 30px #0004;
+  --fn-shadow-dialog: 0 24px 100px #0006;
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+:focus-visible {
+  outline: 2px solid var(--fn-focus);
+  outline-offset: 3px;
+}
+input,
+textarea {
+  min-width: 0;
+}
+a {
+  color: inherit;
+}
+button,
+dialog {
+  color: var(--fn-text);
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+::selection {
+  background: var(--fn-selection);
+}

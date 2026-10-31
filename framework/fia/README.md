@@ -1,6 +1,8 @@
 # FIA 4
 
-用一套 TypeScript API 构建同时面向人类和 agent 的 macOS 14+、Apple Silicon 应用。框架提供桌面 UI、应用 CLI、TypeScript 脚本 SDK 和随应用更新的 skill。默认 React + Vite 前端和 Bun 后端，预编译 Swift 宿主提供原生窗口和系统能力。
+用一套 TypeScript API 构建同时面向人类和 agent 的 macOS 14+、Apple Silicon 应用。框架提供桌面 UI、应用 CLI、TypeScript 脚本 SDK 和随应用更新的 skill。默认 React + Bun 前端和 Bun 后端，预编译 Swift 宿主提供原生窗口和系统能力。
+
+当前源码通过本地固定归档交付，公共 npm 发布另行执行。先在宿主根运行 `bun run framework:pack`，使用产物中的 CLI。
 
 ```text
 桌面 UI → HTTP / 事件流 ─┐
@@ -8,16 +10,16 @@ CLI / TypeScript → Unix Socket ─┴→ 共享 Bun API → Swift Host
 ```
 
 ```bash
-bunx @semicoder/fia create my-app
+bun path/to/fia/dist/index.js create my-app
 cd my-app
 bun run dev
 ```
 
-应用开发不需要 Swift 编译器或 Xcode 工程。`fia dev` 自动启动窗口、Bun 和 Vite；前端使用 HMR，后端变更执行受控进程重启。从 FIA 0.17.0 开始，每个窗口标题栏最右侧默认提供“在浏览器中打开”，覆盖开发、预览和正式构建，默认模板自动具备入口。可用 `fia agent open --browser` 或正式应用 CLI 的 `open --browser`；显式 `--url` 才输出单次授权链接。浏览器与原生共享后端数据，菜单可撤销所有浏览器会话。已有应用升级此能力需重新构建并分发完整安装包；安全与权限契约见 [框架文档](docs/framework/README.md#完整浏览器界面0170)。
+应用开发不需要 Swift 编译器或 Xcode 工程。`fia dev` 自动启动窗口、Bun 构建服务；前端重建后整页刷新，后端变更执行受控进程重启。每个窗口标题栏最右侧默认提供“在浏览器中打开”，覆盖开发、预览和正式构建，默认模板自动具备入口。可用 `fia agent open --browser` 或正式应用 CLI 的 `open --browser`；显式 `--url` 才输出单次授权链接。浏览器与原生共享后端数据，菜单可撤销所有浏览器会话。安全与权限契约见 [框架文档](docs/framework/README.md#完整浏览器界面)。
 
-从 FIA 0.18.0 开始，原生标题栏在浏览器入口左侧提供置顶图标，点击切换当前窗口置顶，选中时填充高亮。加载和后端重连期间仍可使用；状态保留至窗口真正关闭或应用退出。默认创建的项目自动具备按钮，已有应用需重新分发完整安装包。
+原生标题栏提供窗口置顶按钮，状态保留至窗口关闭或应用退出。
 
-本地开发显示 `<name> Dev`、黄色 `DEV` Dock 标记及菜单栏标记，macOS Bundle ID 追加 `.dev`。`fia run` 提供不带 HMR 的隔离打包预览：`<name> Preview`、蓝色 `PREV` 标记及 `.preview` Bundle ID。开发数据保留在 `.fia/dev/data`，预览数据在 `.fia/preview/data`，可与正式安装版同时运行；直接打开预览包也保留隔离。`fia agent --preview` 控制预览版。两种本地模式都禁用正式更新源，具体身份、凭据兼容及数据边界见[框架契约](docs/framework/README.md#本地开发与打包预览)。
+本地开发显示 `<name> Dev`、黄色 `DEV` Dock 标记及菜单栏标记，macOS Bundle ID 追加 `.dev`。`fia run` 提供打包构建 的隔离打包预览：`<name> Preview`、蓝色 `PREV` 标记及 `.preview` Bundle ID。开发数据保留在 `.fia/dev/data`，预览数据在 `.fia/preview/data`，可与正式安装版同时运行；直接打开预览包也保留隔离。`fia agent --preview` 控制预览版。两种本地模式都禁用正式更新源，具体身份、凭据兼容及数据边界见[框架契约](docs/framework/README.md#本地开发与打包预览)。
 
 项目入口：
 
@@ -42,7 +44,12 @@ export default defineBackend({
       id: "main",
       items: [
         { type: "text", id: "status", label: "Ready" },
-        { type: "button", id: "save", label: "Save", symbol: "square.and.arrow.down" },
+        {
+          type: "button",
+          id: "save",
+          label: "Save",
+          symbol: "square.and.arrow.down",
+        },
       ],
     });
     native.on("windows.titlebarAction", (event) => console.log(event));
@@ -75,7 +82,7 @@ my-app open
 
 `fia build` 生成本机 `.app`；`fia build --dmg` 另生成包含应用和 Applications 快捷方式的测试 DMG，并挂载验证启动和退出。`fia release` 使用 Developer ID Application 签名应用及 DMG，对 DMG 公证、staple、验证 Gatekeeper 并检查镜像内应用，输出 `.dmg`、SHA-256 和检查报告；不需要 Developer ID Installer。`fia release --update` 生成 Ed25519 签名的前后端代码更新，上传普通 HTTPS 静态托管即可。代码更新须用户确认；失败回退上一版代码，用户数据不随代码回退。
 
-详见 [框架契约](docs/framework/README.md)、[CLI 与发布](packages/cli/README.md)、[从 FIA 3 迁移](docs/framework/migration-v4.md)。
+详见 [框架契约](docs/framework/README.md)、[CLI 与发布](packages/cli/README.md)。
 
 ## 框架开发
 
@@ -83,7 +90,7 @@ my-app open
 
 ```bash
 bun install
-bun run runtime:build  # 使用固定版本 Bun 1.4.3，生成 Host、Bun 和校验清单
+bun run runtime:build  # 使用固定版本 Bun 1.4.4，生成 Host、Bun 和校验清单
 bun run cli:build
 bun run check
 bun run smoke
@@ -113,6 +120,6 @@ GitHub 自动发布：先执行 `bun run version:npm <version>` 同步版本，�
 
 ## 框架与首个应用共同开发（未发布）
 
-FIA 活跃源码现位于 fn 仓库的 `framework/fia/`，保留独立 API、模板、测试与打包边界；fn 稳定后再拆回独立仓库。公开 npm 0.18.0 不包含本次联调工具或 Bun 1.4.3 运行时。普通消费已发布 npm 包的应用仍不需要 Swift；维护共仓源码需要 Bun 1.4.3 和 Swift 6 工具链。框架维护流程见 [共同开发](docs/co-development.md)。
+FIA 活跃源码位于 Fn 仓库的 `framework/fia/`，保留独立 API、模板、测试与打包边界。维护源码需要 Bun 1.4.4 和 Swift 6；使用当前经过验证的框架归档创建应用。共仓构建报告和独立消费是交付依据。
 
 开发 CLI 新增可重复的 `fia dev --watch-ignore <相对目录>`，按目录边界排除指定子树，不影响相似前缀的其他目录。该参数仅供外层工具已经负责构建/重启的目录；默认生成应用无需设置。嵌套的 node_modules、.git、.fia、.build、dist 也不会触发后端重载。

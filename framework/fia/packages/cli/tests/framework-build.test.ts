@@ -36,11 +36,15 @@ test("framework build lock rejects overlapping writers and is released after fai
   try {
     await expect(
       withBuildLock(async () => {
-        await expect(withBuildLock(async () => {}, root)).rejects.toThrow("already locked");
+        await expect(withBuildLock(async () => {}, root)).rejects.toThrow(
+          "already locked",
+        );
         throw new Error("compile failed");
       }, root),
     ).rejects.toThrow("compile failed");
-    expect(await withBuildLock(async () => "recovered", root)).toBe("recovered");
+    expect(await withBuildLock(async () => "recovered", root)).toBe(
+      "recovered",
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }

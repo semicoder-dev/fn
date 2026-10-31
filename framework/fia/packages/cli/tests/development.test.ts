@@ -1,5 +1,8 @@
 import { expect, test } from "bun:test";
-import { hasProcessExited, isDevelopmentServerReady } from "../src/application.ts";
+import {
+  hasProcessExited,
+  isDevelopmentServerReady,
+} from "../src/application.ts";
 
 test("development readiness bypasses proxy environment and checks HTTP status", async () => {
   let status = 200;

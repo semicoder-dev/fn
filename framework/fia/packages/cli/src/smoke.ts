@@ -62,16 +62,20 @@ export async function smokeApplication(
   });
   let log = "";
   const drain = async (stream: ReadableStream<Uint8Array>) => {
-    for await (const data of stream) log = (log + new TextDecoder().decode(data)).slice(-65536);
+    for await (const data of stream)
+      log = (log + new TextDecoder().decode(data)).slice(-65536);
   };
   const drains = [drain(child.stdout), drain(child.stderr)];
   try {
     const runtime = await waitUntil(
       async () => {
         if (child.exitCode !== null)
-          throw new Error(`Packaged application exited before ready (${child.exitCode}): ${log}`);
+          throw new Error(
+            `Packaged application exited before ready (${child.exitCode}): ${log}`,
+          );
         const status = await readInspection(directory);
-        if (status?.backend === "failed") throw new Error(`Packaged backend failed: ${log}`);
+        if (status?.backend === "failed")
+          throw new Error(`Packaged backend failed: ${log}`);
         return status?.lifecycle === "running" &&
           status.backend === "ready" &&
           Array.isArray(status.frontendsReady) &&
@@ -89,8 +93,11 @@ export async function smokeApplication(
       "Ordinary application quit",
     );
     await Promise.all(drains);
-    if (child.exitCode !== 0) throw new Error(`Packaged app exited with ${child.exitCode}: ${log}`);
-    const groups = Array.isArray(runtime.processGroups) ? runtime.processGroups : [];
+    if (child.exitCode !== 0)
+      throw new Error(`Packaged app exited with ${child.exitCode}: ${log}`);
+    const groups = Array.isArray(runtime.processGroups)
+      ? runtime.processGroups
+      : [];
     await waitUntil(
       async () =>
         groups.every((pid) => {

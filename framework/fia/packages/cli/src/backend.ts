@@ -1,6 +1,10 @@
 import { APIServer } from "./api-server.ts";
 import { startAgentServer } from "./agent-server.ts";
-import type { APIImplementation, APIContract, APIEmitter } from "./business-api.ts";
+import type {
+  APIImplementation,
+  APIContract,
+  APIEmitter,
+} from "./business-api.ts";
 export { implementAPI } from "./business-api.ts";
 import { createGateway } from "./gateway.ts";
 import { appDirectories } from "./app-context.ts";
@@ -39,7 +43,9 @@ export interface AppContext {
   readonly runtimeDirectory: string;
 }
 
-export interface BackendRouteContext<C extends APIContract = APIContract> extends APIEmitter<C> {
+export interface BackendRouteContext<
+  C extends APIContract = APIContract,
+> extends APIEmitter<C> {
   readonly native: BackendNativeClient;
   readonly app: AppContext;
 }
@@ -60,19 +66,30 @@ export type BackendRoute<
   C extends APIContract = APIContract,
 > =
   | BackendRouteHandler<WebSocketData, Path, C>
-  | Partial<Record<Bun.Serve.HTTPMethod, BackendRouteHandler<WebSocketData, Path, C>>>;
+  | Partial<
+      Record<Bun.Serve.HTTPMethod, BackendRouteHandler<WebSocketData, Path, C>>
+    >;
 
 export interface BackendHTTPDefinition<
   WebSocketData = unknown,
   RoutePaths extends string = string,
   C extends APIContract = APIContract,
 > {
+  /** Additional application-owned credentials, restricted to /api routes. Never grants native access. */
+  readonly authorize?: (request: Request) => boolean | Promise<boolean>;
   /** Routes are relative to /api: "/stream" is served at /api/stream. Not exposed by the application CLI. */
-  readonly routes?: Readonly<{ [Path in RoutePaths]: BackendRoute<WebSocketData, Path, C> }>;
+  readonly routes?: Readonly<{
+    [Path in RoutePaths]: BackendRoute<WebSocketData, Path, C>;
+  }>;
   /** Exact GET paths relative to /api for external browser redirects (e.g. OAuth).
    * No FIA session is required. Handlers MUST validate their own one-use state.
    * Not available through the CLI; wildcard routes and WebSocket upgrades are rejected. */
-  readonly callbacks?: Readonly<Record<string, BackendRouteHandler<WebSocketData, string, C>>>;
+  readonly callbacks?: Readonly<
+    Record<string, BackendRouteHandler<WebSocketData, string, C>>
+  >;
+  /** Public static application pages below /pages/. GET/HEAD only; never serve business data here.
+   * Used by dynamically installed frontends in native windows and browsers. */
+  readonly pages?: (request: Request) => MaybePromise<Response>;
   /** Fallback receives paths with the /api prefix removed. */
   readonly fetch?: BackendRouteHandler<WebSocketData, string, C>;
   /** Bun server-level options also affect FIA native sockets. Callbacks only receive business sockets. */
@@ -88,6 +105,8 @@ export interface BackendContext<
 > extends BackendRouteContext<C> {
   readonly server: BackendServer<WebSocketData>;
   url(path?: string): URL;
+  /** Issue a one-use authorized browser link for an application route. */
+  browserURL(route?: string): string;
   /** Schedule outside an API invocation. Gates new calls, runs beforeUpdate and
    * requests a supervised process restart while preserving native windows. */
   restart(): Promise<void>;
@@ -105,19 +124,31 @@ export interface BackendDefinition<
     context: BackendContext<WebSocketData, C>,
   ) => MaybePromise<{ ready: boolean; reason?: string } | void>;
   readonly http: BackendHTTPDefinition<WebSocketData, RoutePaths, C>;
-  readonly start?: (context: BackendContext<WebSocketData, C>) => MaybePromise<void>;
-  readonly stop?: (context: BackendContext<WebSocketData, C>) => MaybePromise<void>;
+  readonly start?: (
+    context: BackendContext<WebSocketData, C>,
+  ) => MaybePromise<void>;
+  readonly stop?: (
+    context: BackendContext<WebSocketData, C>,
+  ) => MaybePromise<void>;
 }
 
-interface BackendInput<WebSocketData, RoutePaths extends string, C extends APIContract> {
+interface BackendInput<
+  WebSocketData,
+  RoutePaths extends string,
+  C extends APIContract,
+> {
   readonly api?: APIImplementation<C>;
   readonly apiOptions?: APIOptions;
   readonly beforeUpdate?: (
     context: BackendContext<WebSocketData, C>,
   ) => MaybePromise<{ ready: boolean; reason?: string } | void>;
   readonly http?: BackendHTTPDefinition<WebSocketData, RoutePaths, C>;
-  readonly start?: (context: BackendContext<WebSocketData, C>) => MaybePromise<void>;
-  readonly stop?: (context: BackendContext<WebSocketData, C>) => MaybePromise<void>;
+  readonly start?: (
+    context: BackendContext<WebSocketData, C>,
+  ) => MaybePromise<void>;
+  readonly stop?: (
+    context: BackendContext<WebSocketData, C>,
+  ) => MaybePromise<void>;
 }
 
 export interface APIOptions {
@@ -132,18 +163,37 @@ export function defineBackend<
 >(
   definition: BackendInput<WebSocketData, RoutePaths, C>,
 ): BackendDefinition<WebSocketData, RoutePaths, C> {
-  if (!isObject(definition) || (definition.http !== undefined && !isObject(definition.http)))
+  if (
+    !isObject(definition) ||
+    (definition.http !== undefined && !isObject(definition.http))
+  )
     throw new TypeError("defineBackend expects a backend definition");
-  const budget = (definition.apiOptions as APIOptions | undefined)?.eventBufferBytes;
-  if (budget !== undefined && (!Number.isSafeInteger(budget) || budget < MAX_FRAME_BYTES))
-    throw new TypeError("apiOptions.eventBufferBytes must be a safe integer of at least 1 MiB");
+  const budget = (definition.apiOptions as APIOptions | undefined)
+    ?.eventBufferBytes;
+  if (
+    budget !== undefined &&
+    (!Number.isSafeInteger(budget) || budget < MAX_FRAME_BYTES)
+  )
+    throw new TypeError(
+      "apiOptions.eventBufferBytes must be a safe integer of at least 1 MiB",
+    );
   definition.http ??= {};
-  Object.defineProperty(definition, FIA_BACKEND, { value: true, enumerable: false });
-  return definition as unknown as BackendDefinition<WebSocketData, RoutePaths, C>;
+  Object.defineProperty(definition, FIA_BACKEND, {
+    value: true,
+    enumerable: false,
+  });
+  return definition as unknown as BackendDefinition<
+    WebSocketData,
+    RoutePaths,
+    C
+  >;
 }
 
 export function isDefinedBackend(value: unknown): value is BackendDefinition {
-  return isObject(value) && (value as Partial<BackendDefinition>)[FIA_BACKEND] === true;
+  return (
+    isObject(value) &&
+    (value as Partial<BackendDefinition>)[FIA_BACKEND] === true
+  );
 }
 
 export interface InitializeFrame {
@@ -220,13 +270,15 @@ async function* frames(): AsyncGenerator<Record<string, unknown>> {
       while (newline >= 0) {
         const line = buffer.slice(0, newline);
         buffer = buffer.slice(newline + 1);
-        if (Buffer.byteLength(line) > MAX_FRAME_BYTES) throw new Error("stdio frame exceeds 1 MiB");
+        if (Buffer.byteLength(line) > MAX_FRAME_BYTES)
+          throw new Error("stdio frame exceeds 1 MiB");
         const frame = JSON.parse(line) as unknown;
         if (!isObject(frame)) throw new Error("invalid stdio frame");
         yield frame as Record<string, unknown>;
         newline = buffer.indexOf("\n");
       }
-      if (Buffer.byteLength(buffer) > MAX_FRAME_BYTES) throw new Error("stdio frame exceeds 1 MiB");
+      if (Buffer.byteLength(buffer) > MAX_FRAME_BYTES)
+        throw new Error("stdio frame exceeds 1 MiB");
     }
     if (buffer.length) throw new Error("Truncated stdio frame");
   } finally {
@@ -240,7 +292,9 @@ class StdioPeer {
   nextID = 1;
   closed = false;
 
-  constructor(private readonly iterator: AsyncIterator<Record<string, unknown>>) {}
+  constructor(
+    private readonly iterator: AsyncIterator<Record<string, unknown>>,
+  ) {}
 
   start(): void {
     void this.readLoop();
@@ -277,7 +331,11 @@ class StdioPeer {
     if (options.signal?.aborted === true) throw options.signal.reason;
     const id = this.nextID++;
     return await new Promise<Result>((resolve, reject) => {
-      const pending: Pending = { method, resolve: (value) => resolve(value as Result), reject };
+      const pending: Pending = {
+        method,
+        resolve: (value) => resolve(value as Result),
+        reject,
+      };
       this.pending.set(id, pending);
       const retire = (error: unknown): void => {
         if (!this.pending.delete(id)) return;
@@ -303,9 +361,12 @@ class StdioPeer {
         );
       if (options.signal !== undefined) {
         const abort = (): void =>
-          retire(options.signal?.reason ?? new DOMException("Aborted", "AbortError"));
+          retire(
+            options.signal?.reason ?? new DOMException("Aborted", "AbortError"),
+          );
         options.signal.addEventListener("abort", abort, { once: true });
-        pending.removeAbort = () => options.signal?.removeEventListener("abort", abort);
+        pending.removeAbort = () =>
+          options.signal?.removeEventListener("abort", abort);
       }
       writeFrame({ v: PROTOCOL, type: "request", id, method, params });
     });
@@ -328,7 +389,9 @@ class StdioPeer {
           if (pending.timer !== undefined) clearTimeout(pending.timer);
           pending.removeAbort?.();
           if (isObject(frame.error))
-            pending.reject(new NativeError(frame.error as unknown as NativeErrorPayload));
+            pending.reject(
+              new NativeError(frame.error as unknown as NativeErrorPayload),
+            );
           else pending.resolve(frame.result);
         } else if (frame.type === "event" && typeof frame.event === "string") {
           for (const listener of this.listeners.get(frame.event) ?? []) {
@@ -357,7 +420,10 @@ class StdioPeer {
   }
 }
 
-export class BackendNativeClient extends EventTarget implements NativeTransport {
+export class BackendNativeClient
+  extends EventTarget
+  implements NativeTransport
+{
   private readonly api = createNativeAPI(this);
   readonly application = this.api.application;
   readonly agent = this.api.agent;
@@ -371,6 +437,8 @@ export class BackendNativeClient extends EventTarget implements NativeTransport 
   readonly system = this.api.system;
   readonly globalShortcuts = this.api.globalShortcuts;
   readonly windows = this.api.windows;
+  readonly processes = this.api.processes;
+  readonly statusItem = this.api.statusItem;
   readonly resources = this.api.resources;
   readonly updates = this.api.updates;
   constructor(
@@ -395,14 +463,20 @@ export class BackendNativeClient extends EventTarget implements NativeTransport 
     const port = runtime()?.server?.port;
     if (!port) throw new Error("Backend has not started");
     return new NativeResource(descriptor, this, {
-      url: "http://127.0.0.1:" + port + "/_fia/resources/" + encodeURIComponent(descriptor.id),
+      url:
+        "http://127.0.0.1:" +
+        port +
+        "/_fia/resources/" +
+        encodeURIComponent(descriptor.id),
       credentials: "omit",
       headers: { "x-fia-session": this.initialize.sessionSecret },
     });
   }
 }
 function runtime(): Runtime | undefined {
-  return (globalThis as typeof globalThis & { [FIA_RUNTIME]?: Runtime })[FIA_RUNTIME];
+  return (globalThis as typeof globalThis & { [FIA_RUNTIME]?: Runtime })[
+    FIA_RUNTIME
+  ];
 }
 async function shutdown(current: Runtime): Promise<void> {
   if (current.stopping) return;
@@ -450,15 +524,24 @@ export async function runBackend<Data, Paths extends string>(
   const initialize = value as unknown as InitializeFrame;
   const peer = new StdioPeer(iterator);
   const native = new BackendNativeClient(peer, initialize);
-  const current: Runtime = { initialize, peer, native, definition, stopping: false };
-  (globalThis as typeof globalThis & { [FIA_RUNTIME]?: Runtime })[FIA_RUNTIME] = current;
+  const current: Runtime = {
+    initialize,
+    peer,
+    native,
+    definition,
+    stopping: false,
+  };
+  (globalThis as typeof globalThis & { [FIA_RUNTIME]?: Runtime })[FIA_RUNTIME] =
+    current;
   peer.start();
   peer.on("runtime.shutdown", () => {
     void shutdown(current);
   });
   const app = {
     ...initialize.app,
-    mode: initialize.app.mode ?? (initialize.development ? "development" : "production"),
+    mode:
+      initialize.app.mode ??
+      (initialize.development ? "development" : "production"),
     dataDirectory: initialize.applicationSupport,
     ...appDirectories(initialize),
   };
@@ -469,12 +552,20 @@ export async function runBackend<Data, Paths extends string>(
   );
   api.updating = initialize.updating ?? false;
   current.api = api;
-  const gateway = createGateway(definition, api.context, initialize, api, async (action) => {
-    if (action === "prepare")
-      await api.prepare(async () => definition.beforeUpdate?.(current.context!));
-    else api.updating = false;
-    await current.agent?.publish();
-  });
+  const gateway = createGateway(
+    definition,
+    api.context,
+    initialize,
+    api,
+    async (action) => {
+      if (action === "prepare")
+        await api.prepare(async () =>
+          definition.beforeUpdate?.(current.context!),
+        );
+      else api.updating = false;
+      await current.agent?.publish();
+    },
+  );
   const serve = (port: number) =>
     Bun.serve({
       hostname: "127.0.0.1",
@@ -482,7 +573,8 @@ export async function runBackend<Data, Paths extends string>(
       fetch: gateway.fetch,
       websocket: gateway.websocket,
       idleTimeout: definition.http.idleTimeout ?? 0,
-      maxRequestBodySize: definition.http.maxRequestBodySize ?? 16 * 1024 * 1024,
+      maxRequestBodySize:
+        definition.http.maxRequestBodySize ?? 16 * 1024 * 1024,
       error: async (error) =>
         (await definition.http.error?.(error)) ??
         new Response("Internal Server Error", { status: 500 }),
@@ -491,7 +583,10 @@ export async function runBackend<Data, Paths extends string>(
   try {
     server = serve(initialize.preferredPort);
   } catch (error) {
-    if (!initialize.preferredPort || (error as NodeJS.ErrnoException).code !== "EADDRINUSE")
+    if (
+      !initialize.preferredPort ||
+      (error as NodeJS.ErrnoException).code !== "EADDRINUSE"
+    )
       throw error;
     server = serve(0);
   }
@@ -503,6 +598,7 @@ export async function runBackend<Data, Paths extends string>(
     ...api.context,
     server,
     url: (path = "/") => new URL(path, origin),
+    browserURL: (route = "/") => gateway.issueBrowserURL(route),
     restart: async () => {
       await api.prepare(async () => definition.beforeUpdate?.(context));
       try {
@@ -522,9 +618,12 @@ export async function runBackend<Data, Paths extends string>(
   api.ready = true;
   if (initialize.bundlePath && initialize.agentCommand && initialize.runtimeId)
     current.agent = await startAgentServer(api, initialize, async () => {
-      const { route } = await native.call<{ route: string }>("runtime.browserRoute", {
-        id: "main",
-      });
+      const { route } = await native.call<{ route: string }>(
+        "runtime.browserRoute",
+        {
+          id: "main",
+        },
+      );
       return gateway.issueBrowserURL(route);
     });
   gateway.ready = true;

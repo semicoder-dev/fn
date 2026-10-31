@@ -1,7 +1,10 @@
 import { createHmac } from "node:crypto";
 import type { InitializeFrame } from "../src/backend.ts";
 
-export async function nativeCookie(origin: string, init: InitializeFrame): Promise<string> {
+export async function nativeCookie(
+  origin: string,
+  init: InitializeFrame,
+): Promise<string> {
   const nonce = crypto.randomUUID();
   const query = new URLSearchParams({
     window: "main",
@@ -11,7 +14,9 @@ export async function nativeCookie(origin: string, init: InitializeFrame): Promi
       .update(["main", "/", nonce, init.generation].join("\n"))
       .digest("hex"),
   });
-  const response = await fetch(origin + "/_fia/bootstrap?" + query, { redirect: "manual" });
+  const response = await fetch(origin + "/_fia/bootstrap?" + query, {
+    redirect: "manual",
+  });
   if (response.status !== 302) throw new Error("Native bootstrap failed");
   return response.headers.get("set-cookie")!.split(";")[0]!;
 }

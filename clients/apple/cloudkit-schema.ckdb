@@ -1,0 +1,25 @@
+DEFINE SCHEMA
+
+RECORD TYPE FnRelayHost (
+    payload STRING,
+    GRANT WRITE TO "_creator",
+    GRANT READ TO "_creator"
+);
+
+RECORD TYPE FnRelayRequest (
+    payload STRING,
+    GRANT WRITE TO "_creator",
+    GRANT READ TO "_creator"
+);
+
+RECORD TYPE FnRelayStatus (
+    payload STRING,
+    GRANT WRITE TO "_creator",
+    GRANT READ TO "_creator"
+);
+
+RECORD TYPE FnRelayReply (
+    payload STRING,
+    GRANT WRITE TO "_creator",
+    GRANT READ TO "_creator"
+);

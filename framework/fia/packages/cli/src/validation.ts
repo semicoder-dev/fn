@@ -4,7 +4,12 @@ import { exists } from "node:fs/promises";
 import type { ResolvedFIAConfig } from "./project-config.ts";
 
 export async function runCapture(command: readonly string[], cwd: string) {
-  const child = Bun.spawn([...command], { cwd, stdin: "ignore", stdout: "pipe", stderr: "pipe" });
+  const child = Bun.spawn([...command], {
+    cwd,
+    stdin: "ignore",
+    stdout: "pipe",
+    stderr: "pipe",
+  });
   const [exitCode, stdout, stderr] = await Promise.all([
     child.exited,
     new Response(child.stdout).text(),
@@ -18,7 +23,10 @@ export async function typecheckCommands(
 ): Promise<Array<{ id: string; command: string[] }>> {
   const tsc = resolve(config.projectRoot, "node_modules/typescript/bin/tsc");
   const commands = [
-    { id: "typescript", command: [process.execPath, tsc, "--noEmit", "-p", "tsconfig.json"] },
+    {
+      id: "typescript",
+      command: [process.execPath, tsc, "--noEmit", "-p", "tsconfig.json"],
+    },
   ];
   return commands;
 }
@@ -26,7 +34,11 @@ export async function typecheckCommands(
 export async function checkTypes(
   config: ResolvedFIAConfig,
 ): Promise<Array<{ id: string; status: "pass" | "fail"; message: string }>> {
-  const checks: Array<{ id: string; status: "pass" | "fail"; message: string }> = [];
+  const checks: Array<{
+    id: string;
+    status: "pass" | "fail";
+    message: string;
+  }> = [];
   for (const { id, command } of await typecheckCommands(config)) {
     try {
       const result = await runCapture(command, config.projectRoot);
@@ -51,13 +63,16 @@ export async function applicationTests(root: string): Promise<string[]> {
     if (!(await exists(directory))) return;
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       if (
-        ["node_modules", ".fia", ".git", "dist", "native"].includes(entry.name) ||
+        ["node_modules", ".fia", ".git", "dist", "native"].includes(
+          entry.name,
+        ) ||
         entry.isSymbolicLink()
       )
         continue;
       const path = resolve(directory, entry.name);
       if (entry.isDirectory()) await walk(path);
-      else if (/\.(test|spec)\.[cm]?[jt]sx?$/u.test(entry.name)) files.push(path);
+      else if (/\.(test|spec)\.[cm]?[jt]sx?$/u.test(entry.name))
+        files.push(path);
     }
   }
   await walk(root);

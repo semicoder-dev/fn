@@ -12,27 +12,48 @@ if (process.platform !== "darwin" || process.arch !== "arm64")
   throw new Error("Precompile on Apple Silicon macOS");
 if (Bun.version !== BUNDLED_BUN_VERSION)
   throw new Error("Runtime release requires Bun " + BUNDLED_BUN_VERSION);
-await run(["swift", "build", "--disable-sandbox", "-c", "release", "--product", "FIAHost"], {
-  env: {
-    ...process.env,
-    CLANG_MODULE_CACHE_PATH: resolve(repositoryRoot, ".build/module-cache"),
-    SWIFTPM_MODULECACHE_OVERRIDE: resolve(repositoryRoot, ".build/module-cache"),
-  },
-});
-const output = (
-  await run(["swift", "build", "--disable-sandbox", "-c", "release", "--show-bin-path"], {
-    quiet: true,
+await run(
+  [
+    "swift",
+    "build",
+    "--disable-sandbox",
+    "-c",
+    "release",
+    "--product",
+    "FIAHost",
+  ],
+  {
     env: {
       ...process.env,
       CLANG_MODULE_CACHE_PATH: resolve(repositoryRoot, ".build/module-cache"),
-      SWIFTPM_MODULECACHE_OVERRIDE: resolve(repositoryRoot, ".build/module-cache"),
+      SWIFTPM_MODULECACHE_OVERRIDE: resolve(
+        repositoryRoot,
+        ".build/module-cache",
+      ),
     },
-  })
+  },
+);
+const output = (
+  await run(
+    ["swift", "build", "--disable-sandbox", "-c", "release", "--show-bin-path"],
+    {
+      quiet: true,
+      env: {
+        ...process.env,
+        CLANG_MODULE_CACHE_PATH: resolve(repositoryRoot, ".build/module-cache"),
+        SWIFTPM_MODULECACHE_OVERRIDE: resolve(
+          repositoryRoot,
+          ".build/module-cache",
+        ),
+      },
+    },
+  )
 ).trim();
 await mkdir(assetDirectory, { recursive: true });
 await cp(resolve(output, "FIAHost"), resolve(assetDirectory, "FIAHost"));
 await cp(process.execPath, resolve(assetDirectory, "bun"));
-for (const name of ["FIAHost", "bun"]) await chmod(resolve(assetDirectory, name), 0o755);
+for (const name of ["FIAHost", "bun"])
+  await chmod(resolve(assetDirectory, name), 0o755);
 await writeFile(
   resolve(assetDirectory, "manifest.json"),
   JSON.stringify(

@@ -15,7 +15,13 @@ export interface FIACommandContext {
 
 /** Build settings only. Window behavior belongs in the Bun backend. */
 export interface FIAConfig {
-  app: { name: string; identifier: string; version: string; build: number; icon?: string };
+  app: {
+    name: string;
+    identifier: string;
+    version: string;
+    build: number;
+    icon?: string;
+  };
   api?: { entry?: string };
   agent: {
     command: string;
@@ -23,7 +29,11 @@ export interface FIAConfig {
     instructions?: string;
     commands?: Readonly<Record<string, { description: string; entry: string }>>;
   };
-  backend?: { entry?: string; assets?: readonly string[]; startupTimeoutMs?: number };
+  backend?: {
+    entry?: string;
+    assets?: readonly string[];
+    startupTimeoutMs?: number;
+  };
   /** Immutable regular files shipped only with a full application, never a code update. */
   runtime?: { assets?: readonly string[] };
   web?: { root?: string; dist?: string };
@@ -35,7 +45,10 @@ export interface FIAConfig {
     releaseIdentity?: string;
     notarizationProfile?: string;
     application?: Partial<
-      Record<"development" | "preview" | "production", ApplicationSigningProfile>
+      Record<
+        "development" | "preview" | "production",
+        ApplicationSigningProfile
+      >
     >;
   };
 }

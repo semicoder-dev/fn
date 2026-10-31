@@ -12,3 +12,6 @@ resources/runtime-seed/
 resources/runtime-seed.json
 *.tgz
 resources/runtime-seed.*.partial/
+
+resources/app-runner.js
+resources/app-runner.js.map

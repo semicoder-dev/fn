@@ -1,7 +1,9 @@
 import { agentFetch } from "./agent-cli.ts";
 import { createAPIClient, readResult } from "./api-client.ts";
 import type { AgentRecord } from "./agent-server.ts";
-const { record, sessionId } = JSON.parse(process.env.FIA_SCRIPT_CONNECTION ?? "null") as {
+const { record, sessionId } = JSON.parse(
+  process.env.FIA_SCRIPT_CONNECTION ?? "null",
+) as {
   record: AgentRecord;
   sessionId: string;
 };
@@ -16,7 +18,8 @@ Object.assign(globalThis, {
   help: (name?: string) =>
     JSON.stringify(
       name
-        ? (schema.methods[name] ?? schema.events[name] ?? { error: "Unknown API name" })
+        ? (schema.methods[name] ??
+            schema.events[name] ?? { error: "Unknown API name" })
         : schema,
       null,
       2,

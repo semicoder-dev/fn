@@ -6,10 +6,8 @@ let package = Package(
   products: [.library(name: "FnChatCore", targets: ["FnChatCore"])],
   dependencies: [.package(path: "../../../framework/fia/native/CloudKitTransport")],
   targets: [
-    .systemLibrary(name: "CSQLite"),
     .target(
       name: "FnChatCore",
-      dependencies: ["CSQLite", .product(name: "FIACloudKit", package: "CloudKitTransport")],
-      resources: [.process("Resources")]),
+      dependencies: [.product(name: "FIACloudKit", package: "CloudKitTransport")]),
     .testTarget(name: "FnChatCoreTests", dependencies: ["FnChatCore"]),
   ])

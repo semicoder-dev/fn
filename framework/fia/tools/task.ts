@@ -14,7 +14,14 @@ export async function packFramework(output?: string) {
   const archive = resolve(output, `semicoder-fia-${pkg.version}.tgz`);
   await rm(archive, { force: true });
   await runInteractive(
-    ["npm", "pack", "--workspace=@semicoder/fia", "--ignore-scripts", "--pack-destination", output],
+    [
+      "npm",
+      "pack",
+      "--workspace=@semicoder/fia",
+      "--ignore-scripts",
+      "--pack-destination",
+      output,
+    ],
     { cwd: workspace.root },
   );
   const temporary = await mkdtemp(resolve(tmpdir(), "fia-package-check-"));
@@ -31,11 +38,14 @@ export async function packFramework(output?: string) {
 if (import.meta.main) {
   try {
     const [command, output] = process.argv.slice(2);
-    if (!command || !["check", "pack"].includes(command)) throw new Error("Expected check or pack");
+    if (!command || !["check", "pack"].includes(command))
+      throw new Error("Expected check or pack");
     await withBuildLock(async () => {
       await prepareLocked();
       if (command === "check") {
-        await runInteractive([process.execPath, "run", "check"], { cwd: repositoryRoot });
+        await runInteractive([process.execPath, "run", "check"], {
+          cwd: repositoryRoot,
+        });
         // check includes a CLI rebuild. Verify and refresh its recorded hashes.
         await prepareLocked();
       } else await packFramework(output);

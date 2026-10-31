@@ -1,6 +1,9 @@
 import { mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { isBunVersionSupported, MINIMUM_BUN_VERSION } from "../packages/cli/src/bun-version.ts";
+import {
+  isBunVersionSupported,
+  MINIMUM_BUN_VERSION,
+} from "../packages/cli/src/bun-version.ts";
 
 export const repositoryRoot = resolve(import.meta.dir, "..");
 export const generatedRoot = resolve(repositoryRoot, ".fia/generated");
@@ -12,7 +15,8 @@ export async function withCommandCancellation<T>(action: () => Promise<T>) {
   const controller = new AbortController();
   const previous = cancellation;
   cancellation = controller.signal;
-  const stop = () => controller.abort(new Error("Framework command interrupted"));
+  const stop = () =>
+    controller.abort(new Error("Framework command interrupted"));
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
   try {
@@ -51,7 +55,10 @@ export async function runInteractive(
   }
 }
 
-export async function run(command: readonly string[], options: RunOptions = {}): Promise<string> {
+export async function run(
+  command: readonly string[],
+  options: RunOptions = {},
+): Promise<string> {
   const process = Bun.spawn([...command], {
     cwd: options.cwd ?? repositoryRoot,
     env: options.env ?? globalThis.process.env,
@@ -71,14 +78,18 @@ export async function run(command: readonly string[], options: RunOptions = {}):
   }
   if (exitCode !== 0) {
     const rendered = command.map((part) => JSON.stringify(part)).join(" ");
-    throw new Error(`Command failed with status ${exitCode}: ${rendered}\n${stderr.trim()}`);
+    throw new Error(
+      `Command failed with status ${exitCode}: ${rendered}\n${stderr.trim()}`,
+    );
   }
   return stdout;
 }
 
 export function requireBunVersion(): void {
   if (!isBunVersionSupported(Bun.version)) {
-    throw new Error(`FIA requires Bun ${MINIMUM_BUN_VERSION} or newer; found ${Bun.version}`);
+    throw new Error(
+      `FIA requires Bun ${MINIMUM_BUN_VERSION} or newer; found ${Bun.version}`,
+    );
   }
 }
 
@@ -88,7 +99,12 @@ export async function ensureParent(path: string): Promise<void> {
 
 export function assertInsideWorkspace(path: string): void {
   const absolute = resolve(path);
-  if (absolute !== repositoryRoot && !absolute.startsWith(`${repositoryRoot}/`)) {
-    throw new Error(`Refusing to operate outside the FIA workspace: ${absolute}`);
+  if (
+    absolute !== repositoryRoot &&
+    !absolute.startsWith(`${repositoryRoot}/`)
+  ) {
+    throw new Error(
+      `Refusing to operate outside the FIA workspace: ${absolute}`,
+    );
   }
 }

@@ -1,12 +1,23 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, readdir, rm, writeFile, rename, lstat } from "node:fs/promises";
+import {
+  mkdir,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+  rename,
+  lstat,
+} from "node:fs/promises";
 import { relative, resolve } from "node:path";
 import { verifyAssets } from "../packages/cli/src/artifacts.ts";
 import { BUNDLED_BUN_VERSION } from "../packages/cli/src/metadata.ts";
 import { repositoryRoot, run, withCommandCancellation } from "./shared.ts";
 import { findWorkspace } from "./workspace.ts";
 
-export const buildStateDirectory = resolve(repositoryRoot, ".fia/framework-build");
+export const buildStateDirectory = resolve(
+  repositoryRoot,
+  ".fia/framework-build",
+);
 export const reportPath = resolve(buildStateDirectory, "report.json");
 export const nativeInputs = [
   "Package.swift",
@@ -45,7 +56,11 @@ const ignored = new Set([
 ]);
 
 /** Names, contents and executable bits matter; timestamps never establish freshness. */
-export async function fingerprint(root: string, paths: readonly string[], trackMutations = false) {
+export async function fingerprint(
+  root: string,
+  paths: readonly string[],
+  trackMutations = false,
+) {
   const hash = createHash("sha256");
   async function walk(name: string) {
     const path = resolve(root, name);
@@ -54,16 +69,21 @@ export async function fingerprint(root: string, paths: readonly string[], trackM
       throw error;
     });
     hash.update(
-      JSON.stringify([name, stat?.isDirectory() ? "directory" : stat ? "file" : "missing"]),
+      JSON.stringify([
+        name,
+        stat?.isDirectory() ? "directory" : stat ? "file" : "missing",
+      ]),
     );
     if (!stat) return;
     // Only in-flight consistency uses metadata: it detects edits reverted to identical bytes.
     // Persistent cache validity always uses content and executable bits alone.
-    if (trackMutations) hash.update(JSON.stringify([stat.ino, stat.mtimeMs, stat.ctimeMs]));
+    if (trackMutations)
+      hash.update(JSON.stringify([stat.ino, stat.mtimeMs, stat.ctimeMs]));
     if (stat.isSymbolicLink())
       throw new Error("Framework input/output cannot be a symlink: " + path);
     if (stat.isDirectory()) {
-      for (const child of (await readdir(path)).sort()) await walk(name + "/" + child);
+      for (const child of (await readdir(path)).sort())
+        await walk(name + "/" + child);
     } else if (stat.isFile()) {
       hash.update(String(stat.mode & 0o111));
       hash.update(await readFile(path));
@@ -76,9 +96,14 @@ export async function fingerprint(root: string, paths: readonly string[], trackM
 export async function sourceFingerprint(root = repositoryRoot) {
   const paths: string[] = [];
   async function walk(name: string) {
-    for (const entry of await readdir(resolve(root, name), { withFileTypes: true })) {
+    for (const entry of await readdir(resolve(root, name), {
+      withFileTypes: true,
+    })) {
       const path = name ? name + "/" + entry.name : entry.name;
-      if (ignored.has(entry.name) || ["packages/cli/assets", "packages/cli/docs"].includes(path))
+      if (
+        ignored.has(entry.name) ||
+        ["packages/cli/assets", "packages/cli/docs"].includes(path)
+      )
         continue;
       if (entry.isDirectory()) await walk(path);
       else paths.push(path);
@@ -107,7 +132,8 @@ export async function withBuildLock<T>(
   try {
     await writeFile(
       resolve(lock, "owner.json"),
-      JSON.stringify({ pid: process.pid, started: new Date().toISOString() }) + "\n",
+      JSON.stringify({ pid: process.pid, started: new Date().toISOString() }) +
+        "\n",
     );
     return await withCommandCancellation(action);
   } finally {
@@ -121,7 +147,12 @@ export interface BuildRecord {
 }
 export interface BuildReport {
   schema: 1;
-  source: { commit: string | null; dirty: boolean | null; framework: string; lock: string };
+  source: {
+    commit: string | null;
+    dirty: boolean | null;
+    framework: string;
+    lock: string;
+  };
   toolchain: {
     bun: string;
     bunSHA256: string;
@@ -134,14 +165,16 @@ export interface BuildReport {
   native: BuildRecord;
   cli: BuildRecord;
 }
-const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
+const digest = (value: unknown) =>
+  createHash("sha256").update(JSON.stringify(value)).digest("hex");
 
 export class SourcesChangedError extends Error {}
 
 export async function prepareLocked(): Promise<BuildReport> {
   if (process.platform !== "darwin" || process.arch !== "arm64")
     throw new Error("FIA source builds require Apple Silicon macOS");
-  if (Bun.version !== BUNDLED_BUN_VERSION) throw new Error("Use Bun " + BUNDLED_BUN_VERSION);
+  if (Bun.version !== BUNDLED_BUN_VERSION)
+    throw new Error("Use Bun " + BUNDLED_BUN_VERSION);
   const workspace = await findWorkspace();
   const nativeRevision = () => fingerprint(repositoryRoot, nativeInputs, true);
   const cliRevision = async () =>
@@ -155,22 +188,35 @@ export async function prepareLocked(): Promise<BuildReport> {
       .update(await readFile(process.execPath))
       .digest("hex"),
     swift: (await run(["swift", "--version"], { quiet: true })).trim(),
-    sdk: (await run(["xcrun", "--sdk", "macosx", "--show-sdk-version"], { quiet: true })).trim(),
-    sdkPath: (await run(["xcrun", "--sdk", "macosx", "--show-sdk-path"], { quiet: true })).trim(),
+    sdk: (
+      await run(["xcrun", "--sdk", "macosx", "--show-sdk-version"], {
+        quiet: true,
+      })
+    ).trim(),
+    sdkPath: (
+      await run(["xcrun", "--sdk", "macosx", "--show-sdk-path"], {
+        quiet: true,
+      })
+    ).trim(),
     platform: process.platform,
     architecture: process.arch,
   };
   const lockHash = createHash("sha256")
     .update(await readFile(workspace.lock))
     .digest("hex");
-  const nativeInput = digest([await fingerprint(repositoryRoot, nativeInputs), toolchain]);
+  const nativeInput = digest([
+    await fingerprint(repositoryRoot, nativeInputs),
+    toolchain,
+  ]);
   const cliInput = digest([
     await fingerprint(repositoryRoot, cliInputs),
     lockHash,
     toolchain.bun,
     toolchain.bunSHA256,
   ]);
-  const previousNative = (await Bun.file(resolve(buildStateDirectory, "native.json"))
+  const previousNative = (await Bun.file(
+    resolve(buildStateDirectory, "native.json"),
+  )
     .json()
     .catch(() => null)) as BuildRecord | null;
   const previousCLI = (await Bun.file(resolve(buildStateDirectory, "cli.json"))
@@ -181,8 +227,10 @@ export async function prepareLocked(): Promise<BuildReport> {
   let nativeOutput = await fingerprint(repositoryRoot, [assetPath]);
   let cliOutput = await fingerprint(repositoryRoot, cliOutputPaths);
   const rebuildNative =
-    previousNative?.input !== nativeInput || previousNative?.output !== nativeOutput;
-  const rebuildCLI = previousCLI?.input !== cliInput || previousCLI?.output !== cliOutput;
+    previousNative?.input !== nativeInput ||
+    previousNative?.output !== nativeOutput;
+  const rebuildCLI =
+    previousCLI?.input !== cliInput || previousCLI?.output !== cliOutput;
   // Invalidate before writing any output. An interrupted/failed build must never be reused.
   if (rebuildNative || rebuildCLI) await rm(reportPath, { force: true });
   if (rebuildNative) {
@@ -193,7 +241,8 @@ export async function prepareLocked(): Promise<BuildReport> {
     await verifyAssets();
     if (
       initialNativeRevision === (await nativeRevision()) &&
-      nativeInput === digest([await fingerprint(repositoryRoot, nativeInputs), toolchain])
+      nativeInput ===
+        digest([await fingerprint(repositoryRoot, nativeInputs), toolchain])
     )
       await writeFile(
         resolve(buildStateDirectory, "native.json"),
@@ -213,7 +262,8 @@ export async function prepareLocked(): Promise<BuildReport> {
   if (
     nativeTouched ||
     cliTouched ||
-    nativeInput !== digest([await fingerprint(repositoryRoot, nativeInputs), toolchain]) ||
+    nativeInput !==
+      digest([await fingerprint(repositoryRoot, nativeInputs), toolchain]) ||
     cliInput !==
       digest([
         await fingerprint(repositoryRoot, cliInputs),
@@ -225,22 +275,32 @@ export async function prepareLocked(): Promise<BuildReport> {
       ])
   ) {
     await rm(reportPath, { force: true });
-    if (nativeTouched) await rm(resolve(buildStateDirectory, "native.json"), { force: true });
+    if (nativeTouched)
+      await rm(resolve(buildStateDirectory, "native.json"), { force: true });
     throw new SourcesChangedError(
       "Framework sources changed during the build; rebuild the latest sources",
     );
   }
-  const commit = await run(["git", "rev-parse", "HEAD"], { cwd: workspace.root, quiet: true })
+  const commit = await run(["git", "rev-parse", "HEAD"], {
+    cwd: workspace.root,
+    quiet: true,
+  })
     .then((x) => x.trim())
     .catch(() => null);
   const dirty = commit
-    ? await run(["git", "status", "--porcelain"], { cwd: workspace.root, quiet: true }).then(
-        (x) => !!x.trim(),
-      )
+    ? await run(["git", "status", "--porcelain"], {
+        cwd: workspace.root,
+        quiet: true,
+      }).then((x) => !!x.trim())
     : null;
   const report: BuildReport = {
     schema: 1,
-    source: { commit, dirty, framework: await sourceFingerprint(), lock: lockHash },
+    source: {
+      commit,
+      dirty,
+      framework: await sourceFingerprint(),
+      lock: lockHash,
+    },
     toolchain,
     native: { input: nativeInput, output: nativeOutput },
     cli: { input: cliInput, output: cliOutput },
@@ -249,7 +309,8 @@ export async function prepareLocked(): Promise<BuildReport> {
   cliTouched = initialCLIRevision !== (await cliRevision());
   if (nativeTouched || cliTouched) {
     await rm(reportPath, { force: true });
-    if (nativeTouched) await rm(resolve(buildStateDirectory, "native.json"), { force: true });
+    if (nativeTouched)
+      await rm(resolve(buildStateDirectory, "native.json"), { force: true });
     throw new SourcesChangedError(
       "Framework sources changed while verifying build provenance; retry latest sources",
     );
@@ -261,7 +322,10 @@ export async function prepareLocked(): Promise<BuildReport> {
   const temporary = reportPath + "." + process.pid + ".tmp";
   await writeFile(temporary, JSON.stringify(report, null, 2) + "\n");
   await rename(temporary, reportPath);
-  const publicReport = resolve(workspace.root, "artifacts/fia/build-report.json");
+  const publicReport = resolve(
+    workspace.root,
+    "artifacts/fia/build-report.json",
+  );
   await mkdir(resolve(workspace.root, "artifacts/fia"), { recursive: true });
   await writeFile(publicReport, JSON.stringify(report, null, 2) + "\n");
   console.log(

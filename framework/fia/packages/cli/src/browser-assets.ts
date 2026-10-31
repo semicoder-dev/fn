@@ -1,6 +1,11 @@
-// Self-contained scripts served by the gateway in both Vite and packaged applications.
+// Self-contained scripts served by the gateway in development and packaged applications.
 export const browserRuntime = String.raw`(() => {
   const opening = location.pathname === '/_fia/browser/open';
+  if (opening) window.addEventListener('hashchange', () => { if (location.hash) location.reload(); });
+  if (opening) document.addEventListener('DOMContentLoaded', () => {
+    const text = document.querySelector('p');
+    if (text) text.textContent = navigator.language.startsWith('zh') ? '正在连接应用…' : 'Connecting to the application…';
+  }, {once:true});
   if (!opening && new URLSearchParams(location.search).get('fiaBrowser') !== '1') return;
   const key = 'fia.browser.session';
   const nativeFetch = window.fetch.bind(window);
@@ -18,7 +23,8 @@ export const browserRuntime = String.raw`(() => {
       const host = document.createElement('div');
       host.id = 'fia-browser-ended';
       host.style.cssText = 'position:fixed;inset:0;z-index:2147483647';
-      host.attachShadow({mode:'closed'}).innerHTML = '<style>:host{color-scheme:light dark}main{box-sizing:border-box;display:grid;place-content:center;gap:12px;height:100%;padding:32px;background:Canvas;color:CanvasText;font:15px system-ui;text-align:center}h1{font-size:22px;margin:0}p{max-width:480px;margin:0;line-height:1.6}</style><main role="alert"><h1>浏览器连接已结束</h1><p>请回到应用，点击标题栏最右侧的“在浏览器中打开”按钮重新连接。</p></main>';
+      const zh = (document.documentElement.lang || navigator.language).startsWith('zh');
+      host.attachShadow({mode:'closed'}).innerHTML = '<style>:host{color-scheme:light dark}main{box-sizing:border-box;display:grid;place-content:center;gap:12px;height:100%;padding:32px;background:Canvas;color:CanvasText;font:15px system-ui;text-align:center}h1{font-size:22px;margin:0}p{max-width:480px;margin:0;line-height:1.6}</style><main role="alert"><h1>' + (zh ? '浏览器连接已结束' : 'Browser connection ended') + '</h1><p>' + (zh ? '请回到应用，点击标题栏最右侧的“在浏览器中打开”按钮重新连接。' : 'Return to the application and choose Open in Browser to reconnect.') + '</p></main>';
       document.body.append(host);
     };
     if (document.body) show(); else document.addEventListener('DOMContentLoaded', show, {once:true});
@@ -85,6 +91,7 @@ export const browserRuntime = String.raw`(() => {
     }
   };
   window.__FIA_BROWSER__ = bridge;
+  window.fiaTransport = bridge;
   ready.catch(expired);
 })();`;
 

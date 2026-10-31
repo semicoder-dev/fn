@@ -1,4 +1,12 @@
-import { chmod, mkdir, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  mkdir,
+  readFile,
+  realpath,
+  rename,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
@@ -25,10 +33,14 @@ export async function requestSession(
   const canonical = await realpath(root);
   let record: SessionRecord;
   try {
-    record = JSON.parse(await readFile(resolve(canonical, ".fia/dev/session.json"), "utf8"));
+    record = JSON.parse(
+      await readFile(resolve(canonical, ".fia/dev/session.json"), "utf8"),
+    );
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT")
-      return action === "logs" ? await savedLogs(canonical) : { schemaVersion: 1, running: false };
+      return action === "logs"
+        ? await savedLogs(canonical)
+        : { schemaVersion: 1, running: false };
     throw error;
   }
   if (record.schemaVersion !== 1 || record.root !== canonical)
@@ -40,7 +52,8 @@ export async function requestSession(
       headers: { authorization: `Bearer ${record.token}` },
       signal: AbortSignal.timeout(3000),
     });
-    if (!response.ok) throw new Error(`Session rejected ${action}: ${response.status}`);
+    if (!response.ok)
+      throw new Error(`Session rejected ${action}: ${response.status}`);
     return await response.json();
   } catch (error) {
     if (action === "stop")
@@ -59,7 +72,9 @@ async function savedLogs(root: string) {
     return {
       schemaVersion: 1,
       running: false,
-      events: JSON.parse(await readFile(resolve(root, ".fia/dev/events.json"), "utf8")),
+      events: JSON.parse(
+        await readFile(resolve(root, ".fia/dev/events.json"), "utf8"),
+      ),
     };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT")
@@ -79,8 +94,14 @@ export async function createSession(
   await mkdir(directory, { recursive: true });
   const id = crypto.randomUUID();
   const token = crypto.randomUUID() + crypto.randomUUID();
-  const hash = createHash("sha256").update(canonical).digest("hex").slice(0, 20);
-  const socket = resolve(tmpdir(), `fia-${process.getuid?.() ?? "user"}-${hash}.sock`);
+  const hash = createHash("sha256")
+    .update(canonical)
+    .digest("hex")
+    .slice(0, 20);
+  const socket = resolve(
+    tmpdir(),
+    `fia-${process.getuid?.() ?? "user"}-${hash}.sock`,
+  );
   const recordPath = resolve(directory, "session.json");
   const lockPath = resolve(directory, "session.lock");
   // Exclusive project ownership prevents concurrent launchers from unlinking each other's socket.
@@ -95,14 +116,18 @@ export async function createSession(
   }
   let previous: { running?: boolean };
   try {
-    previous = (await requestSession(canonical, "status")) as { running?: boolean };
+    previous = (await requestSession(canonical, "status")) as {
+      running?: boolean;
+    };
   } catch (error) {
     await rm(lockPath, { recursive: true, force: true });
     throw error;
   }
   if (previous.running) {
     await rm(lockPath, { recursive: true });
-    throw new Error("This project already has a development session. Use fia status or fia stop.");
+    throw new Error(
+      "This project already has a development session. Use fia status or fia stop.",
+    );
   }
   // A stale socket has no listener; unlinking it never signals a PID.
   await rm(socket, { force: true });
@@ -132,7 +157,8 @@ export async function createSession(
           stop();
           return Response.json({ schemaVersion: 1, stopping: true, id });
         }
-        if (action === "/logs") return Response.json({ schemaVersion: 1, id, events });
+        if (action === "/logs")
+          return Response.json({ schemaVersion: 1, id, events });
         if (action === "/status")
           return Response.json({
             schemaVersion: 1,
@@ -173,10 +199,15 @@ export async function createSession(
   flushTimer.unref();
   return {
     emit(event: Omit<SessionEvent, "time">) {
-      const value = { ...event, time: new Date().toISOString() } as SessionEvent;
+      const value = {
+        ...event,
+        time: new Date().toISOString(),
+      } as SessionEvent;
       events.push({
         ...value,
-        ...(typeof value.message === "string" ? { message: value.message.slice(-32768) } : {}),
+        ...(typeof value.message === "string"
+          ? { message: value.message.slice(-32768) }
+          : {}),
       });
       while (events.length > 256) events.shift();
       output(value);

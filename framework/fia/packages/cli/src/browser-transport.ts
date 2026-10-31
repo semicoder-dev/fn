@@ -8,11 +8,17 @@ interface BrowserBridge {
 export function browserBridge(): BrowserBridge | undefined {
   return typeof window === "undefined"
     ? undefined
-    : (window as unknown as { __FIA_BROWSER__?: BrowserBridge }).__FIA_BROWSER__;
+    : (window as unknown as { __FIA_BROWSER__?: BrowserBridge })
+        .__FIA_BROWSER__;
 }
-export function frontendFetch(path: string, init?: RequestInit): Promise<Response> {
+export function frontendFetch(
+  path: string,
+  init?: RequestInit,
+): Promise<Response> {
   const bridge = browserBridge();
-  return bridge ? bridge.request(path, init) : fetch(path, { ...init, credentials: "same-origin" });
+  return bridge
+    ? bridge.request(path, init)
+    : fetch(path, { ...init, credentials: "same-origin" });
 }
 /** Open an authenticated application WebSocket; path must be relative to this application. */
 export async function openWebSocket(
@@ -35,7 +41,9 @@ export async function openWebSocket(
     if (!response.ok) throw new Error("WebSocket authorization failed");
     const result = (await response.json()) as { url: string };
     const socket = new WebSocket(result.url, protocols);
-    const off = bridge.onEnd(() => socket.close(4001, "Browser authorization ended"));
+    const off = bridge.onEnd(() =>
+      socket.close(4001, "Browser authorization ended"),
+    );
     socket.addEventListener("close", off, { once: true });
     socket.addEventListener("close", (event) => {
       if (event.code === 4001) bridge.expire();

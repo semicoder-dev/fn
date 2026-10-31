@@ -42,7 +42,10 @@ Every web window includes Open in Browser. Use fia agent [--preview] open --brow
 add --url to print a one-use 60-second link. Packaged app CLIs support the same options.
 Configure your app in fia.config.ts. No Swift project or mode selection is required.
 `;
-export async function runCLI(args: readonly string[], cwd = process.cwd()): Promise<number> {
+export async function runCLI(
+  args: readonly string[],
+  cwd = process.cwd(),
+): Promise<number> {
   const [command, ...rest] = args;
   try {
     if (!command || ["--help", "-h", "help"].includes(command)) {
@@ -54,20 +57,31 @@ export async function runCLI(args: readonly string[], cwd = process.cwd()): Prom
       return 0;
     }
     const emit = (value: unknown) =>
-      console.log(typeof value === "string" ? value : JSON.stringify(value, null, 2));
+      console.log(
+        typeof value === "string" ? value : JSON.stringify(value, null, 2),
+      );
     if (command === "create") {
       const options = parseCreateOptions(rest);
       if (!options.yes && process.stdin.isTTY && process.stdout.isTTY) {
         intro("Create a FIA application");
         if (!options.name) {
-          const name = await promptText({ message: "Project name", placeholder: "my-app" });
+          const name = await promptText({
+            message: "Project name",
+            placeholder: "my-app",
+          });
           if (isCancel(name)) return 130;
           options.name = name;
         }
         for (const key of ["install", "git"] as const) {
-          if (rest.some((option) => option === "--" + key || option === "--no-" + key)) continue;
+          if (
+            rest.some(
+              (option) => option === "--" + key || option === "--no-" + key,
+            )
+          )
+            continue;
           const answer = await confirm({
-            message: key === "install" ? "Install dependencies?" : "Initialize Git?",
+            message:
+              key === "install" ? "Install dependencies?" : "Initialize Git?",
             initialValue: options[key],
           });
           if (isCancel(answer)) return 130;
@@ -82,13 +96,19 @@ export async function runCLI(args: readonly string[], cwd = process.cwd()): Prom
       return 0;
     }
     if (command === "update") {
-      if (rest[0] !== "keygen" || rest[1] !== "--output" || !rest[2] || rest.length !== 3)
+      if (
+        rest[0] !== "keygen" ||
+        rest[1] !== "--output" ||
+        !rest[2] ||
+        rest.length !== 3
+      )
         throw new Error("Usage: fia update keygen --output <directory>");
       emit(await generateUpdateKeys(resolve(cwd, rest[2])));
       return 0;
     }
     if (["status", "logs", "stop"].includes(command)) {
-      if (rest.some((arg) => arg !== "--json")) throw new Error("Unknown option");
+      if (rest.some((arg) => arg !== "--json"))
+        throw new Error("Unknown option");
       emit(await requestSession(cwd, command as "status" | "logs" | "stop"));
       return 0;
     }
@@ -107,15 +127,23 @@ export async function runCLI(args: readonly string[], cwd = process.cwd()): Prom
       const clean = rest.filter((arg) => arg !== "--json");
       if (
         clean.length &&
-        !(clean.length === 2 && clean[0] === "--target" && ["dev", "release"].includes(clean[1]!))
+        !(
+          clean.length === 2 &&
+          clean[0] === "--target" &&
+          ["dev", "release"].includes(clean[1]!)
+        )
       )
         throw new Error("Usage: fia doctor [--target dev|release] [--json]");
-      const result = await doctor(cwd, (clean[1] ?? "dev") as "dev" | "release");
+      const result = await doctor(
+        cwd,
+        (clean[1] ?? "dev") as "dev" | "release",
+      );
       emit(result);
       return result.ok ? 0 : 1;
     }
     if (command === "check") {
-      if (rest.some((arg) => arg !== "--json")) throw new Error("Unknown option");
+      if (rest.some((arg) => arg !== "--json"))
+        throw new Error("Unknown option");
       const result = await checkProject(cwd);
       emit(result);
       return result.ok ? 0 : 1;
@@ -128,7 +156,9 @@ export async function runCLI(args: readonly string[], cwd = process.cwd()): Prom
         emit("No application tests found");
         return 0;
       }
-      const result = await defaultRunner([process.execPath, "test", ...files], { cwd });
+      const result = await defaultRunner([process.execPath, "test", ...files], {
+        cwd,
+      });
       process.stdout.write(result.stdout);
       process.stderr.write(result.stderr);
       return result.exitCode;
@@ -153,13 +183,21 @@ export async function runCLI(args: readonly string[], cwd = process.cwd()): Prom
     const config = await loadProjectConfig(cwd);
     switch (command) {
       case "dev":
-        await runDevelopment(config, console.log, parseDevelopmentOptions(rest));
+        await runDevelopment(
+          config,
+          console.log,
+          parseDevelopmentOptions(rest),
+        );
         break;
       case "run":
         return await runApplication(config);
       case "build": {
         const built = await buildApplication(config);
-        emit(rest.includes("--dmg") ? await packageDiskImage(config, built.app) : built);
+        emit(
+          rest.includes("--dmg")
+            ? await packageDiskImage(config, built.app)
+            : built,
+        );
         break;
       }
       case "release":
@@ -171,7 +209,9 @@ export async function runCLI(args: readonly string[], cwd = process.cwd()): Prom
     }
     return 0;
   } catch (error) {
-    console.error("fia: " + (error instanceof Error ? error.message : String(error)));
+    console.error(
+      "fia: " + (error instanceof Error ? error.message : String(error)),
+    );
     return 1;
   }
 }

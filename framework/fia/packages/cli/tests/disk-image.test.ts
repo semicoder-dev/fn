@@ -1,19 +1,41 @@
 import { expect, test } from "bun:test";
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { packageDiskImage, type ApplicationProcessRunner } from "../src/application.ts";
+import {
+  packageDiskImage,
+  type ApplicationProcessRunner,
+} from "../src/application.ts";
 import { sha256 } from "../src/artifacts.ts";
 import { validateConfig } from "../src/project-config.ts";
 
-for (const failure of ["none", "notarytool", "invalid", "stapler", "smoke"] as const) {
+for (const failure of [
+  "none",
+  "notarytool",
+  "invalid",
+  "stapler",
+  "smoke",
+] as const) {
   test(`DMG release preserves previous artifacts and cleans up on ${failure}`, async () => {
     const root = await mkdtemp(resolve(tmpdir(), "fia-dmg-test-"));
     const commands: string[][] = [];
     let smokeCalled = false;
     const config = validateConfig(
       {
-        app: { name: "Test App", identifier: "test.dmg", version: "1.0.0", build: 1 },
+        app: {
+          name: "Test App",
+          identifier: "test.dmg",
+          version: "1.0.0",
+          build: 1,
+        },
         agent: { command: "test-dmg", description: "Test" },
         signing: {
           releaseIdentity: "Developer ID Application: Test (TEAM)",
@@ -26,7 +48,8 @@ for (const failure of ["none", "notarytool", "invalid", "stapler", "smoke"] as c
     const dmg = resolve(root, "dist/Test App-1.0.0-1-mac-arm64.dmg");
     const runner: ApplicationProcessRunner = async (command) => {
       commands.push([...command]);
-      if (command.includes(failure)) return { exitCode: 1, stdout: "", stderr: "rejected" };
+      if (command.includes(failure))
+        return { exitCode: 1, stdout: "", stderr: "rejected" };
       if (command.includes("notarytool"))
         return {
           exitCode: 0,
@@ -36,7 +59,8 @@ for (const failure of ["none", "notarytool", "invalid", "stapler", "smoke"] as c
             status: failure === "invalid" ? "Invalid" : "Accepted",
           }),
         };
-      if (command[0] === "/usr/bin/ditto") await cp(command[1]!, command[2]!, { recursive: true });
+      if (command[0] === "/usr/bin/ditto")
+        await cp(command[1]!, command[2]!, { recursive: true });
       if (command[0] === "/usr/bin/hdiutil" && command[1] === "create")
         await writeFile(command.at(-1)!, "disk image contents");
       if (command[0] === "/usr/bin/hdiutil" && command[1] === "attach")
@@ -73,10 +97,16 @@ for (const failure of ["none", "notarytool", "invalid", "stapler", "smoke"] as c
       });
       if (failure === "none") {
         expect((await result).dmg).toBe(dmg);
-        expect(await readFile(dmg + ".sha256", "utf8")).toStartWith(await sha256(dmg));
-        expect(JSON.parse(await readFile(dmg + ".report.json", "utf8")).ok).toBe(true);
+        expect(await readFile(dmg + ".sha256", "utf8")).toStartWith(
+          await sha256(dmg),
+        );
+        expect(
+          JSON.parse(await readFile(dmg + ".report.json", "utf8")).ok,
+        ).toBe(true);
       } else {
-        await expect(result).rejects.toThrow(failure === "smoke" ? "smoke failed" : "rejected");
+        await expect(result).rejects.toThrow(
+          failure === "smoke" ? "smoke failed" : "rejected",
+        );
         expect(await readFile(dmg, "utf8")).toBe("previous good image");
         expect(await Bun.file(dmg + ".sha256").exists()).toBe(false);
         expect(await Bun.file(dmg + ".report.json").exists()).toBe(false);
@@ -88,9 +118,11 @@ for (const failure of ["none", "notarytool", "invalid", "stapler", "smoke"] as c
       }
       const attached = commands.some((c) => c[1] === "attach");
       expect(commands.some((c) => c[1] === "detach")).toBe(attached);
-      expect((await readdir(resolve(root, "dist"))).some((name) => name.startsWith(".dmg-"))).toBe(
-        false,
-      );
+      expect(
+        (await readdir(resolve(root, "dist"))).some((name) =>
+          name.startsWith(".dmg-"),
+        ),
+      ).toBe(false);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
