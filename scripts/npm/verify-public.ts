@@ -2,6 +2,7 @@ import { mkdtemp, cp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { validatePackage } from "./check.ts";
+import { retryRegistryInstall } from "./registry-retry.ts";
 
 // Download anonymously and compare against the exact CI-tested archives.
 const dependencies: Record<string, string> = {
@@ -69,15 +70,30 @@ try {
     new URL("plugin-smoke.fixture.ts", import.meta.url),
     join(directory, "smoke.ts"),
   );
-  for (const args of [["install", "--ignore-scripts"], ["smoke.ts"]]) {
-    const child = Bun.spawn([process.execPath, ...args], {
+  // npm's version endpoint and install index may become visible at different times.
+  // A fresh, private cache prevents a failed first resolution from poisoning retries.
+  await retryRegistryInstall(async (attempt) => {
+    const child = Bun.spawn([process.execPath, "install", "--ignore-scripts"], {
       cwd: directory,
+      env: {
+        ...process.env,
+        BUN_INSTALL_CACHE_DIR: join(directory, `cache-${attempt}`),
+      },
       stdout: "inherit",
       stderr: "inherit",
     });
-    if (await child.exited)
-      throw new Error("Public SDK/UI independent consumption failed");
-  }
+    const succeeded = (await child.exited) === 0;
+    if (!succeeded)
+      console.log(`Public install attempt ${attempt + 1}/12 failed`);
+    return succeeded;
+  });
+  const smoke = Bun.spawn([process.execPath, "smoke.ts"], {
+    cwd: directory,
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  if (await smoke.exited)
+    throw new Error("Public SDK/UI independent application build failed");
   console.log("Public SDK/UI independent application build passed");
 } finally {
   await rm(directory, { recursive: true, force: true });

@@ -95,3 +95,40 @@ test("market downloads follow validated CDN redirects, reject unsafe hops, loops
     server.stop(true);
   }
 });
+
+test("registry propagation retry succeeds with a fresh attempt and stops immediately", async () => {
+  const { retryRegistryInstall } =
+    await import("../../../scripts/npm/registry-retry.ts");
+  const attempts: number[] = [];
+  let waits = 0;
+  await retryRegistryInstall(
+    async (attempt) => {
+      attempts.push(attempt);
+      return attempt === 2;
+    },
+    async () => {
+      waits++;
+    },
+  );
+  expect(attempts).toEqual([0, 1, 2]);
+  expect(waits).toBe(2);
+});
+test("persistent registry failure remains a bounded failing release gate", async () => {
+  const { retryRegistryInstall } =
+    await import("../../../scripts/npm/registry-retry.ts");
+  let calls = 0,
+    waits = 0;
+  await expect(
+    retryRegistryInstall(
+      async () => {
+        calls++;
+        return false;
+      },
+      async () => {
+        waits++;
+      },
+    ),
+  ).rejects.toThrow("bounded retries");
+  expect(calls).toBe(12);
+  expect(waits).toBe(11);
+});
