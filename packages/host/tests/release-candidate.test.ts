@@ -16,6 +16,26 @@ import {
 } from "../../../scripts/release/candidate-manifest";
 import { parseBinding, validateRun } from "../../../scripts/release/promote";
 import { command } from "../../../scripts/release/process";
+import { QAApplication } from "../../../scripts/release/qa-client";
+
+test("QA shutdown accepts a signal-terminated process and cleans it only once", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "fn-qa-exit-"));
+  const app = new QAApplication(directory, directory);
+  const child = Bun.spawn(
+    [process.execPath, "-e", "setInterval(() => {}, 1000)"],
+    { stdout: "ignore", stderr: "ignore" },
+  );
+  app.child = child;
+  try {
+    await app.stop(true);
+    expect(child.signalCode).toBe("SIGKILL");
+    expect(app.child).toBeUndefined();
+    await app.stop(true);
+  } finally {
+    child.kill();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");

@@ -63,7 +63,7 @@ export class QAApplication {
   async ready(build?: number) {
     return eventually(async () => {
       assert(
-        this.child?.exitCode === null,
+        this.child?.exitCode === null && this.child.signalCode === null,
         "QA application exited before readiness",
       );
       const state = await this.inspection();
@@ -92,15 +92,22 @@ export class QAApplication {
     );
   }
   async stop(force = false) {
-    if (!this.child || this.child.exitCode !== null) return;
+    if (!this.child) return;
+    const child = this.child;
     const groups = (await this.inspection())?.processGroups ?? [];
-    if (force) this.child.kill("SIGKILL");
-    else await Bun.write(resolve(this.control, "quit"), "");
-    await eventually(
-      async () => (this.child!.exitCode === null ? undefined : true),
-      "QA application exit",
-      25_000,
-    );
+    if (child.exitCode === null && child.signalCode === null) {
+      if (force) child.kill("SIGKILL");
+      else await Bun.write(resolve(this.control, "quit"), "");
+      await eventually(
+        async () =>
+          child.exitCode !== null || child.signalCode !== null
+            ? true
+            : undefined,
+        "QA application exit",
+        25_000,
+      );
+    }
+    await child.exited;
     // SIGKILL may leave managed children alive until their transport closes.
     if (force)
       for (const pid of groups) {
@@ -125,6 +132,7 @@ export class QAApplication {
       "QA child process cleanup",
       25_000,
     );
+    this.child = undefined;
   }
   async session() {
     const url = new URL((await this.cli("open", "--browser", "--url")).trim());
