@@ -359,65 +359,6 @@
   color: var(--fn-muted);
   font-size: 11px;
 }
-.desktopGrid {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 20px;
-  align-items: stretch;
-}
-.widget {
-  position: relative;
-  grid-column: span 6;
-  background: var(--fn-surface);
-  border: 1px solid var(--fn-border);
-  border-radius: var(--fn-radius);
-  box-shadow: var(--fn-shadow);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  min-height: 280px;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s,
-    transform 0.2s;
-}
-.widget:hover {
-  border-color: #c7d1ce;
-  box-shadow: 0 5px 22px #253b2f09;
-  transform: translateY(-2px);
-}
-.widget:focus-within {
-  outline: 2px solid var(--fn-focus);
-  outline-offset: 3px;
-}
-.boardWidgetCard {
-  grid-column: span 7;
-}
-.translateWidgetCard {
-  grid-column: span 5;
-}
-.notesWidgetCard {
-  grid-column: span 5;
-}
-.stocksWidgetCard {
-  grid-column: span 7;
-}
-.widgetHeader {
-  padding: 19px 22px 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.widgetHeader > div:first-child {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.widgetHeader strong {
-  font-size: 13px;
-  font-weight: 550;
-}
 .appIcon {
   width: 37px;
   height: 37px;
@@ -438,59 +379,6 @@
   width: 27px;
   height: 27px;
   border-radius: 7px;
-}
-.widgetStatus {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 10px;
-  color: var(--fn-muted);
-}
-.widgetContent {
-  padding: 22px 22px 16px;
-  flex: 1;
-}
-.widgetHeading {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 16px;
-  font-size: 12px;
-  font-weight: 500;
-}
-.widgetHeading .muted {
-  font-size: 10px;
-  font-weight: 400;
-}
-.widgetFooter {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: 0 22px;
-  padding: 13px 0;
-  border-top: 1px solid var(--fn-line);
-  font-size: 10px;
-  color: var(--fn-muted);
-}
-.widgetFooter > span:last-child {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--fn-secondary);
-  opacity: 0.65;
-}
-.widget:hover .widgetFooter > span:last-child {
-  opacity: 1;
-}
-.widgetHit {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  border-radius: inherit;
-}
-.widgetHit:focus-visible {
-  outline: none;
 }
 .miniBoard {
   display: grid;
@@ -566,9 +454,6 @@
   letter-spacing: 0.6px;
   color: var(--fn-muted);
 }
-.translationWidget {
-  padding-top: 2px;
-}
 .sourceQuote {
   font-family: Georgia, "Times New Roman", serif;
   font-size: 25px;
@@ -598,9 +483,6 @@
   font-size: 9px;
   color: var(--fn-muted);
   margin-top: 23px;
-}
-.noteWidget {
-  padding-top: 2px;
 }
 .notePreview {
   display: flex;
@@ -678,25 +560,12 @@
   height: 90px;
   color: var(--fn-green);
 }
-.stockWidget .sparkline {
-  height: 71px;
-  margin-top: -7px;
-  width: 60%;
-  margin-left: auto;
-}
 .stockFooter {
   display: flex;
   justify-content: space-between;
   color: var(--fn-muted);
   font-size: 8px;
   margin-top: 8px;
-}
-.editingWidget {
-  border-style: dashed;
-  cursor: grab;
-}
-.editingWidget:hover {
-  transform: none;
 }
 .reorderControls {
   display: flex;
@@ -706,21 +575,6 @@
   width: 25px;
   height: 26px;
   font-size: 15px;
-}
-.addWidget {
-  grid-column: span 5;
-  min-height: 180px;
-  border: 1px dashed #c9cfd4;
-  border-radius: var(--fn-radius);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: var(--fn-muted);
-}
-.addWidget:hover {
-  background: var(--fn-soft);
 }
 .emptyDesktop {
   grid-column: 1 / -1;
@@ -1995,12 +1849,6 @@
   }
 }
 @media (min-width: 1550px) {
-  .widget {
-    min-height: 310px;
-  }
-  .widgetContent {
-    padding-top: 26px;
-  }
   .miniTask {
     padding: 12px;
   }
@@ -2014,14 +1862,6 @@
   }
   .brand {
     gap: 15px;
-  }
-  .widgetHeader,
-  .widgetContent {
-    padding-left: 17px;
-    padding-right: 17px;
-  }
-  .widgetFooter {
-    margin: 0 17px;
   }
   .miniBoard {
     gap: 6px;
@@ -2090,29 +1930,11 @@
   .headingActions {
     gap: 8px;
   }
-  .desktopGrid {
-    gap: 15px;
-  }
-  .widget {
-    grid-column: 1 / -1;
-    min-height: 265px;
-  }
-  .widgetHeader,
-  .widgetContent {
-    padding-left: 21px;
-    padding-right: 21px;
-  }
-  .widgetFooter {
-    margin: 0 21px;
-  }
   .miniBoard {
     gap: 9px;
   }
   .miniTask {
     padding: 10px;
-  }
-  .addWidget {
-    grid-column: 1 / -1;
   }
   .sourceQuote {
     max-width: none;

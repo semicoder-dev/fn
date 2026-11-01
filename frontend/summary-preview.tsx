@@ -1,18 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { jsonHost, openHostSocket } from "@semicoder/fn-sdk/client";
-import {
-  widgetDimensions,
-  type WidgetSnapshot,
-  type TextValue,
-} from "@semicoder/fn-sdk/widgets";
-import type { WidgetDefinition } from "@semicoder/fn-sdk/manifest";
-import { Widget } from "@semicoder/fn-ui/widgets";
+import { type ApplicationSummary } from "@semicoder/fn-sdk/summary";
+import type { TextValue } from "@semicoder/fn-sdk/text";
+import { ApplicationRow } from "./application-row.tsx";
 import { Select, Notice, Icon, useTheme } from "@semicoder/fn-ui";
 import styles from "./platform.module.css";
 const words = {
   en: {
-    title: "Widget preview",
-    size: "Size",
+    title: "Application summary preview",
     theme: "Theme",
     language: "Language",
     state: "State",
@@ -24,8 +19,7 @@ const words = {
     failed: "Failed · cached snapshot",
   },
   "zh-CN": {
-    title: "小组件预览",
-    size: "尺寸",
+    title: "应用摘要预览",
     theme: "主题",
     language: "语言",
     state: "运行状态",
@@ -37,10 +31,10 @@ const words = {
     failed: "已停止 · 缓存快照",
   },
 };
-export function WidgetPreview({ id }: { id: string }) {
+export function SummaryPreview({ id }: { id: string }) {
   const [value, set] = useState<{
-      snapshot: WidgetSnapshot;
-      definition?: WidgetDefinition;
+      snapshot: ApplicationSummary;
+      name: TextValue;
       messages: Record<string, Record<string, string>>;
     }>(),
     [error, setError] = useState(""),
@@ -49,13 +43,11 @@ export function WidgetPreview({ id }: { id: string }) {
     [state, status] = useState("running");
   useTheme(theme);
   const t = words[locale];
-  const size = value?.definition?.size ?? "1x1";
-  const { columns, rows } = widgetDimensions(size);
   useEffect(() => {
     let stopped = false,
       socket: WebSocket | undefined;
     const refresh = () =>
-      jsonHost("/widget-preview/" + id)
+      jsonHost("/summary-preview/" + id)
         .then((v) => {
           if (!stopped) {
             set(v);
@@ -90,14 +82,11 @@ export function WidgetPreview({ id }: { id: string }) {
   const choices = (keys: (keyof typeof t)[]) =>
     keys.map((value) => ({ value, label: t[value] }));
   return (
-    <main style={{ padding: 32, maxWidth: 1100, margin: "auto" }}>
+    <main style={{ padding: 16, maxWidth: 1100, margin: "auto" }}>
       <h1>{t.title}</h1>
       <div
         style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}
       >
-        <span>
-          {t.size}: {size.replace("x", " × ")}
-        </span>
         <Select
           label={t.theme}
           value={theme}
@@ -121,32 +110,22 @@ export function WidgetPreview({ id }: { id: string }) {
         />
       </div>
       {error && <Notice>{error}</Notice>}
-      <div className={styles.grid}>
-        <section
-          className={styles.card}
-          data-size={size}
-          data-columns={columns}
-          style={
-            {
-              "--widget-columns": columns,
-              "--widget-rows": rows,
-            } as React.CSSProperties
-          }
-        >
-          <div className={styles.cardHeading}>
-            <span className={styles.appIcon}>
-              <Icon name="grid" size={21} />
-            </span>
-            <span>{value?.definition?.id ?? t.title}</span>
-          </div>
-          <div className={styles.widgetButton}>
-            {value && <Widget snapshot={value.snapshot} text={text} />}
-          </div>
-          <footer className={styles.cardFooter}>
-            <span>{t[state as keyof typeof t]}</span>
-          </footer>
-        </section>
-      </div>
+      <ApplicationRow
+        name={value ? text(value.name) : t.title}
+        icon={
+          <span className={styles.appIcon}>
+            <Icon name="grid" />
+          </span>
+        }
+        status={t[state as keyof typeof t]}
+        summary={value?.snapshot}
+        fallback=""
+        text={text}
+        running={state === "running"}
+        openLabel=""
+        trendLabel={locale === "en" ? "Trend" : "趋势"}
+        progressLabel={locale === "en" ? "Progress" : "进度"}
+      />
     </main>
   );
 }

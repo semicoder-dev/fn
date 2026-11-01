@@ -5,7 +5,7 @@ import {
   relativePath,
   type BuiltApplication,
 } from "./src/manifest.ts";
-import { parseWidget } from "./src/widgets.ts";
+import { parseSummary } from "./src/summary.ts";
 const skipped = new Set([
   "node_modules",
   ".git",
@@ -79,15 +79,21 @@ export async function inspectPlugin(directory: string) {
     ...Object.values(manifest.entries),
     ...Object.values(manifest.locales.messages),
     ...(manifest.icon ? [manifest.icon] : []),
-    ...manifest.contributes.widgets.map((w) => w.initial),
+    ...(manifest.contributes.summary?.initial
+      ? [manifest.contributes.summary.initial]
+      : []),
   ]) {
     relativePath.parse(path);
     const file = await realpath(resolve(root, path));
     if (!file.startsWith(root + sep))
       throw new Error("Entry escapes application package");
   }
-  for (const widget of manifest.contributes.widgets)
-    parseWidget(await Bun.file(resolve(root, widget.initial)).json());
+  if (manifest.contributes.summary?.initial)
+    parseSummary(
+      await Bun.file(
+        resolve(root, manifest.contributes.summary.initial),
+      ).json(),
+    );
   return { root, manifest };
 }
 export async function buildPlugin(directory: string) {
@@ -97,7 +103,10 @@ export async function buildPlugin(directory: string) {
   await rm(output, { recursive: true, force: true });
   await mkdir(output, { recursive: true });
   const roots = new Set<string>([
-    ...(pkg.files ?? ["src", "locales", "widgets", "assets"]),
+    ...(pkg.files ?? ["src", "locales", "summary", "assets"]),
+    ...(manifest.contributes.summary?.initial
+      ? [manifest.contributes.summary.initial.split("/")[0]!]
+      : []),
     ...Object.values(manifest.entries).map((p) => p.split("/")[0]!),
     ...Object.values(manifest.locales.messages).map((p) => p.split("/")[0]!),
   ]);

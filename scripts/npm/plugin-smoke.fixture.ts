@@ -8,20 +8,12 @@ const manifest = {
   manifestVersion: 1,
   id: "independent-app",
   version: "0.1.0",
-  hostApi: 1,
+  hostApi: 2,
   name: "Independent",
   entries: { backend: "src/backend.ts", page: "src/page.tsx" },
   locales: { default: "en", messages: { en: "locales/en.json" } },
   uses: [],
-  contributes: {
-    widgets: [
-      {
-        id: "summary",
-        size: "3x1",
-        initial: "widgets/summary.json",
-      },
-    ],
-  },
+  contributes: { summary: { initial: "summary/initial.json" } },
 };
 await Bun.write(join(root, "fn.app.json"), JSON.stringify(manifest));
 await Bun.write(
@@ -29,14 +21,14 @@ await Bun.write(
   JSON.stringify({
     name: "independent-app",
     type: "module",
-    files: ["src", "locales", "widgets"],
-    dependencies: { "@semicoder/fn-sdk": "0.6.0" },
+    files: ["src", "locales", "summary"],
+    dependencies: { "@semicoder/fn-sdk": "0.7.0" },
   }),
 );
 await Bun.write(join(root, "locales/en.json"), "{}");
 await Bun.write(
-  join(root, "widgets/summary.json"),
-  JSON.stringify({ version: 1, body: { type: "metric", value: 3 } }),
+  join(root, "summary/initial.json"),
+  JSON.stringify({ version: 1, metrics: [{ value: 3 }] }),
 );
 await Bun.write(
   join(root, "src/backend.ts"),
@@ -44,7 +36,7 @@ await Bun.write(
 );
 await Bun.write(
   join(root, "src/page.tsx"),
-  'import {createRoot} from "react-dom/client";import {Button} from "@semicoder/fn-ui";createRoot(document.getElementById("root")!).render(<Button>Independent</Button>);',
+  'import {createRoot} from "react-dom/client";import {Button} from "@semicoder/fn-ui";import {Summary} from "@semicoder/fn-ui/summary";createRoot(document.getElementById("root")!).render(<><Button>Independent</Button><Summary snapshot={{version:1,metrics:[{value:3}]}} /></>);',
 );
 await buildPlugin(root);
 const packed = await packPlugin(root);
@@ -53,8 +45,8 @@ const files = await new Bun.Archive(bytes).files();
 const installedManifest = manifestSchema.parse(
   JSON.parse(await files.get("fn.app.json")!.text()),
 );
-if (installedManifest.contributes.widgets[0]?.size !== "3x1")
-  throw new Error("Fixed widget size missing from independent archive");
+if (installedManifest.contributes.summary?.initial !== "summary/initial.json")
+  throw new Error("Summary definition missing from independent archive");
 if (
   !files.has("page/index.html") ||
   !(await files.get("src/backend.ts")?.text())?.includes("independent")

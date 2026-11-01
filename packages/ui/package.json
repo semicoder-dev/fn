@@ -1,6 +1,6 @@
 {
   "name": "@semicoder/fn-ui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "files": [
     "src",
@@ -8,15 +8,15 @@
   ],
   "exports": {
     ".": "./src/index.tsx",
-    "./widgets": "./src/widgets.tsx",
-    "./theme.css": "./src/theme.css"
+    "./theme.css": "./src/theme.css",
+    "./summary": "./src/summary.tsx"
   },
   "peerDependencies": {
-    "@semicoder/fn-sdk": "0.6.0",
+    "@semicoder/fn-sdk": "0.7.0",
     "react": ">=19 <20",
     "react-dom": ">=19 <20"
   },
-  "description": "Fn React UI components, themes and declarative widgets",
+  "description": "Fn React UI components, themes and application summaries",
   "homepage": "https://semicoder.dev/fn",
   "repository": {
     "type": "git",

@@ -6,7 +6,7 @@ import type {
   ResponseRequest,
   ResponseEvent,
 } from "./types.ts";
-import type { WidgetSnapshot } from "./widgets.ts";
+import type { ApplicationSummary } from "./summary.ts";
 export interface CallContext {
   signal: AbortSignal;
   requestId: string;
@@ -23,7 +23,10 @@ export interface Host {
       options: { connectionId: string; signal?: AbortSignal },
     ): AsyncIterable<ResponseEvent>;
   };
-  widgets: { publish(id: string, snapshot: WidgetSnapshot): Promise<void> };
+  application: {
+    setSummary(snapshot: ApplicationSummary | null): Promise<void>;
+    notifyDataChanged(): Promise<void>;
+  };
   ui: {
     toast(text: string, options?: { viewId?: string }): Promise<void>;
     confirm(text: string, options: { viewId: string }): Promise<boolean>;

@@ -10,7 +10,12 @@ concurrency:
   group: fn-release
   cancel-in-progress: false
 jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+    with:
+      skip_disk_image: true
   build:
+    needs: validate
     if: github.repository == 'semicoder-dev/fn'
     runs-on: macos-26
     timeout-minutes: 90
@@ -56,7 +61,7 @@ jobs:
       - name: Upload framework provenance separately from distributable files
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: fn-framework-report
+          name: fn-signed-framework-report
           path: fn/artifacts/fia/build-report.json
           if-no-files-found: error
           retention-days: 14

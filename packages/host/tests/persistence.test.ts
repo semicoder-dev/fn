@@ -5,30 +5,17 @@ import { tmpdir } from "node:os";
 import { PlatformStore } from "../src/store.ts";
 import { RelayStore, replyChunks } from "../src/relay.ts";
 import { ApplicationPlatform } from "../src/index.ts";
-import type { WidgetDefinition } from "@semicoder/fn-sdk/manifest";
-async function archive(
-  version = "0.1.0",
-  widgets: string[] = [],
-  layout: Pick<WidgetDefinition, "size"> = {
-    size: "1x1",
-  },
-) {
+async function archive(version = "0.1.0") {
   const manifest = {
     manifestVersion: 1,
     id: "test-app",
     version,
-    hostApi: 1,
+    hostApi: 2,
     name: "Test",
     entries: { backend: "src/backend.ts" },
     locales: { default: "en", messages: { en: "locales/en.json" } },
     uses: [],
-    contributes: {
-      widgets: widgets.map((id) => ({
-        id,
-        ...layout,
-        initial: "widgets/initial.json",
-      })),
-    },
+    contributes: { summary: { initial: "summary/initial.json" } },
   };
   return new Bun.Archive(
     {
@@ -40,9 +27,9 @@ async function archive(
       }),
       "src/backend.ts": "export default {};",
       "locales/en.json": "{}",
-      "widgets/initial.json": JSON.stringify({
+      "summary/initial.json": JSON.stringify({
         version: 1,
-        body: { type: "text", text: "Initial" },
+        text: "Initial",
       }),
     },
     { compress: "gzip" },
@@ -56,38 +43,6 @@ test("complete phone replies split into bounded UTF-8 records without losing Uni
   for (const chunk of chunks) {
     expect(Buffer.byteLength(JSON.stringify(chunk))).toBeLessThanOrEqual(48002);
     expect(chunk.includes("\uFFFD")).toBe(false);
-  }
-});
-test("installed widget size comes from the package and changes only with an update", async () => {
-  const root = await mkdtemp(join(tmpdir(), "fn-widget-size-"));
-  try {
-    const store = await PlatformStore.open(root);
-    await store.install(await archive("0.1.0", ["summary"], { size: "2x2" }));
-    const size = async () =>
-      (await PlatformStore.open(root)).document.installations[0]?.build.manifest
-        .contributes.widgets[0]?.size;
-    expect(await size()).toBe("2x2");
-    const platform = new ApplicationPlatform({ native: {} } as any);
-    platform.store = store;
-    const before = structuredClone(store.document.preferences);
-    await expect(
-      platform.command("preferences", {
-        theme: "dark",
-        widgetSizes: { "test-app/summary": "1x1" },
-      }),
-    ).rejects.toThrow();
-    expect(store.document.preferences).toEqual(before);
-    await store.install(await archive("0.1.1", ["summary"], { size: "3x1" }));
-    expect(await size()).toBe("3x1");
-    expect(store.document.preferences.desktop).toEqual(["test-app/summary"]);
-    await expect(
-      store.install(
-        await archive("0.1.2", ["summary"], { size: "5x1" as any }),
-      ),
-    ).rejects.toThrow();
-    expect(await size()).toBe("3x1");
-  } finally {
-    await rm(root, { recursive: true, force: true });
   }
 });
 test("application archives are validated before activation and preserve separate data", async () => {
@@ -174,17 +129,26 @@ test("phone requests remain waiting until claimed, deduplicate and persist inter
   }
 });
 
-test("updates create new widget instances without restoring deliberately removed cards", async () => {
-  const root = await mkdtemp(join(tmpdir(), "fn-widgets-"));
+test("updates keep exactly one visible application and reset only derived summary data", async () => {
+  const root = await mkdtemp(join(tmpdir(), "fn-summary-"));
   try {
     const store = await PlatformStore.open(root);
-    await store.install(await archive("0.1.0", ["one"]));
-    expect(store.document.preferences.desktop).toEqual(["test-app/one"]);
-    store.document.preferences.desktop = [];
-    await store.install(await archive("0.1.1", ["one", "two"]));
-    expect(store.document.preferences.desktop).toEqual(["test-app/two"]);
-    await store.install(await archive("0.1.2", ["one"]));
-    expect(store.document.preferences.desktop).toEqual([]);
+    const one = await store.install(await archive());
+    await store.setSummary(one, { version: 1, text: "Live" }, () => {});
+    expect(store.document.preferences.desktop).toEqual(["test-app"]);
+    store.document.preferences.desktop = ["missing", "test-app", "test-app"];
+    const two = await store.install(await archive("0.1.1"));
+    expect(store.document.preferences.desktop).toEqual(["test-app"]);
+    expect((await store.summary(two))?.snapshot.text).toBe("Initial");
+    const platform = new ApplicationPlatform({
+      native: {
+        statusItem: { setMenu: async () => {} },
+        application: { setAppearance: async () => {} },
+      },
+    } as any);
+    platform.store = store;
+    await platform.command("preferences", { desktop: [] });
+    expect(store.document.preferences.desktop).toEqual(["test-app"]);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -5,12 +5,17 @@ import {
   relativePath,
   type BuiltApplication,
 } from "@semicoder/fn-sdk/manifest";
-import { parseWidget } from "@semicoder/fn-sdk/widgets";
-import type {
-  Preferences,
-  InstalledApplication,
-} from "@semicoder/fn-sdk/types";
-export async function atomicJSON(path: string, value: unknown) {
+import {
+  parseSummary,
+  type ApplicationSummary,
+  type SummaryState,
+} from "@semicoder/fn-sdk/summary";
+import type { Preferences } from "@semicoder/fn-sdk/types";
+export async function atomicJSON(
+  path: string,
+  value: unknown,
+  beforeCommit?: () => void,
+) {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
   const temporary = path + "." + crypto.randomUUID() + ".tmp";
   try {
@@ -21,6 +26,7 @@ export async function atomicJSON(path: string, value: unknown) {
     } finally {
       await file.close();
     }
+    beforeCommit?.();
     await rename(temporary, path);
   } finally {
     await rm(temporary, { force: true });
@@ -44,7 +50,6 @@ export interface Installation {
 interface Document {
   preferences: Preferences;
   installations: Installation[];
-  widgets: Record<string, InstalledApplication["widgets"]>;
   hostId: string;
   markets: { id: string; name: string; url: string }[];
   notifications?: {
@@ -57,6 +62,7 @@ interface Document {
 export class PlatformStore {
   document: Document;
   #writes = Promise.resolve();
+  #summaryWrites = new Map<string, Promise<void>>();
   constructor(
     readonly root: string,
     document?: Document,
@@ -65,7 +71,6 @@ export class PlatformStore {
       hostId: crypto.randomUUID(),
       preferences: { locale: "zh-CN", theme: "system", desktop: [], menu: [] },
       installations: [],
-      widgets: {},
       markets: [
         {
           id: "official",
@@ -117,9 +122,11 @@ export class PlatformStore {
       )
         throw new Error("Invalid application locale");
     }
-    for (const widget of manifest.contributes.widgets)
-      parseWidget(
-        await Bun.file(await inside(directory, widget.initial)).json(),
+    if (manifest.contributes.summary?.initial)
+      parseSummary(
+        await Bun.file(
+          await inside(directory, manifest.contributes.summary.initial),
+        ).json(),
       );
     return { format: 1, manifest, backend: raw.backend, page: raw.page };
   }
@@ -198,52 +205,98 @@ export class PlatformStore {
       await rm(staging, { recursive: true, force: true });
     }
   }
+  desktopOrder(order = this.document.preferences.desktop) {
+    const ids = this.document.installations.map((i) => i.instanceId);
+    return [...new Set([...order.filter((id) => ids.includes(id)), ...ids])];
+  }
+  private summaryPath(id: string) {
+    const key = new Bun.CryptoHasher("sha256").update(id).digest("hex");
+    return resolve(this.root, "summaries", key + ".json");
+  }
+  private queueSummary(id: string, action: () => Promise<void>) {
+    const pending = (this.#summaryWrites.get(id) ?? Promise.resolve())
+      .catch(() => {})
+      .then(action);
+    this.#summaryWrites.set(id, pending);
+    void pending
+      .finally(() => {
+        if (this.#summaryWrites.get(id) === pending)
+          this.#summaryWrites.delete(id);
+      })
+      .catch(() => {});
+    return pending;
+  }
+  async summary(installation: Installation): Promise<SummaryState | undefined> {
+    if (
+      installation.build.manifest.hostApi !== 2 ||
+      !installation.build.manifest.contributes.summary
+    )
+      return;
+    try {
+      const cached = await Bun.file(
+        this.summaryPath(installation.instanceId),
+      ).json();
+      if (
+        cached.installation === installation.directory &&
+        cached.snapshot !== null &&
+        Number.isFinite(cached.updatedAt)
+      )
+        return {
+          snapshot: parseSummary(cached.snapshot),
+          updatedAt: cached.updatedAt,
+        };
+    } catch {
+      /* Missing or corrupt derived cache falls back to the installed initial summary. */
+    }
+    const initial = installation.build.manifest.contributes.summary.initial;
+    if (initial) {
+      try {
+        return {
+          snapshot: parseSummary(
+            await Bun.file(
+              await inside(installation.directory, initial),
+            ).json(),
+          ),
+        };
+      } catch {
+        /* A broken initial summary must not prevent opening or managing the app. */
+      }
+    }
+  }
+  setSummary(
+    installation: Installation,
+    input: ApplicationSummary | null,
+    assertCurrent: () => void,
+  ) {
+    const snapshot = input === null ? null : parseSummary(input);
+    return this.queueSummary(installation.instanceId, async () => {
+      assertCurrent();
+      await atomicJSON(
+        this.summaryPath(installation.instanceId),
+        {
+          installation: installation.directory,
+          snapshot,
+          updatedAt: Date.now(),
+        },
+        assertCurrent,
+      );
+    });
+  }
+  clearSummary(id: string) {
+    return this.queueSummary(id, () =>
+      rm(this.summaryPath(id), { force: true }),
+    );
+  }
   async register(value: Installation) {
-    // Widget definitions and translations always come from the installed package.
-    const widgets: InstalledApplication["widgets"] = {};
-    for (const widget of value.build.manifest.contributes.widgets)
-      widgets[widget.id] = {
-        snapshot: parseWidget(
-          await Bun.file(await inside(value.directory, widget.initial)).json(),
-        ),
-        updatedAt: Date.now(),
-      };
-    for (const id of Object.keys(widgets))
-      if (this.document.widgets[value.instanceId]?.[id])
-        widgets[id] = this.document.widgets[value.instanceId]![id]!;
     const index = this.document.installations.findIndex(
       (i) => i.instanceId === value.instanceId,
     );
+    await this.clearSummary(value.instanceId);
     if (index < 0) {
       this.document.installations.push(value);
-      this.document.preferences.desktop.push(
-        ...(value.build.manifest.contributes.widgets.length
-          ? value.build.manifest.contributes.widgets.map(
-              (w) => value.instanceId + "/" + w.id,
-            )
-          : [value.instanceId]),
-      );
       this.document.preferences.menu.push(value.instanceId);
-    } else {
-      const previous = this.document.installations[index]!;
-      const keys = (installation: Installation) =>
-        installation.build.manifest.contributes.widgets.length
-          ? installation.build.manifest.contributes.widgets.map(
-              (w) => installation.instanceId + "/" + w.id,
-            )
-          : [installation.instanceId];
-      const oldKeys = keys(previous),
-        newKeys = keys(value);
-      this.document.preferences.desktop =
-        this.document.preferences.desktop.filter(
-          (key) => !oldKeys.includes(key) || newKeys.includes(key),
-        );
-      this.document.preferences.desktop.push(
-        ...newKeys.filter((key) => !oldKeys.includes(key)),
-      );
-      this.document.installations[index] = value;
-    }
-    this.document.widgets[value.instanceId] = widgets;
+    } else this.document.installations[index] = value;
+    this.document.preferences.desktop = this.desktopOrder();
     await this.save();
   }
   async locales(installation: Installation) {

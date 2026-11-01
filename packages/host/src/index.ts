@@ -7,8 +7,8 @@ import {
   type InstalledApplication,
   type ApplicationState,
 } from "@semicoder/fn-sdk/types";
-import { parseWidget } from "@semicoder/fn-sdk/widgets";
-import { widgetDefinitionSchema } from "@semicoder/fn-sdk/manifest";
+import { parseSummary } from "@semicoder/fn-sdk/summary";
+import { textValue } from "@semicoder/fn-sdk/text";
 import { encodeSSE } from "@semicoder/fn-sdk/sse";
 import { PlatformStore, inside, type Installation } from "./store.ts";
 import { Models } from "./models.ts";
@@ -133,6 +133,7 @@ export class ApplicationPlatform {
     await this.models.open();
     this.store.document.installations =
       this.store.document.installations.filter((i) => !i.development);
+    this.store.document.preferences.desktop = this.store.desktopOrder();
     await this.store.save();
     for (const installation of this.store.document.installations)
       this.names.set(
@@ -239,7 +240,8 @@ export class ApplicationPlatform {
         runId: this.runs.get(i.instanceId)?.id,
         error: this.errors.get(i.instanceId),
         busy: this.busy(i.instanceId),
-        widgets: this.store.document.widgets[i.instanceId] ?? {},
+        summary: await this.store.summary(i),
+        requiresUpdate: i.build.manifest.hostApi !== 2,
         messages: await this.store.locales(i),
       })),
     );
@@ -321,6 +323,13 @@ export class ApplicationPlatform {
     if (this.installing.has(id))
       throw new FnError("busy", "Application update is in progress");
     const installation = this.installation(id);
+    if (installation.build.manifest.hostApi !== 2)
+      throw new FnError(
+        "unsupported_host_api",
+        this.store.document.preferences.locale === "zh-CN"
+          ? "应用需要更新：请安装支持当前 Fn 的新版应用包。"
+          : "Application update required. Install a package built for this Fn API.",
+      );
     let run = this.runs.get(id);
     if (!run) {
       let accept!: () => void, decline!: (error: unknown) => void;
@@ -948,26 +957,44 @@ export class ApplicationPlatform {
           throw error;
         }
       }
-      if (path === "/widgets/publish") {
+      if (path === "/apps/summary" || path === "/apps/data-changed") {
         if (!identity.run || identity.view)
           throw new FnError("forbidden", "Backend credentials required");
-        this.allow(identity.run, "widgets.publish");
-        const { id, snapshot } = await body();
-        if (
-          !this.installation(
-            identity.run.instanceId,
-          ).build.manifest.contributes.widgets.some((w) => w.id === id)
-        )
-          throw new Error("Widget not declared");
-        this.store.document.widgets[identity.run.instanceId]![id] = {
-          snapshot: parseWidget(snapshot),
-          updatedAt: Date.now(),
+        const run = identity.run;
+        const assertCurrent = () => {
+          if (
+            this.runs.get(run.instanceId) !== run ||
+            run.controller.signal.aborted ||
+            run.state === "stopping"
+          )
+            throw new FnError("stale", "Application run expired");
         };
-        await this.store.save();
-        for (const view of this.views.values())
-          if (view.instanceId === identity.run.instanceId)
-            send(view.socket, { type: "dataChanged" });
-        this.changed();
+        if (path === "/apps/summary") {
+          this.allow(run, "application.summary");
+          const installation = this.installation(run.instanceId);
+          if (!installation.build.manifest.contributes.summary)
+            throw new Error("Summary not declared");
+          const { snapshot } = z
+            .strictObject({
+              snapshot: z
+                .unknown()
+                .refine((v) => v !== undefined, "Snapshot required"),
+            })
+            .parse(await body());
+          await this.store.setSummary(
+            installation,
+            snapshot === null ? null : parseSummary(snapshot),
+            assertCurrent,
+          );
+          // Summary refreshes do not touch the platform file, menu or app views.
+          for (const socket of this.admins) send(socket, { type: "changed" });
+        } else {
+          z.strictObject({}).parse(await body());
+          assertCurrent();
+          for (const view of this.views.values())
+            if (view.instanceId === run.instanceId && view.runId === run.id)
+              send(view.socket, { type: "dataChanged" });
+        }
         return json(null);
       }
       if (path === "/relay/reply") {
@@ -1113,8 +1140,8 @@ export class ApplicationPlatform {
           "forbidden",
           "Host management requires a host session",
         );
-      if (path.startsWith("/widget-preview/")) {
-        const value = this.previews.get(path.slice(16));
+      if (path.startsWith("/summary-preview/")) {
+        const value = this.previews.get(path.slice(17));
         if (!value) throw new FnError("not_found", "Preview ended");
         return json(value);
       }
@@ -1178,7 +1205,7 @@ export class ApplicationPlatform {
       this.changed();
       return null;
     }
-    if (action === "widget-preview") {
+    if (action === "summary-preview") {
       const id =
         typeof input.id === "string" && this.previews.has(input.id)
           ? input.id
@@ -1186,22 +1213,19 @@ export class ApplicationPlatform {
       if (this.previews.size >= 32 && !this.previews.has(id))
         throw new FnError("busy", "Too many previews");
       this.previews.set(id, {
-        snapshot: parseWidget(input.snapshot),
-        definition:
-          input.definition === undefined
-            ? undefined
-            : widgetDefinitionSchema.parse(input.definition),
+        snapshot: parseSummary(input.snapshot),
+        name: textValue.parse(input.name ?? "Application"),
         messages: z
           .record(z.string(), z.record(z.string(), z.string()))
           .parse(input.messages ?? {}),
       });
       this.changed();
-      const url = this.context.browserURL("/?widget-preview=" + id);
+      const url = this.context.browserURL("/?summary-preview=" + id);
       if (input.openBrowser === true)
         await this.context.native.system.openURL({ url });
       return { id, url };
     }
-    if (action === "widget-preview-end") {
+    if (action === "summary-preview-end") {
       this.previews.delete(input.id);
       this.changed();
       return null;
@@ -1245,19 +1269,12 @@ export class ApplicationPlatform {
             .optional(),
         })
         .parse(input);
-      for (const key of ["desktop", "menu"] as const)
-        if (update[key])
-          update[key] = [...new Set(update[key])].filter((id) =>
-            this.store.document.installations.some((i) =>
-              key === "menu"
-                ? i.instanceId === id
-                : !i.build.manifest.contributes.widgets.length
-                  ? i.instanceId === id
-                  : i.build.manifest.contributes.widgets.some(
-                      (w) => i.instanceId + "/" + w.id === id,
-                    ),
-            ),
-          );
+      if (update.desktop)
+        update.desktop = this.store.desktopOrder(update.desktop);
+      if (update.menu)
+        update.menu = [...new Set(update.menu)].filter((id) =>
+          this.store.document.installations.some((i) => i.instanceId === id),
+        );
       Object.assign(this.store.document.preferences, update);
       await this.store.save();
       for (const view of this.views.values())
@@ -1366,12 +1383,10 @@ export class ApplicationPlatform {
       this.store.document.installations =
         this.store.document.installations.filter((i) => i.instanceId !== id);
       this.store.document.preferences.desktop =
-        this.store.document.preferences.desktop.filter(
-          (x) => x !== id && !x.startsWith(id + "/"),
-        );
+        this.store.document.preferences.desktop.filter((x) => x !== id);
       this.store.document.preferences.menu =
         this.store.document.preferences.menu.filter((x) => x !== id);
-      delete this.store.document.widgets[id];
+      await this.store.clearSummary(id);
       await this.store.save();
       this.changed();
       return null;

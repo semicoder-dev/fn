@@ -10,14 +10,14 @@ async function archive(id: string, version = "0.1.0") {
     manifestVersion: 1,
     id,
     version,
-    hostApi: 1,
+    hostApi: 2,
     name: "Runtime test",
     entries: { backend: "src/backend.ts" },
     locales: { default: "en", messages: { en: "locales/en.json" } },
-    uses: [],
-    contributes: { widgets: [] },
+    uses: ["application.summary"],
+    contributes: { summary: {} },
   };
-  const source = `import {defineBackend} from ${JSON.stringify(join(root, "packages/sdk/src/backend.ts"))};import {defineContract,method,stream,z} from ${JSON.stringify(join(root, "packages/sdk/src/contract.ts"))};export default defineBackend({api:defineContract({echo:method({input:z.string(),output:z.string()}),wait:stream({input:z.object({}),chunk:z.number()})}),setup({host}){return {handlers:{echo:(v)=>v,wait:async function*(_,ctx){try{for(let i=0;i<100;i++){ctx.signal.throwIfAborted();yield i;await Bun.sleep(10);}}finally{await Bun.write(host.paths.data+"/cancelled","yes");}}},stop:()=>Bun.write(host.paths.data+"/stopped","yes")};}});`;
+  const source = `import {defineBackend} from ${JSON.stringify(join(root, "packages/sdk/src/backend.ts"))};import {defineContract,method,stream,z} from ${JSON.stringify(join(root, "packages/sdk/src/contract.ts"))};export default defineBackend({api:defineContract({echo:method({input:z.string(),output:z.string()}),wait:stream({input:z.object({}),chunk:z.number()})}),async setup({host}){await host.application.setSummary({version:1,text:"Started"});return {handlers:{echo:async(v)=>{await host.application.setSummary({version:1,text:v});await host.application.notifyDataChanged();return v;},wait:async function*(_,ctx){try{for(let i=0;i<100;i++){ctx.signal.throwIfAborted();yield i;await Bun.sleep(10);}}finally{await Bun.write(host.paths.data+"/cancelled","yes");}}},stop:()=>Bun.write(host.paths.data+"/stopped","yes")};}});`;
   return new Bun.Archive(
     {
       "fn.app.json": JSON.stringify(manifest),
@@ -144,9 +144,20 @@ test("real Bun apps isolate runs, reject stale views, cancel view streams, and p
       socket.onopen = () => res();
       socket.onerror = rej;
     });
+    const notifications: string[] = [];
+    socket.onmessage = (event) =>
+      notifications.push(JSON.parse(event.data).type);
     expect(
       (await request("/apps/methods/echo", "real process", view.token)).value,
     ).toBe("real process");
+    expect(
+      (await platform.snapshot()).applications.find(
+        (a) => a.instanceId === "test-one",
+      )?.summary?.snapshot.text,
+    ).toBe("real process");
+    for (let i = 0; i < 30 && !notifications.includes("dataChanged"); i++)
+      await Bun.sleep(10);
+    expect(notifications).toContain("dataChanged");
     expect(
       (await request("/platform/state", {}, view.token)).response.status,
     ).toBe(403);

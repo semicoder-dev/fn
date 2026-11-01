@@ -1,17 +1,15 @@
+import type { TextValue } from "@semicoder/fn-sdk/text";
 import { createRequire } from "node:module";
 import { watch } from "node:fs";
 import { resolve, join } from "node:path";
 import { mkdir } from "node:fs/promises";
-import {
-  manifestSchema,
-  type WidgetDefinition,
-} from "@semicoder/fn-sdk/manifest";
+import { manifestSchema } from "@semicoder/fn-sdk/manifest";
 
 export default async function plugin(context: { args: string[]; cwd: string }) {
   const [action, directory = ".", ...options] = context.args;
   if (!action || context.args.includes("--help")) {
     console.log(
-      "fn plugin init|check|build|pack <directory>\nfn plugin dev <directory> --browser [--url]\nfn plugin widget <snapshot.json> [--preview] [--url]",
+      "fn plugin init|check|build|pack <directory>\nfn plugin dev <directory> --browser [--url]\nfn plugin summary <snapshot.json> [--preview] [--url]",
     );
     return 0;
   }
@@ -31,9 +29,9 @@ export default async function plugin(context: { args: string[]; cwd: string }) {
         private: true,
         type: "module",
         scripts: { check: "tsc --noEmit", build: "fn plugin build ." },
-        dependencies: { "@semicoder/fn-sdk": "0.6.0" },
+        dependencies: { "@semicoder/fn-sdk": "0.7.0" },
         devDependencies: {
-          "@semicoder/fn-ui": "0.1.0",
+          "@semicoder/fn-ui": "0.2.0",
           react: "19.2.7",
           "react-dom": "19.2.7",
           "@types/bun": "1.4.0",
@@ -46,7 +44,7 @@ export default async function plugin(context: { args: string[]; cwd: string }) {
         manifestVersion: 1,
         id: name,
         version: "0.1.0",
-        hostApi: 1,
+        hostApi: 2,
         name: { key: "name" },
         entries: { backend: "src/backend.ts", page: "src/page.tsx" },
         locales: {
@@ -54,7 +52,7 @@ export default async function plugin(context: { args: string[]; cwd: string }) {
           messages: { en: "locales/en.json", "zh-CN": "locales/zh-CN.json" },
         },
         uses: [],
-        contributes: { widgets: [] },
+        contributes: {},
       },
       "locales/en.json": {
         name: "My application",
@@ -98,11 +96,11 @@ export default async function plugin(context: { args: string[]; cwd: string }) {
     );
     return 0;
   }
-  if (action === "widget") {
-    const { parseWidget } = await import("@semicoder/fn-sdk/widgets");
-    parseWidget(await Bun.file(root).json());
+  if (action === "summary") {
+    const { parseSummary } = await import("@semicoder/fn-sdk/summary");
+    parseSummary(await Bun.file(root).json());
     if (!options.includes("--preview")) {
-      console.log("Widget valid");
+      console.log("Summary valid");
       return 0;
     }
     const app = (
@@ -123,14 +121,12 @@ export default async function plugin(context: { args: string[]; cwd: string }) {
     });
     let folder = resolve(root, "..");
     const messages: Record<string, unknown> = {};
-    let definition: WidgetDefinition | undefined;
+    let name: TextValue = "Application";
     while (folder !== resolve(folder, "..")) {
       const manifest = Bun.file(join(folder, "fn.app.json"));
       if (await manifest.exists()) {
         const value = manifestSchema.parse(await manifest.json());
-        definition = value.contributes.widgets.find(
-          (w) => resolve(folder, w.initial) === root,
-        );
+        name = value.name;
         for (const [locale, path] of Object.entries(value.locales.messages))
           messages[locale] = await Bun.file(
             join(folder, path as string),
@@ -146,11 +142,11 @@ export default async function plugin(context: { args: string[]; cwd: string }) {
           try {
             const first = !id;
             const result = await app.call("platform.command", {
-              action: "widget-preview",
+              action: "summary-preview",
               input: {
                 id,
-                snapshot: parseWidget(await Bun.file(root).json()),
-                definition,
+                snapshot: parseSummary(await Bun.file(root).json()),
+                name,
                 messages,
                 openBrowser: first && !options.includes("--url"),
               },
@@ -171,7 +167,7 @@ export default async function plugin(context: { args: string[]; cwd: string }) {
       process.off("SIGTERM", stop);
       if (id)
         await app.call("platform.command", {
-          action: "widget-preview-end",
+          action: "summary-preview-end",
           input: { id },
         });
     }

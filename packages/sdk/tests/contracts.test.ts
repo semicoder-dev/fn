@@ -1,52 +1,40 @@
 import { expect, test } from "bun:test";
-import { manifestSchema, widgetDefinitionSchema } from "../src/manifest.ts";
-import { parseWidget, widgetDimensions } from "../src/widgets.ts";
+import { manifestSchema } from "../src/manifest.ts";
+import { parseSummary } from "../src/summary.ts";
 import { readSSE } from "../src/sse.ts";
 const manifest = {
   manifestVersion: 1,
   id: "example-app",
   version: "0.1.0",
-  hostApi: 1,
+  hostApi: 2,
   name: { key: "name" },
   entries: {},
   locales: { default: "en", messages: { en: "locales/en.json" } },
   uses: [],
-  contributes: { widgets: [] },
+  contributes: {},
 };
-test("widget declarations require one fixed grid size within bounds", () => {
-  const widget = {
-    id: "summary",
-    size: "2x2",
-    initial: "widgets/summary.json",
+test("summary declarations require explicit capability, backend and new host API", () => {
+  const dynamic = {
+    ...manifest,
+    entries: { backend: "src/backend.ts" },
+    uses: ["application.summary"],
+    contributes: { summary: { initial: "summary/initial.json" } },
   };
-  expect(widgetDefinitionSchema.parse(widget).size).toBe("2x2");
-  expect(widgetDimensions("3x2")).toEqual({ columns: 3, rows: 2 });
-  expect(widgetDefinitionSchema.parse({ ...widget, size: "4x4" }).size).toBe(
-    "4x4",
-  );
-  for (const size of [
-    undefined,
-    null,
-    [],
-    ["1x1"],
-    ["1x1", "2x2"],
-    "0x1",
-    "1x0",
-    "5x1",
-    "1x5",
-    "1.5x1",
-    "2×2",
-    "small",
+  expect(manifestSchema.parse(dynamic).hostApi).toBe(2);
+  for (const invalid of [
+    { ...dynamic, hostApi: 1 },
+    { ...dynamic, entries: {} },
+    { ...dynamic, contributes: {} },
+    { ...dynamic, contributes: { summary: { initial: "../secret" } } },
+    { ...dynamic, contributes: { summary: { size: "2x2" } } },
+    { ...manifest, contributes: { widgets: [] } },
+    { ...dynamic, uses: ["widgets.publish"] },
   ])
-    expect(() =>
-      manifestSchema.parse({
-        ...manifest,
-        contributes: { widgets: [{ ...widget, size }] },
-      }),
-    ).toThrow();
-  expect(() =>
-    widgetDefinitionSchema.parse({ ...widget, sizes: ["1x1", "2x2"] }),
-  ).toThrow();
+    expect(() => manifestSchema.parse(invalid)).toThrow();
+  expect(
+    manifestSchema.parse({ ...manifest, contributes: { summary: {} } })
+      .contributes.summary,
+  ).toEqual({});
 });
 test("manifest permits a status-only application and rejects unsafe paths and chat without a backend", () => {
   expect(manifestSchema.parse(manifest).entries).toEqual({});
@@ -84,26 +72,37 @@ test("cancellation closes an idle SSE reader without waiting for another network
   await expect(pending).rejects.toThrow("cancelled by caller");
   expect(cancelled).toBe(true);
 });
-test("widgets reject code, unsafe content, excessive depth and unbounded values", () => {
+test("summaries bound content and reject layout, code, invalid numeric values and unknown fields", () => {
   expect(
-    parseWidget({
+    parseSummary({
       version: 1,
-      body: { type: "metric", value: 12, label: { key: "count" } },
-    }).body.type,
-  ).toBe("metric");
-  for (const body of [
-    { type: "react", component: "App" },
-    { type: "text", text: "ok", html: "<script>" },
-    { type: "progress", value: 2 },
+      metrics: [{ value: 12, label: { key: "count" } }],
+    }).metrics?.[0]?.value,
+  ).toBe(12);
+  for (const fields of [
+    { html: "<script>" },
+    { body: { type: "column", children: [] } },
+    { progress: { value: 2 } },
+    { metrics: Array.from({ length: 4 }, () => ({ value: 1 })) },
+    { badges: Array.from({ length: 3 }, () => ({ text: "ok" })) },
+    { sparkline: { values: [NaN, 2] } },
+    { sparkline: { values: [1] } },
+    { sparkline: { values: Array(121).fill(1) } },
+    { text: "x".repeat(4001) },
+    { metrics: [{ value: Infinity }] },
     {
-      type: "list",
-      children: Array.from({ length: 33 }, () => ({ type: "divider" })),
+      text: {
+        key: "text",
+        args: Object.fromEntries(
+          Array.from({ length: 40 }, (_, i) => [String(i), "中".repeat(500)]),
+        ),
+      },
     },
   ])
-    expect(() => parseWidget({ version: 1, body })).toThrow();
-  let body: any = { type: "text", text: "hello" };
-  for (let i = 0; i < 10; i++) body = { type: "column", children: [body] };
-  expect(() => parseWidget({ version: 1, body })).toThrow();
+    expect(() => parseSummary({ version: 1, ...fields })).toThrow();
+  expect(parseSummary({ version: 1, text: "<b>plain text</b>" }).text).toBe(
+    "<b>plain text</b>",
+  );
 });
 test("SSE decodes split UTF-8 and CRLF frames and detects truncated frames", async () => {
   const bytes = new TextEncoder().encode(

@@ -4,15 +4,28 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      skip_disk_image:
+        type: boolean
+        default: false
+    outputs:
+      filename:
+        value: ${{ jobs.build.outputs.filename }}
+      ui_filename:
+        value: ${{ jobs.build.outputs.ui_filename }}
 permissions:
   contents: read
 concurrency:
-  group: fn-ci-${{ github.ref }}
+  group: fn-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build:
     runs-on: macos-26
     timeout-minutes: 90
+    outputs:
+      filename: ${{ steps.metadata.outputs.filename }}
+      ui_filename: ${{ steps.metadata.outputs.ui_filename }}
     defaults:
       run:
         working-directory: fn
@@ -36,7 +49,10 @@ jobs:
       - name: Build framework from this source revision
         run: bun run framework:prepare
       - run: bun run check && bun run test
-      - name: Verify public SDK archive and standalone plugin builds
+      - name: Validate SDK and UI package versions
+        id: metadata
+        run: bun run npm:check
+      - name: Verify SDK archive and standalone application builds
         run: |
           npm install --global npm@11.19.0
           bun run npm:check
@@ -45,6 +61,7 @@ jobs:
       - name: Verify extractable framework and independent consumer
         run: bun run framework:verify
       - name: Build and verify test disk image
+        if: ${{ !inputs.skip_disk_image }}
         run: bun run build --dmg
       - name: Upload framework provenance separately from distributable files
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -54,6 +71,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !inputs.skip_disk_image }}
         with:
           name: fn-test-mac-arm64
           path: |
@@ -63,3 +81,10 @@ jobs:
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fn-sdk-npm
+          path: fn/artifacts/npm/*.tgz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14

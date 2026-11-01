@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { textValue, widgetSizeSchema } from "./widgets.ts";
+import { textValue } from "./text.ts";
 export const relativePath = z
   .string()
   .min(1)
@@ -14,18 +14,15 @@ export const relativePath = z
     "Expected a package-relative path",
   );
 export const appId = z.string().regex(/^[a-z][a-z0-9._-]{2,99}$/);
-export const widgetDefinitionSchema = z.strictObject({
-  id: appId,
-  size: widgetSizeSchema,
-  initial: relativePath,
+export const summaryDefinitionSchema = z.strictObject({
+  initial: relativePath.optional(),
 });
-export type WidgetDefinition = z.infer<typeof widgetDefinitionSchema>;
 export const manifestSchema = z
   .strictObject({
     manifestVersion: z.literal(1),
     id: appId,
     version: z.string().regex(/^\d+\.\d+\.\d+$/),
-    hostApi: z.literal(1),
+    hostApi: z.literal(2),
     name: textValue,
     description: textValue.optional(),
     icon: relativePath
@@ -43,10 +40,12 @@ export const manifestSchema = z
       messages: z.record(z.string(), relativePath),
     }),
     uses: z
-      .array(z.enum(["models.responses", "widgets.publish", "chat.receive"]))
+      .array(
+        z.enum(["models.responses", "application.summary", "chat.receive"]),
+      )
       .max(3),
     contributes: z.strictObject({
-      widgets: z.array(widgetDefinitionSchema).max(4).default([]),
+      summary: summaryDefinitionSchema.optional(),
       chat: z.strictObject({ id: appId, name: textValue }).optional(),
     }),
   })
@@ -60,10 +59,13 @@ export const manifestSchema = z
         message: "Chat requires a backend and chat.receive",
       });
     if (
-      new Set(v.contributes.widgets.map((w) => w.id)).size !==
-      v.contributes.widgets.length
+      v.uses.includes("application.summary") &&
+      (!v.entries.backend || !v.contributes.summary)
     )
-      c.addIssue({ code: "custom", message: "Duplicate widget id" });
+      c.addIssue({
+        code: "custom",
+        message: "Dynamic summary requires a backend and contributes.summary",
+      });
     if (!v.locales.messages[v.locales.default])
       c.addIssue({ code: "custom", message: "Missing default locale" });
   });

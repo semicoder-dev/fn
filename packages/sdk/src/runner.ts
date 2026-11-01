@@ -61,9 +61,12 @@ const host: Host = {
       yield* readResponses(response, signal);
     },
   },
-  widgets: {
-    publish: async (id, snapshot) => {
-      await request("/widgets/publish", { id, snapshot });
+  application: {
+    setSummary: async (snapshot) => {
+      await request("/apps/summary", { snapshot });
+    },
+    notifyDataChanged: async () => {
+      await request("/apps/data-changed", {});
     },
   },
   ui: {

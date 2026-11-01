@@ -1,7 +1,8 @@
-import { WidgetPreview } from "./widget-preview.tsx";
+import { SummaryPreview } from "./summary-preview.tsx";
+import { ApplicationRow } from "./application-row.tsx";
 import messagesEn from "./locales/en.json";
 import messagesZh from "./locales/zh-CN.json";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { native } from "@semicoder/fia/client";
 import { jsonHost, openHostSocket } from "@semicoder/fn-sdk/client";
@@ -12,7 +13,7 @@ import type {
   Connection,
   RelayMessage,
 } from "@semicoder/fn-sdk/types";
-import { widgetDimensions, type TextValue } from "@semicoder/fn-sdk/widgets";
+import type { TextValue } from "@semicoder/fn-sdk/text";
 import {
   Button,
   Icon,
@@ -24,7 +25,6 @@ import {
   Notice,
   Menu,
 } from "@semicoder/fn-ui";
-import { Widget } from "@semicoder/fn-ui/widgets";
 import s from "./desktop.module.css";
 import p from "./platform.module.css";
 type State = {
@@ -75,6 +75,7 @@ function AppIcon({ id, icon }: { id: string; icon?: string }) {
 }
 function Desktop() {
   const [state, setState] = useState<State>();
+  const refreshSequence = useRef(0);
   const [error, setError] = useState("");
   const [appMenu, setAppMenu] = useState<string>();
   const [panel, setPanel] = useState<string>();
@@ -100,11 +101,15 @@ function Desktop() {
     document.documentElement.lang = state?.preferences.locale ?? "zh-CN";
   }, [state?.preferences.locale]);
   const refresh = useCallback(async () => {
+    const sequence = ++refreshSequence.current;
     try {
-      setState(await jsonHost("/state"));
-      setError("");
+      const next = await jsonHost("/state");
+      if (sequence === refreshSequence.current) {
+        setState(next);
+        setError("");
+      }
     } catch (e) {
-      setError(String(e));
+      if (sequence === refreshSequence.current) setError(String(e));
     }
   }, []);
   const command = async (action: string, input: unknown = {}) => {
@@ -222,8 +227,9 @@ function Desktop() {
     const listener = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setPanel("search");
-        setQuery("");
+        document
+          .querySelector<HTMLInputElement>("#application-search")
+          ?.focus();
       }
     };
     document.addEventListener("keydown", listener);
@@ -236,22 +242,18 @@ function Desktop() {
         .catch((e) => setToast(String(e)));
   }, [panel, tab, state?.connections.length]);
   const prefs = (input: Partial<Preferences>) => act("preferences", input);
-  const pin = (app: InstalledApplication, key: "desktop" | "menu") => {
-    const list = state!.preferences[key];
-    const entries =
-      key === "menu" || !app.manifest.contributes.widgets.length
-        ? [app.instanceId]
-        : app.manifest.contributes.widgets.map(
-            (w) => app.instanceId + "/" + w.id,
-          );
+  const pin = (app: InstalledApplication) => {
+    const list = state!.preferences.menu;
     prefs({
-      [key]: entries.every((id) => list.includes(id))
-        ? list.filter((id) => !entries.includes(id))
-        : [...new Set([...list, ...entries])],
+      menu: list.includes(app.instanceId)
+        ? list.filter((id) => id !== app.instanceId)
+        : [...list, app.instanceId],
     });
   };
   const reorder = (source: string, target: string) => {
     const list = [...state!.preferences.desktop];
+    if (source === target || !list.includes(source) || !list.includes(target))
+      return;
     list.splice(list.indexOf(source), 1);
     list.splice(list.indexOf(target), 0, source);
     prefs({ desktop: list });
@@ -268,24 +270,24 @@ function Desktop() {
   const running = applications.filter(
     (a) => !["closed", "failed"].includes(a.state),
   );
-  const desktop = state.preferences.desktop.flatMap((key) => {
-    const [id, widgetId] = key.split("/");
+  const ordered = [
+    ...new Set([
+      ...state.preferences.desktop,
+      ...applications.map((a) => a.instanceId),
+    ]),
+  ].flatMap((id) => {
     const app = applications.find((a) => a.instanceId === id);
-    if (!app) return [];
-    const definition = app.manifest.contributes.widgets.find(
-      (w) => w.id === widgetId,
-    );
-    const size = definition?.size ?? "1x1";
-    return [
-      {
-        key,
-        app,
-        widget: widgetId ? app.widgets[widgetId] : undefined,
-        size,
-        ...widgetDimensions(size),
-      },
-    ];
+    return app ? [app] : [];
   });
+  const desktop = ordered.filter((app) =>
+    (
+      name(app) +
+      " " +
+      (app.manifest.description ? text(app.manifest.description, app) : "")
+    )
+      .toLowerCase()
+      .includes(query.trim().toLowerCase()),
+  );
   const waiting = state.relay.messages.filter(
     (m) => m.status === "waiting",
   ).length;
@@ -351,151 +353,162 @@ function Desktop() {
   return (
     <div className={s.shell}>
       <header className={s.topbar}>
-        <button
-          className={s.searchTrigger}
+        <Input
+          id="application-search"
+          className={p.searchInput}
+          type="search"
           aria-label={t("search_apps")}
           aria-keyshortcuts="Meta+K Control+K"
-          onClick={() => {
-            setPanel("search");
-            setQuery("");
-          }}
-        >
-          <Icon name="search" size={16} />
-          <span>{t("search_apps")}</span>
-          <kbd aria-hidden="true">⌘ K</kbd>
-        </button>
+          placeholder={t("search_installed_apps")}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
         <div className={s.headingActions}>
           <Button
             variant={editing ? "primary" : "secondary"}
+            aria-label={editing ? t("done") : t("edit_desktop")}
             aria-pressed={editing}
             onClick={() => setEditing(!editing)}
           >
             <Icon name={editing ? "check" : "edit"} size={15} />
-            {editing ? t("done") : t("edit_desktop")}
+            <span className={p.toolbarLabel}>
+              {editing ? t("done") : t("edit_desktop")}
+            </span>
           </Button>
-          <Button onClick={() => setPanel("apps")}>
+          <Button aria-label={t("add_apps")} onClick={() => setPanel("apps")}>
             <Icon name="plus" size={16} />
-            {t("add_apps")}
+            <span className={p.toolbarLabel}>{t("add_apps")}</span>
           </Button>
         </div>
       </header>
       <main className={s.main}>
         <h1 className={p.srOnly}>{t("my_desktop")}</h1>
         {error && <Notice>{error}</Notice>}
-        <div className={p.grid}>
-          {desktop.map(({ key, app, widget, size, columns, rows }, index) => (
-            <section
-              key={key}
-              className={p.card}
-              onClick={(event) => {
-                if (
-                  !editing &&
-                  !(event.target as HTMLElement).closest("button")
-                )
-                  void open(app);
-              }}
-              data-size={size}
-              data-columns={columns}
-              style={
-                {
-                  "--widget-columns": columns,
-                  "--widget-rows": rows,
-                } as React.CSSProperties
-              }
-              draggable={editing}
-              onDragStart={() => setDrag(key)}
-              onDragOver={(e) => {
-                if (editing) e.preventDefault();
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                if (drag && drag !== key) reorder(drag, key);
-                setDrag(undefined);
-              }}
-            >
-              <div className={p.cardHeading}>
-                <AppIcon
-                  id={app.manifest.id}
-                  icon={
-                    app.manifest.icon
-                      ? "/pages/" + encodeURIComponent(app.instanceId) + "/icon"
-                      : undefined
-                  }
-                />
-                <span>{name(app)}</span>
-                <span className={p.state} data-running={running.includes(app)}>
-                  {label(app.state)}
-                </span>
-              </div>
-              <button
-                className={p.widgetButton}
-                aria-label={t("open") + name(app)}
-                onClick={() => void open(app)}
-              >
-                {widget && (
-                  <Widget
-                    snapshot={widget.snapshot}
-                    text={(value) => text(value, app)}
+        {!!applications.length && !desktop.length && (
+          <div className={p.empty}>{t("no_matching_apps")}</div>
+        )}
+        <div className={p.applicationList}>
+          {desktop.map((app, index) => {
+            const id = app.instanceId;
+            const move = (direction: -1 | 1) => {
+              const neighbor = desktop[index + direction];
+              if (!neighbor) return;
+              if (direction < 0) reorder(id, neighbor.instanceId);
+              else reorder(neighbor.instanceId, id);
+            };
+            const updated = app.summary?.updatedAt;
+            return (
+              <ApplicationRow
+                key={id}
+                name={name(app)}
+                icon={
+                  <AppIcon
+                    id={app.manifest.id}
+                    icon={
+                      app.manifest.icon
+                        ? "/pages/" + encodeURIComponent(id) + "/icon"
+                        : undefined
+                    }
                   />
-                )}
-                {!widget && (
-                  <div className={p.noWidget}>
-                    {app.manifest.description
-                      ? text(app.manifest.description, app)
-                      : t("open_to_get_started")}
-                  </div>
-                )}
-              </button>
-              <footer className={p.cardFooter}>
-                <span>
-                  {app.error ||
-                    t("updated") +
-                      (widget
-                        ? new Intl.DateTimeFormat(zh ? "zh-CN" : "en", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }).format(widget.updatedAt)
-                        : "—")}
-                </span>
-                {editing ? (
-                  <div className={p.actions}>
-                    <Button
-                      size="sm"
-                      disabled={!index}
-                      onClick={() => reorder(key, desktop[index - 1]!.key)}
-                    >
-                      ←
-                    </Button>
-                    <Button
-                      size="sm"
-                      disabled={index === desktop.length - 1}
-                      aria-label={t("move_after")}
-                      onClick={() => reorder(desktop[index + 1]!.key, key)}
-                    >
-                      →
-                    </Button>
-                    <Button
-                      size="sm"
-                      aria-label={t("remove_widget")}
-                      onClick={() =>
-                        prefs({
-                          desktop: state.preferences.desktop.filter(
-                            (id) => id !== key,
-                          ),
-                        })
+                }
+                status={
+                  app.requiresUpdate
+                    ? t("application_update_required")
+                    : label(app.state)
+                }
+                updated={
+                  updated
+                    ? t("updated") +
+                      new Intl.DateTimeFormat(zh ? "zh-CN" : "en", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }).format(updated)
+                    : undefined
+                }
+                summary={app.summary?.snapshot}
+                fallback={
+                  app.manifest.description
+                    ? text(app.manifest.description, app)
+                    : t("open_to_get_started")
+                }
+                text={(value) => text(value, app)}
+                running={running.includes(app)}
+                error={app.error}
+                onOpen={() => void open(app)}
+                onMove={move}
+                openLabel={t("open")}
+                trendLabel={t("trend")}
+                progressLabel={t("progress")}
+                draggable={editing}
+                onDragStart={(e) => {
+                  setDrag(id);
+                  e.dataTransfer.setData("text/plain", id);
+                  e.dataTransfer.effectAllowed = "move";
+                }}
+                onDragEnd={() => setDrag(undefined)}
+                onDragOver={(e) => {
+                  if (editing) e.preventDefault();
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (editing && drag && drag !== id) reorder(drag, id);
+                  setDrag(undefined);
+                }}
+                actions={
+                  <>
+                    {editing && (
+                      <>
+                        <Button
+                          size="sm"
+                          aria-label={t("move_up") + name(app)}
+                          disabled={!index}
+                          onClick={() => move(-1)}
+                        >
+                          ↑
+                        </Button>
+                        <Button
+                          size="sm"
+                          aria-label={t("move_down") + name(app)}
+                          disabled={index === desktop.length - 1}
+                          onClick={() => move(1)}
+                        >
+                          ↓
+                        </Button>
+                      </>
+                    )}
+                    <Menu
+                      open={appMenu === id}
+                      onClose={() => setAppMenu(undefined)}
+                      anchor={
+                        <Button
+                          size="sm"
+                          aria-label={t("app_actions") + " " + name(app)}
+                          onClick={() => setAppMenu(id)}
+                        >
+                          <Icon name="more" />
+                        </Button>
                       }
-                    >
-                      <Icon name="close" size={13} />
-                    </Button>
-                  </div>
-                ) : (
-                  <Icon name="arrow" size={14} />
-                )}
-              </footer>
-            </section>
-          ))}
+                      items={[
+                        {
+                          id: "close",
+                          label: t("close_app"),
+                          disabled:
+                            app.state === "closed" || app.state === "failed",
+                        },
+                        { id: "manage", label: t("manage_app") },
+                      ]}
+                      onSelect={(action) => {
+                        if (action === "close") close(app);
+                        else setPanel("apps");
+                      }}
+                    />
+                  </>
+                }
+              />
+            );
+          })}
         </div>
-        {!desktop.length && (
+        {!applications.length && (
           <div className={p.empty}>
             <Icon name="grid" size={36} />
             <h2>{t("make_room_for_your_first_app")}</h2>
@@ -630,20 +643,14 @@ function Desktop() {
                   <div className={p.grow}>
                     <strong>{name(app)}</strong>
                     <p>
-                      {label(app.state)} · {app.manifest.version}
+                      {app.requiresUpdate
+                        ? t("application_update_required")
+                        : label(app.state)}{" "}
+                      · {app.manifest.version}
                     </p>
                   </div>
-                  <Button onClick={() => pin(app, "desktop")}>
-                    {state.preferences.desktop.some(
-                      (id) =>
-                        id === app.instanceId ||
-                        id.startsWith(app.instanceId + "/"),
-                    )
-                      ? t("remove_widget")
-                      : t("add_widget")}
-                  </Button>
                   <Button
-                    onClick={() => pin(app, "menu")}
+                    onClick={() => pin(app)}
                     title={t("menu_bar_shortcut")}
                   >
                     <Icon name="pin" size={15} />
@@ -757,42 +764,6 @@ function Desktop() {
                 {t("add_source")}
               </Button>
             </div>
-          </div>
-        </Modal>
-      )}
-      {panel === "search" && (
-        <Modal title={t("search_apps")} onClose={() => setPanel(undefined)}>
-          <Input
-            className={p.searchInput}
-            autoFocus
-            type="search"
-            aria-label={t("search_apps")}
-            placeholder={t("search_installed_apps")}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <div className={p.launcher}>
-            {applications
-              .filter((a) =>
-                name(a).toLowerCase().includes(query.toLowerCase()),
-              )
-              .map((app) => (
-                <button key={app.instanceId} onClick={() => void open(app)}>
-                  <AppIcon
-                    id={app.manifest.id}
-                    icon={
-                      app.manifest.icon
-                        ? "/pages/" +
-                          encodeURIComponent(app.instanceId) +
-                          "/icon"
-                        : undefined
-                    }
-                  />
-                  <span>{name(app)}</span>
-                  <small>{label(app.state)}</small>
-                  <Icon name="arrow" size={14} />
-                </button>
-              ))}
           </div>
         </Modal>
       )}
@@ -1087,9 +1058,9 @@ function Desktop() {
   );
 }
 createRoot(document.getElementById("root")!).render(
-  new URLSearchParams(location.search).has("widget-preview") ? (
-    <WidgetPreview
-      id={new URLSearchParams(location.search).get("widget-preview")!}
+  new URLSearchParams(location.search).has("summary-preview") ? (
+    <SummaryPreview
+      id={new URLSearchParams(location.search).get("summary-preview")!}
     />
   ) : (
     <Desktop />

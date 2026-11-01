@@ -15,58 +15,9 @@ concurrency:
 
 jobs:
   build:
-    if: github.repository == 'semicoder-dev/fn'
-    runs-on: macos-26
-    timeout-minutes: 60
-    defaults:
-      run:
-        working-directory: fn
-    outputs:
-      filename: ${{ steps.release.outputs.filename }}
-      ui_filename: ${{ steps.release.outputs.ui_filename }}
-    env:
-      GH_TOKEN: ${{ github.token }}
-      NO_PROXY: localhost,127.0.0.1,::1
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          path: fn
-          persist-credentials: false
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: "24"
-          package-manager-cache: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: "1.4.4"
-      - name: Check SDK metadata and release tag
-        id: release
-        run: bun run npm:check --release
-      - run: bun install --frozen-lockfile --ignore-scripts
-      - name: Build framework from this source revision
-        run: bun run framework:prepare
-      - run: bun run check && bun run test
-      - name: Pack and verify SDK in a standalone consumer
-        run: |
-          npm install --global npm@11.19.0
-          bun run npm:pack
-          git diff --exit-code
-      - name: Upload framework provenance separately from distributable files
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: fn-framework-report
-          path: fn/artifacts/fia/build-report.json
-          if-no-files-found: error
-          retention-days: 14
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: fn-sdk-npm
-          path: |
-            fn/artifacts/npm/${{ steps.release.outputs.filename }}
-            fn/artifacts/npm/${{ steps.release.outputs.ui_filename }}
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 14
+    uses: ./.github/workflows/ci.yml
+    with:
+      skip_disk_image: true
 
   publish:
     needs: build
@@ -94,8 +45,15 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.4"
+      - name: Check release tag against package versions
+        run: bun scripts/npm/check.ts --release
       - name: Publish verified SDK and UI archives with OIDC
         env:
           SDK_FILE: ${{ needs.build.outputs.filename }}
           UI_FILE: ${{ needs.build.outputs.ui_filename }}
         run: bun scripts/npm/publish.ts "./npm-package/$SDK_FILE" "./npm-package/$UI_FILE"
+      - name: Verify public bytes and install the released SDK/UI independently
+        env:
+          SDK_FILE: ${{ needs.build.outputs.filename }}
+          UI_FILE: ${{ needs.build.outputs.ui_filename }}
+        run: bun scripts/npm/verify-public.ts "./npm-package/$SDK_FILE" "./npm-package/$UI_FILE"

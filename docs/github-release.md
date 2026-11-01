@@ -12,3 +12,5 @@
 工作流：`ci.yml` 验证测试 DMG；`release.yml` 管理应用签名和发布；`publish-npm.yml` 验证/发布 SDK 归档。手机单独按 `clients/apple/README.md` 构建与真机验收，不因模拟器构建通过而标记完成。
 
 签名准备见 [Apple 配置](apple-signing-setup.md)，npm 见 [SDK/UI 归档](npm-release.md)。历史发行证据由 Git 标签、Release 和 workspace 会话记录保存。
+
+`ci.yml` 同时支持 PR、main、手动验证和 workflow_call。桌面签名发布与 SDK/UI 发布调用同一质量检查；发布调用跳过普通测试 DMG，由桌面 release 单独生成签名 DMG。SDK/UI 归档以 CI artifact 传递，发布任务不重新打包；真实公开字节和仓库外消费必须通过。

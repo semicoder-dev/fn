@@ -1,5 +1,5 @@
 import type { AppManifest } from "./manifest.ts";
-import type { WidgetSnapshot } from "./widgets.ts";
+import type { SummaryState } from "./summary.ts";
 export type Locale = "zh-CN" | "en";
 export type Theme = "light" | "dark" | "system";
 export type ApplicationState =
@@ -36,7 +36,8 @@ export interface InstalledApplication {
   runId?: string;
   error?: string;
   busy: number;
-  widgets: Record<string, { snapshot: WidgetSnapshot; updatedAt: number }>;
+  summary?: SummaryState;
+  requiresUpdate: boolean;
   messages: Record<string, Record<string, string>>;
 }
 export interface RelayMessage {
