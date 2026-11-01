@@ -1,5 +1,11 @@
 # Fn 本地验收
 
+## 2026-11-01 SDK 0.7.1 / UI 0.2.1 独立发行
+
+`sdk-v0.7.1` / `b5a66f4` 的正式流程 41282141130 成功，主干 CI 41282112655 成功。两包真实 OIDC/provenance、匿名字节与 CI 一致性、精确公开依赖独立安装及源码 init 模板 check/build/pack 通过。npm 首次处理延迟导致末尾校验失败，同一标签失败任务重跑核对完整性后通过，未重复发布或覆盖。归档摘要见 [npm 发布记录](npm-release.md)。
+
+官方应用 main 精确更新 SDK/UI 依赖，应用仍为 0.3.0，正式 catalog/归档不变。29 测试/134 断言、五包打包、仓库外冻结消费及归档内 SDK 0.7.1 核验通过。隔离 Fn 0.8 宿主五包安装启动、四页面加载、五处输入聚焦、笔记保存后重开数据保留和原生单层焦点复核通过；证据在 `.fia/platform-qa/input-focus/public-071-evidence.json`、`plugin-public-artifacts.json`、`public-app-ui-results.json` 与 `public-notes-dark-560.png`。本轮不连接真实翻译模型、不验证手机或替换日常应用；宿主应用行修复与内置新模板仍等后续桌面发行。
+
 ## 2026-11-01 应用行及共享控件焦点补全
 
 用户进一步指出应用行仍有双层边框。首次修复仅覆盖 Input / Textarea；`frontend/application-row.module.css` 的独立 `:focus-within` outline 确实遗漏。现已将应用行改为原边框变蓝；共享 Button / Select 的键盘焦点复用原边框，菜单项及无边框弹窗关闭按钮使用 1px 内部焦点线。全局规则仍为其他无边框控件提供焦点提示，看板色板的选中标记不属于焦点规则，保持原义。
