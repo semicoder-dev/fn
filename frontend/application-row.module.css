@@ -14,8 +14,7 @@
   border-style: dashed;
 }
 .row:focus-within {
-  outline: 2px solid var(--fn-focus);
-  outline-offset: 2px;
+  border-color: var(--fn-focus);
 }
 .open {
   display: grid;

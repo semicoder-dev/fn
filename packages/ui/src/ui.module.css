@@ -34,6 +34,10 @@
   padding: 4px 8px;
   font-size: 12px;
 }
+.button:focus-visible {
+  border-color: var(--fn-focus);
+  outline: 0;
+}
 .inputWrap {
   display: inline-flex;
   align-items: center;
@@ -50,11 +54,10 @@
   background: transparent;
   border: 0;
   padding: 8px 0;
-  outline-offset: 1px;
+  outline: 0;
 }
 .inputWrap:focus-within {
-  outline: 2px solid var(--fn-focus);
-  outline-offset: 1px;
+  border-color: var(--fn-focus);
 }
 .input:focus-visible {
   outline: 0;
@@ -68,6 +71,10 @@
   border-radius: 8px;
   resize: vertical;
   line-height: 1.65;
+}
+.textarea:focus {
+  border-color: var(--fn-focus);
+  outline: 0;
 }
 .checkbox {
   display: inline-flex;
@@ -112,6 +119,9 @@
   border: 0;
   background: transparent;
 }
+.dialogHeader button:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--fn-focus);
+}
 .dialogContent {
   padding: 22px;
 }
@@ -144,6 +154,10 @@
 .menu button:hover,
 .menu button:focus-visible {
   background: var(--fn-hover);
+}
+.menu button:focus-visible {
+  outline: 0;
+  box-shadow: inset 0 0 0 1px var(--fn-focus);
 }
 .menu button[data-danger] {
   color: var(--fn-danger);
