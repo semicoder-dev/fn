@@ -611,10 +611,10 @@ function Desktop() {
           title={t("your_apps")}
           wide
           className={p.appsDialog}
+          contentClassName={p.appsContent}
           onClose={() => setPanel(undefined)}
-        >
-          <div className={p.library}>
-            <div className={p.libraryActions}>
+          headerActions={
+            <>
               <Button disabled={busy} onClick={() => void install()}>
                 <Icon name="plus" size={15} />
                 {t("install_package")}
@@ -623,7 +623,10 @@ function Desktop() {
                 <Icon name="refresh" size={15} />
                 {t("check_updates")}
               </Button>
-            </div>
+            </>
+          }
+        >
+          <div className={p.library}>
             <h3>{t("installed")}</h3>
             {applications.map((app) => {
               const available = state.catalog.find(
@@ -745,7 +748,7 @@ function Desktop() {
                 <small>{m.url}</small>
               </div>
             ))}
-            <div className={p.actions}>
+            <div className={p.sourceForm}>
               <Input
                 aria-label={t("source_name")}
                 placeholder={t("name")}

@@ -12,12 +12,20 @@
 .appsDialog {
   width: min(960px, calc(100vw - 32px));
 }
-.libraryActions {
+.appsDialog[open] {
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 9px;
+  flex-direction: column;
+  overflow: hidden;
+}
+.appsDialog > header {
+  flex-shrink: 0;
+}
+.appsDialog .appsContent {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
 }
 .applicationList {
   display: flex;
@@ -88,11 +96,21 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-height: 0;
+  padding: 18px 22px 22px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 .library h3 {
   font-size: 13px;
   color: var(--fn-secondary);
   margin: 20px 0 3px;
+}
+.library > h3:first-child {
+  margin-top: 0;
+}
+.library > * {
+  flex-shrink: 0;
 }
 .appRow {
   display: flex;
@@ -113,6 +131,16 @@
 .source small {
   color: var(--fn-muted);
   overflow-wrap: anywhere;
+}
+.sourceForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
+  align-items: center;
+  gap: 9px;
+}
+.sourceForm > span {
+  width: 100%;
+  min-width: 0;
 }
 .empty {
   display: grid;
@@ -256,5 +284,14 @@
 @media (max-width: 400px) {
   .toolbarLabel {
     display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .sourceForm {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sourceForm > button {
+    justify-self: end;
   }
 }

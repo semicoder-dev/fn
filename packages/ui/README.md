@@ -8,6 +8,8 @@ Button 与 Select 的键盘焦点同样复用原边框；菜单项和无边框�
 
 Modal 打开时默认聚焦标题，关闭按钮不自动显示焦点线；使用 Tab 导航到关闭按钮时仍显示键盘焦点。内容可通过 `data-modal-autofocus` 指定初始焦点目标，Escape 和关闭后的焦点恢复保持一致。
 
+源码 Modal 可通过 `headerActions` 放置标题栏操作，位于标题与关闭按钮之间；窄窗口时操作在标题栏内部换行。此属性尚未公开发布，不用于当前 npm 版本的示例。
+
 页面使用 CSS Modules，可从 `./theme.css` 导入主题。`./summary` 的 Summary 为宿主与开发工具共用的固定区域摘要 renderer。页面打包自身的 React、SDK 和 UI；摘要只接收结构化数据，不执行应用页面代码。
 
 UI 0.2.1 精确配套 SDK 0.7.1；应用行使用公共 Summary renderer，新契约不导出旧 widgets renderer。开发、明暗主题、中英、窄窗、焦点恢复和减少动态效果均为交付检查项。

@@ -117,16 +117,42 @@
 .dialogHeader h2:focus {
   outline: 0;
 }
-.dialogHeader button {
+.dialogHeaderWithActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+}
+.dialogHeaderActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 9px;
+  min-width: 0;
+}
+.dialogHeader .dialogClose {
   padding: 5px;
   border: 0;
   background: transparent;
 }
-.dialogHeader button:focus-visible {
+.dialogHeader .dialogClose:focus-visible {
   box-shadow: inset 0 0 0 1px var(--fn-focus);
 }
 .dialogContent {
   padding: 22px;
+}
+@media (max-width: 520px) {
+  .dialogHeaderWithActions {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .dialogHeaderWithActions .dialogClose {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .dialogHeaderActions {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
 }
 .menu {
   position: fixed;

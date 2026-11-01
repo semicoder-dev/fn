@@ -81,6 +81,7 @@ export function Checkbox({
 export function Modal({
   open = true,
   title,
+  headerActions,
   children,
   onClose,
   className = "",
@@ -93,6 +94,7 @@ export function Modal({
 }: {
   open?: boolean;
   title: ReactNode;
+  headerActions?: ReactNode;
   children: ReactNode;
   onClose: () => void;
   className?: string;
@@ -143,11 +145,23 @@ export function Modal({
           onClose();
       }}
     >
-      <header className={s.dialogHeader}>
+      <header
+        className={
+          s.dialogHeader +
+          (headerActions ? " " + s.dialogHeaderWithActions : "")
+        }
+      >
         <h2 ref={heading} id={id} tabIndex={-1}>
           {title}
         </h2>
-        <Button aria-label={closeLabel} onClick={onClose}>
+        {headerActions && (
+          <div className={s.dialogHeaderActions}>{headerActions}</div>
+        )}
+        <Button
+          className={s.dialogClose}
+          aria-label={closeLabel}
+          onClick={onClose}
+        >
           <Icon name="close" />
         </Button>
       </header>
