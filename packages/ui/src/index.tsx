@@ -101,6 +101,7 @@ export function Modal({
   wide?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null),
+    heading = useRef<HTMLHeadingElement>(null),
     close = useRef(onClose);
   close.current = onClose;
   const id = useId();
@@ -109,7 +110,10 @@ export function Modal({
     const previous = document.activeElement as HTMLElement | null;
     if (open) {
       el.showModal();
-      el.querySelector<HTMLElement>("[data-modal-autofocus]")?.focus();
+      (
+        el.querySelector<HTMLElement>("[data-modal-autofocus]") ??
+        heading.current
+      )?.focus({ preventScroll: true });
     }
     const cancel = (e: Event) => {
       e.preventDefault();
@@ -140,7 +144,9 @@ export function Modal({
       }}
     >
       <header className={s.dialogHeader}>
-        <h2 id={id}>{title}</h2>
+        <h2 ref={heading} id={id} tabIndex={-1}>
+          {title}
+        </h2>
         <Button aria-label={closeLabel} onClick={onClose}>
           <Icon name="close" />
         </Button>

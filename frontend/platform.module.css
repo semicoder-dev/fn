@@ -57,6 +57,24 @@
   gap: 9px;
   flex-wrap: wrap;
 }
+.confirmationContent {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  text-align: start;
+}
+.confirmationContent > p {
+  margin: 0;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.confirmationActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  flex-wrap: wrap;
+}
 .grow {
   flex: 1;
   min-width: 0;

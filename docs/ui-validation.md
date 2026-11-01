@@ -1,5 +1,29 @@
 # Fn 本地验收
 
+用户追加要求将两项弹窗修复提交并合入本地 `main`，保留 `codex/confirmation-layout`。本次整合沿用下方最终源码的检查、25 测试、独立归档/构建与浏览器/原生验收；仅补充交付状态，不再修改实现。版本/build 不变，不推送、发布、部署或替换日常应用。下方“未提交”为实施验收时状态。
+
+## 2026-11-01 弹窗初始焦点补全
+
+用户指出此前确认弹窗截图仍有关闭按钮蓝框。原因是共享 `Modal` 的 `showModal()` 将初始焦点赋给第一个可聚焦控件（关闭按钮）；先前将外圈改为内部细线只解决焦点样式，没有解决初始焦点选择。本轮在同一 `codex/confirmation-layout` 修改 `packages/ui/src/index.tsx` 和 `ui.module.css`：默认聚焦 `tabIndex=-1` 的标题，仅静态标题不显示 outline，显式 `data-modal-autofocus` 优先，Tab 访问关闭按钮时仍显示焦点提示。
+
+- Fn check、25 测试/185 断言、独立预览构建和 SDK/UI 实际归档独立消费通过；不新增只复述样式的单元测试，焦点行为用浏览器实测。
+- Chromium 真实隔离宿主：鼠标和键盘打开应用中心后 activeElement 为 H2，关闭按钮不聚焦、shadow/outline 均无；Tab 到关闭按钮后 `:focus-visible` 为真、最终阴影为 1px 蓝色内部细线。Escape 恢复添加应用按钮。中文浅色 1100px 和英文深色 320px 均无初始蓝框，窄窗无横向溢出。
+- 共享 Modal 隔离展示夹具：明暗主题、显式输入目标优先、嵌套弹窗聚焦标题、Escape 返回嵌套触发按钮再返回外层触发按钮通过。Tab/Shift+Tab 不进入背景页面控件；Chromium 原生 dialog 允许焦点经过浏览器工具栏，未添加自定义焦点拦截。
+- 原生 WebKit：浅色应用中心及深色英文二级卸载确认打开时关闭按钮无蓝框；Escape 关闭二级确认返回应用中心。未实际执行卸载或更新。本机原生 Tab 按系统键盘偏好跳到输入框，未更改该偏好，不将浏览器 Tab 序列等同于原生序列。
+- 证据在 `.fia/platform-qa/confirmation-audit/`：`focus-results.json`、`focus-host-open-light.png`、`focus-host-tab-light.png`、`focus-host-open-dark-320.png`、`focus-native-open-light.png`、`focus-native-confirm-dark.png` 以及 `focus-check/test/build/pack.log`。独立归档已验证，正式 npm 和应用归档不变；独立应用须后续用新 UI 重建才能获得修复。
+- 官网 `plugin-ui-overlays.md` / `plugin-ui.md` 的标准弹窗、Escape 和键盘焦点说明仍准确，无须改文。未提交、升版、推送、发布、部署或替换日常应用。
+
+## 2026-11-01 宿主确认弹窗布局
+
+基于 `6ea1cf7`，`codex/confirmation-layout` 修改 `frontend/main.tsx` / `platform.module.css`：两处宿主确认使用专用内容和操作区，正文行高 1.7、允许长词换行、正文与按钮间隔 22px、按钮右对齐并保留换行。通用工具栏 `.actions` 和共享 UI/SDK 不改。
+
+- Fn check、25 测试/185 断言、prepare 与完整隔离预览构建通过。首次测试因环境代理导致本机请求 502；仅对测试进程移除代理变量后通过。首次沙箱内预览构建的 iconutil 失败，按同一源码在沙箱外完成构建。
+- 使用独立 `com.semicoder.fn.confirmqa.preview` 和 `.fia/platform-qa/confirmation-audit/data`，安装已有本地笔记归档，不读取日常应用数据。浏览器通过真实 FIA 授权打开宿主、进入应用中心并触发卸载确认；中文浅色与英文深色、320/560/1100px 六组均实测 22px 间距、按钮右侧留白 0px、无页面/弹窗横向溢出。英文 320px 正常换行，Escape 只关闭确认并恢复应用操作按钮焦点。
+- 浏览器合成极值检查：320px 下临时替换说明为长连续英文串，父级设为居中；说明仍从起始侧对齐并断行，22px 间距和右对齐不变，无横向溢出。此项为 DOM 展示边界检查，不代表真实业务文案。
+- 原生 WebKit：真实应用中心卸载确认和运行中笔记本地重装所触发的更新确认均复核截图，正文/操作区清楚分隔，按钮右对齐；Escape 返回应用中心并恢复菜单按钮焦点，更新确认取消后笔记保持运行。未实际执行卸载或更新。无页面状态页使用同样类名，结构已核对，未另造忙时业务进行端到端验收。
+- 证据：`.fia/platform-qa/confirmation-audit/` 中的 check/test/prepare/build 日志、`host-results.json`、`host-dark-results.json`、`fixed-host-light.png`、`fixed-host-dark-en-320.png` 和 `fixed-native-update.png`。验收结束已退出隔离实例并关闭浏览器任务空间。
+- 官网既有标准弹窗/焦点/Escape 与应用管理说明仍准确，无须改文。版本不变，未提交、推送、发布、部署或替换日常应用。
+
 ## 2026-11-01 SDK 0.7.1 / UI 0.2.1 独立发行
 
 `sdk-v0.7.1` / `b5a66f4` 的正式流程 41282141130 成功，主干 CI 41282112655 成功。两包真实 OIDC/provenance、匿名字节与 CI 一致性、精确公开依赖独立安装及源码 init 模板 check/build/pack 通过。npm 首次处理延迟导致末尾校验失败，同一标签失败任务重跑核对完整性后通过，未重复发布或覆盖。归档摘要见 [npm 发布记录](npm-release.md)。
@@ -33,7 +57,6 @@
 
 未替换日常应用；本轮不新增真实模型调用或手机验收，前述受控模型及既有真机结果不扩大为生产覆盖。官网版本内容与安装入口同步，部署证据在 workspace 发行记录维护。
 
-
 ## 2026-11-01 应用列表与摘要候选
 
 `codex/application-list` 本地实现，hostApi 2，版本/build 不变。使用独立 `com.semicoder.fn.listqa` 和 `.fia/platform-qa/list-data`；未替换日常应用，未提交、推送或发布。
@@ -61,7 +84,6 @@ Fn `22615f4` / 0.7.0 build 15，SDK 0.6.0、UI 0.1.0，官方应用 `372dca7` / 
 正式发行 [41219449863](https://github.com/semicoder-dev/fn/actions/runs/41219449863) 成功。五附件匿名下载、DMG 45,799,189 字节、SHA-256 `c439990bc3efd8d0256c11d5375d0fcb6ce440ae9b1362cc51e00d1f0585ccc9`；深签名、公证和 Gatekeeper 通过。12 个在线签名更新文件与公开包一致，旧 build 14 文件抽检未改写。runtime ID `9e9b01d32a05b36e6dcb1833a9547ae1fcc0526f99251208ef4cd3b987122cb8`；公开包原生桌面、已安装应用默认关闭、看板数据恢复通过。官网源码 `d6cb076`，两环境上线结果记于 workspace 发行记录。
 
 ## 实施期验收记录
-
 
 2026-10-31，基于 `codex/fn-application-platform` 未提交工作树。主要使用独立身份 `com.semicoder.fn.qa` 和隔离数据；开发入口补验使用当前 Fn Dev。未替换日常正式应用，没有升版、提交、推送、发布或部署。
 
@@ -93,12 +115,9 @@ FIA 统一网关、浏览器授权、Bun 构建、受管理进程组、窗口关
 
 2026-10-31 统一配色验收：宿主 root 主题仅由 Fn UI theme.css 提供，参考 dsh 明暗语义值，不加载 dsh 包。浅色白底/近黑文字，深色 #151517/#f9fafb，浮层 #2c2c2e；主按钮、焦点和输入独立映射。设置、桌面、三应用明暗切换、560px、跟随系统、原生深色通过。Fn check/build、SDK/UI 和官方独立消费、官方 15 测试/73 断言通过；Dev 三应用正常更新后 238 业务文件摘要相同，已恢复原外观偏好并关闭测试应用/标签。证据 `.fia/platform-qa/dsh-palette-*`；映射见 [UI 主题](ui-theme.md)。
 
-
 2026-10-31 余宽适配验收：基准列宽 240px，自动列数确定后等分不足一列的剩余宽度，行高和间距不变；末行沿用相同列宽。760px 窗口两列各 358px、483px 窗口单列 459px，10 个宽度及 776/775、516/515 临界值均无溢出；4x2 预览在 1–4 列窗口下铺满实际列数，高度保持 492px。原生 Fn Dev 单列截图一致。check/build 通过，纯样式调整未新增或重跑业务测试；证据 `.fia/platform-qa/widget-fluid-*`。下方固定像素宽度的数值为此前验收记录。
 
-
 2026-10-31 固定尺寸最终验收：每个 widget 必填单个 size；Manifest 拒绝数组、缺失值和越界值，尺寸来自应用包。移除桌面尺寸菜单与用户尺寸偏好，更新应用后直接使用新的声明。Fn check、15 测试/140 断言、build、SDK/UI 仓库外消费；官方 check、15 测试/73 断言、pack 和仓库外冻结构建通过。当前 Fn Dev 三应用固定 1x1，浏览器实际 240×240、320px 窄窗无溢出，原生整理控件只含排序和移除。正式 CLI 行情预览固定 3x1 为 744×240，仅提供主题/语言/运行状态切换。三应用正常更新后 238 个业务文件摘要及桌面偏好不变。证据为 `.fia/platform-qa/widget-fixed-*`；下方尺寸集合的验收为此前阶段，已由本次固定 size 契约替代。
-
 
 2026-10-31 自定义网格尺寸验收：Manifest 的 sizes 直接声明列数 x 行数（每个维度 1–4），首项为默认；宿主提供尺寸菜单、服务端声明校验、持久化和更新后的无效选择清理。固定 240px 网格、12px 间距；隔离桌面 1x1 为 240×240、2x1 为 492×240、2x2 为 492×492，剩余空间保持空置。键盘选择/焦点恢复、刷新及宿主重启保留尺寸通过；560/320px 英文深色与减少动态效果无页面或编辑栏横向溢出，原生 WebKit 已截图核对。官方 CLI 预览正确读取 Manifest 尺寸；独立 4x4 预览在 1280/900/700/500/280px 窗口分别为 996/744/492/240/216px 宽、996px 高，容器收缩保留逻辑尺寸。采用匿名容器查询，避免 Bun CSS Modules 对容器声明与命名查询处理不一致而产生隐式列。
 

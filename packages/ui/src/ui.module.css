@@ -114,6 +114,9 @@
   margin: 0;
   font-weight: 600;
 }
+.dialogHeader h2:focus {
+  outline: 0;
+}
 .dialogHeader button {
   padding: 5px;
   border: 0;

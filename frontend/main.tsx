@@ -335,17 +335,20 @@ function Desktop() {
         {confirmation && (
           <Modal
             title={t("close_app")}
+            contentClassName={p.confirmationContent}
             onClose={() => setConfirmation(undefined)}
           >
             <p>{confirmation.text}</p>
-            <Button
-              onClick={() => {
-                confirmation.action();
-                setConfirmation(undefined);
-              }}
-            >
-              {t("close")}
-            </Button>
+            <div className={p.confirmationActions}>
+              <Button
+                onClick={() => {
+                  confirmation.action();
+                  setConfirmation(undefined);
+                }}
+              >
+                {t("close")}
+              </Button>
+            </div>
           </Modal>
         )}
       </main>
@@ -1035,9 +1038,13 @@ function Desktop() {
         </Modal>
       )}
       {confirmation && (
-        <Modal title={t("confirm")} onClose={() => setConfirmation(undefined)}>
+        <Modal
+          title={t("confirm")}
+          contentClassName={p.confirmationContent}
+          onClose={() => setConfirmation(undefined)}
+        >
           <p>{confirmation.text}</p>
-          <div className={p.actions}>
+          <div className={p.confirmationActions}>
             <Button onClick={() => setConfirmation(undefined)}>
               {t("cancel")}
             </Button>
