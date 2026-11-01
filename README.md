@@ -4,7 +4,7 @@ Fn 是一个本地多应用平台。首页列表显示每个已安装应用及�
 
 桌面顶部只有一行搜索、排序和添加应用。底部 Dock 常驻应用、通知和设置，点击以弹窗打开；运行中的普通应用排在竖线另一侧，支持打开、聚焦和关闭。模型连接位于设置；手机入口仅在开发构建中显示。
 
-Fn 0.8.0/build 16、SDK 0.7.1 与 Fn UI 0.2.1 已发布，使用 hostApi 2。[下载安装包](https://semicoder.dev/fn/docs/installation)，或从源码运行。产品显示名称为 Fn；包名、目录、CLI 和应用 ID 使用小写。
+Fn 0.8.1/build 17、SDK 0.7.1 与 Fn UI 0.2.1 已发布，使用 hostApi 2。[下载安装包](https://semicoder.dev/fn/docs/installation)，或从源码运行。产品显示名称为 Fn；包名、目录、CLI 和应用 ID 使用小写。
 
 ## 本地运行
 
