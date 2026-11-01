@@ -15,3 +15,6 @@
 - 修改契约同步 SDK、示例、框架文档、官网和根知识库。文档只描述目标方案及实际完成状态，不加入版本对照或迁移章节。
 - 根目录统一安装依赖。FIA 先完成 framework:check/pack/verify，再验证 Fn 消费同一构建产物；实现需要类型、格式、测试、构建和浏览器/原生验证。
 - 每轮维护 release/notes/unreleased.md。发布仍须明确授权，按 docs/github-release.md 执行；Semicoder 推送会部署，不能自动执行。
+- 发布必须从上一公开安装版验证用户实际更新路径，区分完整 DMG 替换与在线代码更新；新包启动、数据保留和更新文件一致性不能替代旧版在线升级证据。
+- 普通代码更新默认使用 release/update-policy.json 的 code 策略；runtimeId 漂移必须阻断发布并排查，不能为让 CI 通过而改成 installer。真正需要完整安装包时，例外须限定精确版本/build 并说明实际原生能力、权限或固定资源变化。
+- 正式桌面发布使用 release-candidate.yml 构建一次并验收，再以 release:promote --run-id 提升同一产物；release.yml 不重新构建或签名。普通候选复用 release/runtime.lock.json，输入/摘要不符即阻断，完整 DMG 不等于必须重装。

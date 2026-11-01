@@ -28,12 +28,19 @@ import {
   type RuntimeAssetFile,
 } from "./artifacts.ts";
 import { CLI_VERSION } from "./metadata.ts";
+import { bunEntitlements, hardenedRuntimeArguments } from "./runtime-recipe.ts";
 import { loadProjectConfig, type ResolvedFIAConfig } from "./project-config.ts";
 import { createSession } from "./session.ts";
 import { readInspection, waitUntil, smokeApplication } from "./smoke.ts";
 import { writeSignedRelease } from "./updates.ts";
 import { localProfile } from "./local-profile.ts";
 import { isIgnoredDevelopmentPath } from "./development-options.ts";
+import {
+  assertVerifiedBaseline,
+  canonical,
+  runtimeConfiguration,
+  type RuntimeBaseline,
+} from "./runtime-baseline.ts";
 
 export interface RunSettings {
   cwd: string;
@@ -134,8 +141,17 @@ export async function buildCode(
   runner: ApplicationProcessRunner = defaultRunner,
   development = false,
   applicationAssets?: RuntimeAssetFile[],
+  baseline?: RuntimeBaseline,
 ): Promise<CodeRelease> {
-  const assets = await verifyAssets();
+  if (baseline) {
+    assertVerifiedBaseline(baseline);
+    if (
+      development ||
+      (await runtimeConfiguration(config)) !== baseline.lock.configuration
+    )
+      throw new Error("Runtime baseline/configuration changed during build");
+  }
+  const assets = baseline ? undefined : await verifyAssets();
   await generateAgentArtifacts(config, resolve(destination, "agent"));
   await mkdir(resolve(destination, "backend"), { recursive: true });
   await mkdir(resolve(destination, "web"), { recursive: true });
@@ -199,7 +215,9 @@ export async function buildCode(
     identifier: config.app.identifier,
     version: config.app.version,
     build: config.app.build,
-    runtimeId: await runtimeId(config, assets, applicationAssets),
+    runtimeId:
+      baseline?.lock.runtimeId ??
+      (await runtimeId(config, assets!, applicationAssets)),
     baseURL: config.updates
       ? new URL("releases/" + config.app.build + "/", config.updates.url).href
       : "https://invalid.local/",
@@ -221,6 +239,8 @@ export async function buildApplication(
     preview?: boolean;
     distribution?: boolean;
     runner?: ApplicationProcessRunner;
+    baseline?: RuntimeBaseline;
+    outputDirectory?: string;
   } = {},
 ) {
   if (process.platform !== "darwin" || process.arch !== "arm64")
@@ -244,9 +264,17 @@ export async function buildApplication(
       ? "preview"
       : "production";
   const applicationSigning = selectApplicationSigning(config, signingMode);
-  await verifyAssets();
+  const baseline = options.baseline;
+  if (baseline) {
+    assertVerifiedBaseline(baseline);
+    if (profile)
+      throw new Error(
+        "A production runtime baseline cannot be used for Dev or Preview",
+      );
+  } else await verifyAssets();
   const root = config.projectRoot;
-  const parent = profile?.directory ?? resolve(root, "dist");
+  const parent =
+    profile?.directory ?? options.outputDirectory ?? resolve(root, "dist");
   await mkdir(parent, { recursive: true });
   const temporary = await mkdtemp(resolve(parent, ".assemble-"));
   const app = resolve(temporary, config.app.name + ".app");
@@ -266,24 +294,38 @@ export async function buildApplication(
       runner,
       options.development,
       immutableAssets,
+      baseline,
     );
-    await cp(
-      resolve(assetDirectory, "FIAHost"),
-      resolve(contents, "MacOS/FIAHost"),
-    );
-    await cp(resolve(assetDirectory, "bun"), resolve(contents, "Helpers/bun"));
-    for (const name of ["agent-cli", "script-preload"])
+    if (baseline) {
+      for (const file of baseline.lock.files) {
+        const source = resolve(baseline.app, file.path);
+        if ((await sha256(source)) !== file.sha256)
+          throw new Error("Runtime baseline changed during build");
+        await mkdir(dirname(resolve(app, file.path)), { recursive: true });
+        await cp(source, resolve(app, file.path));
+      }
+    } else {
       await cp(
-        resolve(import.meta.dir, "../dist", name + ".js"),
-        resolve(resources, name + ".js"),
+        resolve(assetDirectory, "FIAHost"),
+        resolve(contents, "MacOS/FIAHost"),
       );
-    for (const path of ["MacOS/FIAHost", "Helpers/bun"])
-      await chmod(resolve(contents, path), 0o755);
-    if (config.app.icon)
       await cp(
-        resolve(root, config.app.icon),
-        resolve(resources, "AppIcon.icns"),
+        resolve(assetDirectory, "bun"),
+        resolve(contents, "Helpers/bun"),
       );
+      for (const name of ["agent-cli", "script-preload"])
+        await cp(
+          resolve(import.meta.dir, "../dist", name + ".js"),
+          resolve(resources, name + ".js"),
+        );
+      for (const path of ["MacOS/FIAHost", "Helpers/bun"])
+        await chmod(resolve(contents, path), 0o755);
+      if (config.app.icon)
+        await cp(
+          resolve(root, config.app.icon),
+          resolve(resources, "AppIcon.icns"),
+        );
+    }
     if (profile) {
       const icons = resolve(temporary, "local-icon");
       await checked(
@@ -350,10 +392,7 @@ export async function buildApplication(
       );
     }
     const entitlements = resolve(temporary, "bun.entitlements.plist");
-    await writeFile(
-      entitlements,
-      '<?xml version="1.0"?><plist version="1.0"><dict><key>com.apple.security.cs.allow-jit</key><true/><key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/></dict></plist>',
-    );
+    await writeFile(entitlements, bunEntitlements);
     const sign = async (path: string, bun = false, application = false) =>
       checked(
         runner,
@@ -362,7 +401,9 @@ export async function buildApplication(
           "--force",
           "--sign",
           identity,
-          ...(identity === "-" ? [] : ["--timestamp", "--options", "runtime"]),
+          ...(identity === "-"
+            ? []
+            : ["--timestamp", ...hardenedRuntimeArguments]),
           ...(bun
             ? ["--entitlements", entitlements]
             : application && applicationEntitlements
@@ -636,7 +677,10 @@ export async function packageDiskImage(
 export async function releaseApplication(
   config: ResolvedFIAConfig,
   update = false,
+  options: { baseline?: RuntimeBaseline; withUpdate?: boolean } = {},
 ) {
+  if (update && options.withUpdate)
+    throw new Error("--update and --with-update are mutually exclusive");
   if (update) {
     if (!config.updates)
       throw new Error(
@@ -646,7 +690,14 @@ export async function releaseApplication(
     await mkdir(parent, { recursive: true });
     const staging = await mkdtemp(resolve(parent, ".release-"));
     try {
-      const release = await buildCode(config, staging);
+      const release = await buildCode(
+        config,
+        staging,
+        defaultRunner,
+        false,
+        undefined,
+        options.baseline,
+      );
       await rm(resolve(staging, "manifest.json"));
       const manifest = resolve(parent, "latest.json");
       const signed = resolve(
@@ -670,8 +721,56 @@ export async function releaseApplication(
     throw new Error(
       "A Developer ID Application identity and notarizationProfile are required",
     );
-  const output = await buildApplication(config, { distribution: true });
-  return packageDiskImage(config, output.app, { distribution: true });
+  const output = await buildApplication(config, {
+    distribution: true,
+    baseline: options.baseline,
+  });
+  const installer = await packageDiskImage(config, output.app, {
+    distribution: true,
+  });
+  if (!options.withUpdate) return installer;
+  const code = resolve(output.app, "Contents/Resources/code");
+  return { ...installer, update: await releaseBuiltCode(config, code) };
+}
+
+/** Publish the exact code already sealed in the installer; never invoke the compiler again. */
+export async function releaseBuiltCode(
+  config: ResolvedFIAConfig,
+  code: string,
+) {
+  if (!config.updates)
+    throw new Error("Configure updates before building an update");
+  const release: CodeRelease = JSON.parse(
+    await readFile(resolve(code, "manifest.json"), "utf8"),
+  );
+  if (
+    release.identifier !== config.app.identifier ||
+    release.version !== config.app.version ||
+    release.build !== config.app.build
+  )
+    throw new Error("Built code does not match this release");
+  const parent = resolve(config.projectRoot, "dist/updates");
+  await mkdir(parent, { recursive: true });
+  const staging = await mkdtemp(resolve(parent, ".release-"));
+  try {
+    await cp(code, staging, { recursive: true });
+    await rm(resolve(staging, "manifest.json"));
+    if (canonical(await releaseFiles(staging)) !== canonical(release.files))
+      throw new Error("Installer code changed after assembly");
+    const signed = resolve(parent, ".latest-" + crypto.randomUUID() + ".json");
+    await writeSignedRelease(release, config.updates.publicKey, signed);
+    const output = resolve(parent, "releases", String(release.build));
+    await mkdir(dirname(output), { recursive: true });
+    await rename(staging, output);
+    await rename(signed, resolve(parent, "latest.json"));
+    return {
+      directory: parent,
+      manifest: resolve(parent, "latest.json"),
+      build: release.build,
+    };
+  } finally {
+    await rm(staging, { recursive: true, force: true });
+  }
 }
 export async function runApplication(config: ResolvedFIAConfig) {
   const built = await buildApplication(config, { preview: true });

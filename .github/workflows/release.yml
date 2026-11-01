@@ -1,94 +1,24 @@
-name: Release fn
+name: Publish verified Fn candidate
 on:
   push:
     tags: ["v*"]
-  # Manual runs sign, notarize and validate artifacts, but do not publish.
-  workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: fn-release
   cancel-in-progress: false
 jobs:
-  validate:
-    uses: ./.github/workflows/ci.yml
-    with:
-      skip_disk_image: true
-  build:
-    needs: validate
-    if: github.repository == 'semicoder-dev/fn'
-    runs-on: macos-26
-    timeout-minutes: 90
-    environment: release
-    defaults:
-      run:
-        working-directory: fn
-    env:
-      GH_TOKEN: ${{ github.token }}
-      FN_SIGNING_IDENTITY: ${{ vars.APPLE_SIGNING_IDENTITY }}
-      NO_PROXY: localhost,127.0.0.1,::1
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          path: fn
-          persist-credentials: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: "1.4.4"
-      - name: Check release source
-        run: bun run release:check
-      - run: bun install --frozen-lockfile --ignore-scripts
-      - name: Build framework from this source revision
-        run: bun run framework:prepare
-      - run: bun run check && bun run test
-      - name: Prepare signing credentials
-        env:
-          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          FIA_UPDATE_PRIVATE_KEY: ${{ secrets.FIA_UPDATE_PRIVATE_KEY }}
-        run: bun scripts/release/signing.ts
-      - name: Sign, notarize and smoke-test installer
-        run: bun scripts/release/check.ts --signed && bun run release
-      - name: Sign and verify matching code update
-        run: |
-          bun run release:update
-          bun scripts/release/verify.ts dist/updates dist/Fn.app
-          tar -czf dist/updates.tar.gz -C dist/updates .
-          git diff --exit-code
-      - name: Upload framework provenance separately from distributable files
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: fn-signed-framework-report
-          path: fn/artifacts/fia/build-report.json
-          if-no-files-found: error
-          retention-days: 14
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: fn-release
-          path: |
-            fn/dist/*.dmg
-            fn/dist/*.sha256
-            fn/dist/*.report.json
-            fn/dist/updates.tar.gz
-          if-no-files-found: error
-          retention-days: 30
-          compression-level: 0
-      - name: Remove signing credentials
-        if: always()
-        run: bun scripts/release/signing.ts cleanup
   publish:
-    needs: build
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && github.repository == 'semicoder-dev/fn'
+    if: github.repository == 'semicoder-dev/fn'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.activate.outputs.page_url }}
     permissions:
       contents: write
+      actions: read
       pages: write
       id-token: write
     env:
@@ -97,19 +27,64 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: "1.4.4"
-      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
-        with:
-          name: fn-release
-          path: release-bundle
+      - name: Resolve exact candidate artifact bound to this tag
+        run: bun scripts/release/promote.ts --from-tag "$GITHUB_REF_NAME" release-bundle
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
-      - name: Publish installer and retain immutable update history
-        run: bun scripts/release/publish.ts release-bundle published-site
+      - name: Stage immutable files without advancing latest.json
+        run: bun scripts/release/publish.ts release-bundle published-site stage
       - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
+          name: staged-updates
           path: published-site
-      - name: Deploy update feed
-        id: deployment
+      - uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+        with:
+          artifact_name: staged-updates
+      - name: Verify staged files anonymously
+        run: bun scripts/release/verify-public.ts release-bundle staged
+      - name: Publish the identical installer and evidence
+        run: bun scripts/release/publish.ts release-bundle published-site release
+      - name: Verify public Release bytes
+        run: bun scripts/release/verify-public.ts release-bundle release
+      - name: Advance the feed after assets are verified
+        run: bun scripts/release/publish.ts release-bundle published-site activate
+      - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          name: active-updates
+          path: published-site
+      - name: Activate update feed
+        id: activate
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+        with:
+          artifact_name: active-updates
+      - name: Verify public feed and files
+        run: bun scripts/release/verify-public.ts release-bundle active
+  public-upgrade:
+    needs: publish
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NO_PROXY: localhost,127.0.0.1,::1
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.4"
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Download the promoted artifact, never rebuild
+        run: bun scripts/release/promote.ts --from-tag "$GITHUB_REF_NAME" release-bundle
+      - name: Exercise the real public update feed
+        run: bun scripts/release/qa.ts release-bundle --public
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fn-public-upgrade-evidence
+          path: public-e2e.report.json
+          if-no-files-found: error
+          retention-days: 90

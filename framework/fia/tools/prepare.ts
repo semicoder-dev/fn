@@ -26,6 +26,7 @@ export const nativeInputs = [
   "native/CloudKitTransport/Package.swift",
   "native/CloudKitTransport/Sources",
   "tools/build-runtime.ts",
+  "tools/native-recipe.ts",
   "tools/shared.ts",
   "tools/prepare.ts",
   "packages/cli/src/metadata.ts",

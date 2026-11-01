@@ -267,3 +267,11 @@ FIA 活跃源码位于 Fn 仓库的 `framework/fia/`，保留独立 API、模板
 ## Bun 页面构建
 
 `@semicoder/fia/web` 导出 buildWeb/startWebDevelopment。开发与生产均从 HTML 入口调用 Bun.build，React 和 CSS Modules 使用同一路径。文件修改自动重建、刷新页面；后台源码修改受控重启。首期不承诺组件状态保留。运行时、CLI、本机开发和 CI 均固定 Bun 1.4.4；格式化为 bun fmt。
+
+## 固定公开运行时构建（共仓新增，尚未独立发布）
+
+`fia release --runtime-base <runtime.lock.json> --with-update` 验证公开 DMG 的摘要、Developer ID、签名、公证及签名更新清单，再复制 Host/Bun/固定 CLI、preload 与资源；代码只构建一次，同时输出完整 DMG 和签名更新包。也可使用 `--runtime-base … --update` 仅生成代码包。`--update` 与 `--with-update` 互斥。锁不匹配或验证失败即停止，无重编回退。
+
+锁 schema 1 记录 origin（HTTPS 安装包/清单及摘要、源码提交）、runtimeId、Team ID、应用名、configuration/nativeInputs 摘要与固定文件清单。应用发布工具负责原生源码输入审计和从已公开安装包登记锁；框架只接受 `withRuntimeBaseline` 验证过的消费句柄，不接受任意 runtimeId 覆盖。版本/build 与代码不进入固定配置摘要。重新签名后的分发摘要独立验证，兼容身份沿用基线；运行客户端继续严格验签和匹配 runtimeId。
+
+框架生成产物，不发布。应用侧应先验收实际旧版更新/重启/失败回退，再提升同一份产物，最后切换更新清单。新装 smoke 不能替代旧版在线升级；数据不随代码回退。当前公开 npm 0.18.0 不包含此接口。

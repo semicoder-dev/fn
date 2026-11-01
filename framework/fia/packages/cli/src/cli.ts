@@ -22,6 +22,8 @@ import { generateUpdateKeys } from "./updates.ts";
 import { CLI_VERSION } from "./metadata.ts";
 import { localProfile } from "./local-profile.ts";
 import { parseDevelopmentOptions } from "./development-options.ts";
+import { parseApplicationReleaseOptions } from "./release-options.ts";
+import { withRuntimeBaseline } from "./runtime-baseline.ts";
 
 export const help = `FIA ${CLI_VERSION} — macOS applications for humans and agents
 
@@ -30,7 +32,8 @@ fia agent [--preview] <args> Call this project's development or preview applicat
 fia dev [--open-browser] [--watch-ignore directory] Vite HMR and supervised Bun restart
 fia run                 Build and run an isolated Preview .app (no HMR)
 fia build [--dmg]        Assemble an application; optionally package and test a DMG
-fia release [--update]   Notarized installer or signed frontend/backend update
+fia release [--update|--with-update] [--runtime-base lock.json]
+                        Notarized installer and/or signed code from a verified runtime
 fia check | test         Validate configuration and TypeScript; run Bun tests
 fia doctor [--target dev|release] [--json]
 fia status | logs | stop [--json]
@@ -171,6 +174,7 @@ export async function runCLI(
       );
     if (
       command !== "dev" &&
+      command !== "release" &&
       rest.some(
         (arg) =>
           !(command === "release" && arg === "--update") &&
@@ -200,9 +204,23 @@ export async function runCLI(
         );
         break;
       }
-      case "release":
-        emit(await releaseApplication(config, rest.includes("--update")));
+      case "release": {
+        const options = parseApplicationReleaseOptions(rest);
+        emit(
+          options.runtimeBase
+            ? await withRuntimeBaseline(
+                config,
+                resolve(cwd, options.runtimeBase),
+                (baseline) =>
+                  releaseApplication(config, options.update, {
+                    ...options,
+                    baseline,
+                  }),
+              )
+            : await releaseApplication(config, options.update, options),
+        );
         break;
+      }
       case "smoke":
         emit(await smokeApplication(config));
         break;

@@ -7,32 +7,22 @@ import {
   FIA_BACKEND_PROTOCOL_VERSION,
 } from "../packages/cli/src/metadata.ts";
 import { repositoryRoot, run } from "./shared.ts";
+import { nativeBuildArguments } from "./native-recipe.ts";
 
 if (process.platform !== "darwin" || process.arch !== "arm64")
   throw new Error("Precompile on Apple Silicon macOS");
 if (Bun.version !== BUNDLED_BUN_VERSION)
   throw new Error("Runtime release requires Bun " + BUNDLED_BUN_VERSION);
-await run(
-  [
-    "swift",
-    "build",
-    "--disable-sandbox",
-    "-c",
-    "release",
-    "--product",
-    "FIAHost",
-  ],
-  {
-    env: {
-      ...process.env,
-      CLANG_MODULE_CACHE_PATH: resolve(repositoryRoot, ".build/module-cache"),
-      SWIFTPM_MODULECACHE_OVERRIDE: resolve(
-        repositoryRoot,
-        ".build/module-cache",
-      ),
-    },
+await run(nativeBuildArguments, {
+  env: {
+    ...process.env,
+    CLANG_MODULE_CACHE_PATH: resolve(repositoryRoot, ".build/module-cache"),
+    SWIFTPM_MODULECACHE_OVERRIDE: resolve(
+      repositoryRoot,
+      ".build/module-cache",
+    ),
   },
-);
+});
 const output = (
   await run(
     ["swift", "build", "--disable-sandbox", "-c", "release", "--show-bin-path"],

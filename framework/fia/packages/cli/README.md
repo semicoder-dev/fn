@@ -142,3 +142,9 @@ Native web windows include a pin icon to the left of Open in Browser. Click to t
 FIA 活跃源码位于 Fn 仓库的 `framework/fia/`，保留独立 API、模板、测试与打包边界。维护源码需要 Bun 1.4.4 和 Swift 6；使用当前经过验证的框架归档创建应用。共仓构建报告和独立消费是交付依据。
 
 开发 CLI 新增可重复的 `fia dev --watch-ignore <相对目录>`，按目录边界排除指定子树，不影响相似前缀的其他目录。该参数仅供外层工具已经负责构建/重启的目录；默认生成应用无需设置。嵌套的 node_modules、.git、.fia、.build、dist 也不会触发后端重载。
+
+## Frozen public runtimes (unpublished co-development feature)
+
+`fia release --runtime-base <runtime.lock.json> --with-update` verifies the locked public DMG, Developer ID signature, notarization, fixed files and signed update manifest. It reuses the native executable, Bun, CLI/preload and fixed resources, builds code once, then emits a newly signed/notarized DMG and the identical signed code update. `--update` can consume the same lock for a code-only artifact; it cannot be combined with `--with-update`.
+
+Lock schema 1 records HTTPS origin URLs/checksums/source commit, runtimeId, teamIdentifier, appName, configuration/nativeInputs digests and fixed file inventory. Application release tooling must audit native inputs and establish the lock from verified public artifacts. Only `withRuntimeBaseline` creates a consumable baseline. Configuration mismatch, missing baseline or validation failure stops the build without recompilation fallback. Compatibility identity is independent of new distribution checksums after signing. This interface is not in public npm 0.18.0.

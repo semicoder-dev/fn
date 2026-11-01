@@ -1,0 +1,102 @@
+name: Verify Fn release candidate
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: fn-release
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: github.repository == 'semicoder-dev/fn' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/ci.yml
+    with:
+      skip_disk_image: true
+  runtime-reuse:
+    needs: validate
+    runs-on: macos-26
+    timeout-minutes: 20
+    env:
+      FN_SIGNING_IDENTITY: "Developer ID Application: Duoxing Fu (947ZA68N2J)"
+    outputs:
+      kind: ${{ steps.policy.outputs.kind }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.4"
+      - id: policy
+        run: echo "kind=$(bun -e 'console.log((await Bun.file("release/update-policy.json").json()).kind)')" >> "$GITHUB_OUTPUT"
+      - if: steps.policy.outputs.kind == 'code'
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
+          bun framework/fia/packages/cli/scripts/build.ts
+          bun scripts/build-runner.ts
+          bun run release:runtime verify-code
+      - if: steps.policy.outputs.kind == 'code'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fn-runtime-reuse
+          path: artifacts/release/runtime-reuse.json
+          if-no-files-found: error
+          retention-days: 90
+  candidate:
+    needs: [validate, runtime-reuse]
+    runs-on: macos-26
+    timeout-minutes: 90
+    environment: release
+    env:
+      GH_TOKEN: ${{ github.token }}
+      FN_SIGNING_IDENTITY: ${{ vars.APPLE_SIGNING_IDENTITY }}
+      NO_PROXY: localhost,127.0.0.1,::1
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.4"
+      - run: bun run release:check
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - if: needs.runtime-reuse.outputs.kind == 'code'
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: fn-runtime-reuse
+          path: artifacts/release/candidate
+      - name: Prepare signing credentials
+        env:
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          FIA_UPDATE_PRIVATE_KEY: ${{ secrets.FIA_UPDATE_PRIVATE_KEY }}
+        run: bun scripts/release/signing.ts
+      - name: Build and sign one candidate using the locked runtime
+        run: bun scripts/release/candidate.ts build
+      - name: Remove signing credentials before exercising the public app
+        if: always()
+        run: bun scripts/release/signing.ts cleanup
+      - name: Verify actual public installer update and failure recovery
+        run: bun scripts/release/qa.ts artifacts/release/candidate
+      - name: Preserve failed QA diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fn-candidate-diagnostics
+          path: .fia/release-qa-diagnostics.json
+          include-hidden-files: true
+          if-no-files-found: ignore
+      - name: Seal the verified candidate
+        run: |
+          bun scripts/release/candidate.ts seal
+          git diff --exit-code
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fn-release-candidate
+          path: artifacts/release/candidate/*
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0

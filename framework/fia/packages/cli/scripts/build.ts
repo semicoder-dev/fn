@@ -2,6 +2,8 @@ import { cp, mkdir, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 const root = resolve(import.meta.dir, "..");
+// Bun's generated source labels also depend on cwd, independently of its root option.
+process.chdir(resolve(root, "../.."));
 await rm(resolve(root, "dist"), { recursive: true, force: true });
 await mkdir(resolve(root, "dist"));
 for (const name of [
@@ -15,6 +17,8 @@ for (const name of [
   "script-preload",
 ]) {
   const result = await Bun.build({
+    // Freeze source labels as well as output paths; caller cwd must not change fixed-runtime JS.
+    root: resolve(root, "../.."),
     entrypoints: [
       resolve(
         root,

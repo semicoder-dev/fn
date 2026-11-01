@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "origin": {
+    "url": "https://github.com/semicoder-dev/fn/releases/download/v0.8.1/Fn-0.8.1-17-mac-arm64.dmg",
+    "sha256": "61b693f20bfe109ca8af8d6aa1eb465e5e1112eb4a4d09deb0acba9e35d627fe",
+    "manifestURL": "https://github.com/semicoder-dev/fn/releases/download/v0.8.1/latest.json",
+    "manifestSHA256": "108b735175a66798391b5ea9bd819578f0df090ef83ec12e3fc1e77528197266",
+    "sourceCommit": "6bb370ee9eaf60ed71581b26314d91c94fd0ef0f"
+  },
+  "runtimeId": "35fda0e164de060208d14576e2cdd37dbeed6d781f0891971e9c190e0f54d381",
+  "teamIdentifier": "947ZA68N2J",
+  "appName": "Fn",
+  "configuration": "cba486ec96f3a2e5f9d0894ad7e9e465dc4586453ebb220a5b2b338f591ac208",
+  "nativeInputs": "cf32366a582e4cf42c1ea4bc93a8ccc804209e71562c15b8f7b2c00e25cb2a14",
+  "files": [
+    {
+      "path": "Contents/Helpers/bun",
+      "size": 88660288,
+      "sha256": "fa412775efbd50c5407b300c8ed42ef1a5d15eac06aaa69f56b7a6604f2daeda"
+    },
+    {
+      "path": "Contents/Info.plist",
+      "size": 776,
+      "sha256": "c5552261e44734480edb60eb9fb15cb3dc426f32c2733bb75ec63bcc2ff91a72"
+    },
+    {
+      "path": "Contents/MacOS/FIAHost",
+      "size": 2958992,
+      "sha256": "d7bff40e3d6602fbd0425373ed59ed553cd88e9bcd195cd8b6a92b16216229d2"
+    },
+    {
+      "path": "Contents/Resources/agent-cli.js",
+      "size": 31694,
+      "sha256": "fc0a463241f3169af8828512d05764750e55115dc9e017e0ed9110900a3ada4b"
+    },
+    {
+      "path": "Contents/Resources/AppIcon.icns",
+      "size": 43167,
+      "sha256": "d6007f18589a338214b49eb911c3bdf898508765414c3c7ea161a145442eeb2d"
+    },
+    {
+      "path": "Contents/Resources/fia.runtime.json",
+      "size": 797,
+      "sha256": "b95aab0661847f57271a5a80e078b38b300b66591746af828b9d81f09ecbde6c"
+    },
+    {
+      "path": "Contents/Resources/script-preload.js",
+      "size": 10511,
+      "sha256": "bc9999b530fc1f1c975282b4a41749f8b23e61a33a9351a17d2f3ceaf51e643c"
+    }
+  ]
+}

@@ -3,7 +3,11 @@ import { join, resolve } from "node:path";
 import { assert, config, readManifest, websiteURL } from "./config";
 import { verifyRelease, verifyDirectory, checksum } from "./verify";
 
-export async function stageSite(updateDirectory: string, site: string) {
+export async function stageSite(
+  updateDirectory: string,
+  site: string,
+  options: { activate?: boolean } = {},
+) {
   const next = await verifyRelease(updateDirectory);
   const updates = join(site, "updates"),
     latest = join(updates, "latest.json");
@@ -56,8 +60,10 @@ export async function stageSite(updateDirectory: string, site: string) {
     total < 900_000_000,
     "Update site approaches the GitHub Pages size limit; migrate hosting before publishing",
   );
-  await cp(join(updateDirectory, "latest.json"), latest + ".tmp");
-  await rename(latest + ".tmp", latest);
+  if (options.activate !== false) {
+    await cp(join(updateDirectory, "latest.json"), latest + ".tmp");
+    await rename(latest + ".tmp", latest);
+  }
   await writeFile(join(site, ".nojekyll"), "");
   await writeFile(
     join(site, "index.html"),
