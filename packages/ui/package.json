@@ -1,6 +1,6 @@
 {
   "name": "@semicoder/fn-ui",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "files": [
     "src",
@@ -12,7 +12,7 @@
     "./summary": "./src/summary.tsx"
   },
   "peerDependencies": {
-    "@semicoder/fn-sdk": "0.7.0",
+    "@semicoder/fn-sdk": "0.7.1",
     "react": ">=19 <20",
     "react-dom": ">=19 <20"
   },

@@ -1,11 +1,11 @@
 # Fn 应用开发
 
-需要 Bun 1.4.4、Fn 0.8 的 hostApi 2、精确 SDK 0.7.0 / UI 0.2.0。应用可在 workspace 外开发；开发期也可消费经过哈希校验的本地 SDK/UI 归档，但正式发布必须切换到已公开 npm 版本。
+需要 Bun 1.4.4、Fn 0.8 的 hostApi 2、精确 SDK 0.7.1 / UI 0.2.1。应用可在 workspace 外开发；开发期也可消费经过哈希校验的本地 SDK/UI 归档，但正式发布必须切换到已公开 npm 版本。公开 Fn 0.8.0 内置的 init 模板仍固定旧开发包，创建后通过以下命令安装当前精确版本。
 
 ```sh
 fn plugin init my-app
 cd my-app
-bun install --ignore-scripts
+bun add --exact @semicoder/fn-sdk@0.7.1 @semicoder/fn-ui@0.2.1
 fn plugin check .
 fn plugin dev . --browser
 fn plugin build .

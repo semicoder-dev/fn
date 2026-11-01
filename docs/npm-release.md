@@ -1,6 +1,6 @@
 # SDK/UI 归档与发布
 
-SDK 0.7.0 与 UI 0.2.0 为 hostApi 2 同批契约。应用安装这两个精确 npm 版本，UI 通过 peer 复用应用安装的 SDK。Bun 1.4.4 是统一工具链。
+SDK 0.7.1 与 UI 0.2.1 为 hostApi 2 同批契约。应用安装这两个精确 npm 版本，UI 通过 peer 复用应用安装的 SDK。Bun 1.4.4 是统一工具链。
 
 本地运行 `bun run npm:check && bun run npm:pack`。`artifacts/sdk/manifest.json` 记录摘要归档，`artifacts/npm/` 保存可发布文件。临时目录独立安装 SDK/UI、React，检查类型、禁用依赖、前后台构建，不使用 overrides。
 
@@ -9,6 +9,10 @@ SDK 0.7.0 与 UI 0.2.0 为 hostApi 2 同批契约。应用安装这两个精确 
 首次创建 UI 包需维护者完成 npm 登录及双重验证，发布同一 CI 归档后配置受信任发布者：GitHub `semicoder-dev/fn`、`publish-npm.yml`、环境 `npm`。已存在版本必须与归档的 registry integrity 一致；失败重试不得覆盖公共版本。发布后独立下载摘要核对，并从公开 registry 创建新应用消费。
 
 插件发行归档冻结运行依赖，宿主安装不执行依赖脚本。
+
+## 0.7.1 / 0.2.1 补丁发行
+
+本次发布共享控件单层焦点边框修复，SDK API 和 hostApi 2 不变。UI 0.2.1 精确配套 SDK 0.7.1；CLI init 源码模板及独立消费样例同步版本。Fn 桌面保持 0.8.0/build 16，未发布新的宿主安装包；公开 Fn 0.8.0 内置模板仍为旧版本，现有项目应显式安装新开发包后重新构建。官方应用仅同步主干源码依赖，不升版、不更新正式归档或市场。发行标签为 `sdk-v0.7.1`，公开归档和独立消费的最终证据在发布后补录。
 
 ## 0.7.0 / 0.2.0 发行证据
 

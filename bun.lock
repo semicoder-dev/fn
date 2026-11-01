@@ -50,7 +50,7 @@
     },
     "packages/sdk": {
       "name": "@semicoder/fn-sdk",
-      "version": "0.7.0",
+      "version": "0.7.1",
       "dependencies": {
         "zod": "4.6.5",
       },
@@ -63,9 +63,9 @@
     },
     "packages/ui": {
       "name": "@semicoder/fn-ui",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "peerDependencies": {
-        "@semicoder/fn-sdk": "0.7.0",
+        "@semicoder/fn-sdk": "0.7.1",
         "react": ">=19 <20",
         "react-dom": ">=19 <20",
       },

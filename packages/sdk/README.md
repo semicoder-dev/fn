@@ -1,6 +1,6 @@
 # @semicoder/fn-sdk
 
-Fn TypeScript 应用契约、页面客户端、后台注册与 Bun 构建工具。使用 Bun 1.4.4；SDK 0.7.0 / UI 0.2.0 对应 Fn 0.8 的 hostApi 2；新应用不使用旧 widgets 契约。
+Fn TypeScript 应用契约、页面客户端、后台注册与 Bun 构建工具。使用 Bun 1.4.4；SDK 0.7.1 / UI 0.2.1 对应 Fn 0.8 的 hostApi 2；新应用不使用旧 widgets 契约。
 
 - `./manifest`：fn.app.json 的 Zod schema、summaryDefinitionSchema 与构建描述。
 - `./contract`：defineContract、method、stream、z；输入/输出均验证。

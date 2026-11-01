@@ -22,7 +22,7 @@ await Bun.write(
     name: "independent-app",
     type: "module",
     files: ["src", "locales", "summary"],
-    dependencies: { "@semicoder/fn-sdk": "0.7.0" },
+    dependencies: { "@semicoder/fn-sdk": "0.7.1" },
   }),
 );
 await Bun.write(join(root, "locales/en.json"), "{}");
