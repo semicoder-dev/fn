@@ -121,7 +121,8 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
         let main = NSMenu()
         let applicationItem = NSMenuItem(title: manifest.app.name, action: nil, keyEquivalent: "")
         let applicationMenu = NSMenu()
-        applicationMenu.addItem(withTitle: chinese ? "关于 \(manifest.app.name)" : "About \(manifest.app.name)", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        let about = applicationMenu.addItem(withTitle: chinese ? "关于 \(manifest.app.name)" : "About \(manifest.app.name)", action: #selector(showAbout), keyEquivalent: "")
+        about.target = self
         if runtime.updater.isEnabled {
             applicationMenu.addItem(.separator())
             let update = NSMenuItem(title: chinese ? "检查更新…" : "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
@@ -240,5 +241,10 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
             catch { NSAlert(error: error).runModal() }
         }
     }
-    @objc private func checkForUpdates() { Task { await runtime.updater.checkAndPrompt() } }
+    var aboutPanelOptions: [NSApplication.AboutPanelOptionKey: Any] {
+        let info = runtime.applicationInfo
+        return [.applicationName: info.name, .applicationVersion: info.version, .version: String(info.build)]
+    }
+    @objc private func showAbout() { NSApp.orderFrontStandardAboutPanel(options: aboutPanelOptions) }
+    @objc private func checkForUpdates() { Task { await runtime.updater.checkAndPrompt(manual: true) } }
 }

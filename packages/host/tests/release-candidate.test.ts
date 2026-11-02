@@ -137,6 +137,53 @@ test("a candidate requires actual bound upgrade/recovery evidence, not a success
   ])
     expect(() => validateEvidence(input, invalid)).toThrow();
 });
+test("native releases require both public installers and a previously code-updated installation", () => {
+  const input: CandidateInput = {
+    ...inputs(),
+    version: "0.8.3",
+    build: 19,
+    runtimeBaselineBuild: 17,
+    previousBuild: 18,
+    policy: {
+      kind: "installer",
+      version: "0.8.3",
+      build: 19,
+      reason: "Native UI",
+    },
+  };
+  const starts: [string, number][] = [
+    ["new-install", 19],
+    ["installer-upgrade", 18],
+    ["baseline-installer-upgrade", 17],
+    ["updated-installer-upgrade", 17],
+    ["restart", 18],
+    ["data-preserved", 18],
+    ["requires-installer", 18],
+  ];
+  const valid: UpdateEvidence = {
+    ...evidence(input),
+    cases: starts.map(([name, installedBuild]) => ({
+      name,
+      installedBuild,
+      targetBuild: 19,
+      passed: true,
+    })),
+  };
+  expect(() => validateEvidence(input, valid)).not.toThrow();
+  for (const name of [
+    "installer-upgrade",
+    "baseline-installer-upgrade",
+    "updated-installer-upgrade",
+  ])
+    for (const cases of [
+      valid.cases.filter((item) => item.name !== name),
+      valid.cases.map((item) =>
+        item.name === name ? { ...item, installedBuild: 16 } : item,
+      ),
+    ])
+      expect(() => validateEvidence(input, { ...valid, cases })).toThrow();
+});
+
 test("promotion rejects untrusted workflows, unfinished runs, missing bindings and mismatched artifacts", async () => {
   const run = {
     event: "workflow_dispatch",

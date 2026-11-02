@@ -30,6 +30,10 @@ public final class FIARuntime {
   private let supportDirectory: URL
   private let store: CodeReleaseStore
   private var activeRelease: CodeRelease
+  var applicationInfo: BuiltinApplicationInfo {
+    BuiltinApplicationInfo(name: manifest.app.name, identifier: manifest.app.identifier,
+      version: activeRelease.version, build: activeRelease.build)
+  }
   private var activeDirectory: URL
   private let session = UUID().uuidString + UUID().uuidString
   private let development = ProcessInfo.processInfo.environment["FIA_DEVELOPMENT"] == "1"
@@ -125,6 +129,7 @@ public final class FIARuntime {
       try await self.updateGate("resume")
     }
     updater.allowsAutomaticPrompts = { [weak self] in self?.windows.states.contains(where: { $0.orderedIn }) ?? false }
+    updater.locale = { [weak self] in self?.statusMenu.locale }
     cloudKit.onChange = { [weak self] event in self?.emit("cloudKit.changed", event) }
     cloudKit.register(in: native)
     registerServices()
@@ -547,9 +552,7 @@ public final class FIARuntime {
     ) { [weak self] _ in
       try await MainActor.run {
         guard let self else { throw CancellationError() }
-        return ApplicationInfo(
-          name: self.manifest.app.name, identifier: self.manifest.app.identifier,
-          version: self.activeRelease.version, build: self.activeRelease.build)
+        return self.applicationInfo
       }
     }
     native.register(

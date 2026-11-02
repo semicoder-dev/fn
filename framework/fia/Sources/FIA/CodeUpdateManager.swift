@@ -26,19 +26,27 @@ public final class CodeUpdateManager {
   public var allowsAutomaticPrompts: () -> Bool = { true }
   private let config: UpdateConfiguration?
   private let store: CodeReleaseStore
+  private var currentRelease: CodeRelease
   private var envelope: SignedCodeRelease?
   private var candidate: CodeRelease?
   private var busy = false
   private var periodic: Task<Void, Never>?
   private var applying: Task<Void, Never>?
   private var stopped = false
+  private var prompting = false
+  private var feedback: (any CodeUpdateFeedback)?
+  var feedbackFactory: (() -> any CodeUpdateFeedback)?
+  var locale: () -> String? = { nil }
   private let network: URLSession
-  var confirmInstallation: (CodeRelease) -> Bool = { candidate in
+  var confirmInstallation: ((CodeRelease) -> Bool)?
+  private func confirm(_ candidate: CodeRelease) -> Bool {
+    if let confirmInstallation { return confirmInstallation(candidate) }
+    let chinese = locale()?.hasPrefix("zh") ?? false
     let alert = NSAlert()
-    alert.messageText = "Update to " + candidate.version + "?"
-    alert.informativeText = "The application will reload. Save your work before updating."
-    alert.addButton(withTitle: "Update Now")
-    alert.addButton(withTitle: "Later")
+    alert.messageText = chinese ? "更新至 \(candidate.version)？" : "Update to " + candidate.version + "?"
+    alert.informativeText = chinese ? "后台将重新启动，页面将刷新。请先保存未完成的编辑。" : "The application will reload. Save your work before updating."
+    alert.addButton(withTitle: chinese ? "立即更新" : "Update Now")
+    alert.addButton(withTitle: chinese ? "稍后" : "Later")
     return alert.runModal() == .alertFirstButtonReturn
   }
   public var isEnabled: Bool { config != nil }
@@ -46,6 +54,7 @@ public final class CodeUpdateManager {
   {
     self.config = config
     self.store = store
+    currentRelease = (try? store.selected().release) ?? store.factory
     self.network = network
     state.phase = config == nil ? "disabled" : "idle"
   }
@@ -62,20 +71,44 @@ public final class CodeUpdateManager {
     stopped = true
     periodic?.cancel()
     applying?.cancel()
+    feedback?.hide()
   }
-  public func checkAndPrompt(allowPrompt: Bool = true) async {
+  public func checkAndPrompt(allowPrompt: Bool = true, manual: Bool = false) async {
+    if manual {
+      if feedback == nil {
+        if let feedbackFactory { feedback = feedbackFactory() }
+        else {
+          let window = CodeUpdateWindow()
+          window.onRetry = { [weak self] in Task { await self?.checkAndPrompt(manual: true) } }
+          window.onDownloadInstaller = { NSWorkspace.shared.open($0) }
+          feedback = window
+        }
+      }
+      let initial = busy || prompting || applying != nil ? state
+        : CodeUpdateState(phase: config == nil ? "disabled" : "checking")
+      renderFeedback(initial)
+      feedback?.show()
+    }
+    // Repeated clicks attach to the ongoing operation; they must not replace its
+    // state with a spurious failure or start a second download/confirmation.
+    guard !prompting, !busy, applying == nil, !stopped else { return }
+    prompting = true
+    defer { prompting = false }
     do {
       _ = try await check()
       if state.phase == "available" { _ = try await download() }
       if !allowPrompt { return }
+      if manual && feedback?.isVisible != true { return }
       if state.phase == "downloaded" { _ = try await apply() }
       if state.phase == "requiresInstall" {
+        if feedback?.isVisible == true { return }
+        let chinese = locale()?.hasPrefix("zh") ?? false
         let alert = NSAlert()
-        alert.messageText = "A new application installer is required"
+        alert.messageText = chinese ? "需要新的应用安装包" : "A new application installer is required"
         alert.informativeText =
-          "This update includes changes to the native runtime. Download and install the new application."
-        if state.downloadURL != nil { alert.addButton(withTitle: "Download App") }
-        alert.addButton(withTitle: "Later")
+          chinese ? "此次更新包含原生组件变化，请下载并安装新版应用。" : "This update includes changes to the native runtime. Download and install the new application."
+        if state.downloadURL != nil { alert.addButton(withTitle: chinese ? "下载安装包" : "Download App") }
+        alert.addButton(withTitle: chinese ? "稍后" : "Later")
         if alert.runModal() == .alertFirstButtonReturn, let link = state.downloadURL,
           let url = URL(string: link)
         {
@@ -112,7 +145,7 @@ public final class CodeUpdateManager {
       envelope = signed
       candidate = release
       if release.build <= store.highestBuild || store.isFailed(release.build) {
-        transition("current")
+        transition("current", message: store.isFailed(release.build) ? "previous_update_failed" : nil)
         return state
       }
       if release.runtimeId != store.factory.runtimeId {
@@ -207,7 +240,7 @@ public final class CodeUpdateManager {
   @discardableResult public func apply() async throws -> CodeUpdateState {
     guard state.phase == "downloaded", !busy, applying == nil, !stopped, let candidate, let activate
     else { throw UpdateError("No downloaded update is ready") }
-    guard confirmInstallation(candidate) else { return state }
+    guard confirm(candidate) else { return state }
     busy = true
     do { try await prepare?(); try store.begin(candidate) }
     catch { busy = false; await resume?(); throw error }
@@ -223,6 +256,7 @@ public final class CodeUpdateManager {
         try Task.checkCancellation()
         try self.store.commit(candidate.build)
         try await self.committed?()
+        self.currentRelease = candidate
         self.transition("current")
       } catch {
         do { try self.store.rollback(candidate.build) } catch {
@@ -233,6 +267,7 @@ public final class CodeUpdateManager {
           do {
             let previous = try self.store.selected()
             try await activate(previous.release, previous.directory, false)
+            self.currentRelease = previous.release
           } catch {
             self.transition("failed", message: "Rollback failed: " + error.localizedDescription)
             return
@@ -244,10 +279,15 @@ public final class CodeUpdateManager {
     return state
   }
   private func transition(_ phase: String, message: String? = nil) {
+    let installed = state.phase == "applying" && phase == "current"
     state = CodeUpdateState(
       phase: phase, version: candidate?.version, build: candidate?.build, message: message,
       downloadURL: candidate?.downloadURL ?? config?.downloadURL)
     onState?(state)
+    renderFeedback(state, installed: installed)
+  }
+  private func renderFeedback(_ state: CodeUpdateState, installed: Bool = false) {
+    feedback?.render(state, current: currentRelease, chinese: locale()?.hasPrefix("zh") ?? false, installed: installed)
   }
   private func validateResponse(_ response: URLResponse, source: URL) throws {
     guard let http = response as? HTTPURLResponse, http.statusCode == 200, let final = http.url,

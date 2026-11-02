@@ -19,6 +19,8 @@ Swift/C、Bun、权限、固定资源或协议确有变化时，使用精确的 
 3. 手动运行 `Verify Fn release candidate`（`release-candidate.yml`）的 main。普通候选构建只编译 TypeScript 工具链，不调用 Swift 或 `framework:prepare`；质量检查可以另行验证框架源码。独立 runtime-reuse job 使用空缓存和不同工作目录验证相同身份，报告并入候选；随后签名构建在另一 runner 再次验证同一基线。FIA 一次构建代码，通过 `release --runtime-base release/runtime.lock.json --with-update` 同时生成 DMG 和更新包。Fn 的 `release` / `release:candidate` 仅在该工作流运行；原分开构建的 `release:update` 入口已移除。
 4. 同一候选完成签名、公证、新装检查及真实旧版更新/恢复验证。`qa.ts` 使用未修改的公开应用、隔离数据、正式候选原始签名字节和原有 URL/公钥。在临时 macOS runner 内配置受控 HTTPS 回放；退出清理 DNS、证书与子进程，禁止在日常机器运行回放。原生确认按钮由 UI 自动化点击，不能绕过验签或修改应用。
 5. 覆盖基线直升、上一公开版直升、重启、应用列表/摘要/偏好/业务数据；中断/损坏下载、候选后台崩溃、观察期退出和繁忙任务。故障由中断候选进程注入，不另发故障版本。首次 runtime 家族尚无中间公开代码版本时，只记录 `repeat-check` 幂等检查，明确不等同连续升级；出现同家族中间版本后必须完成 `repeat-upgrade` 两次真实升级。
+   原生候选另验收固定基线安装版、上一公开安装版，以及已从基线在线升级到上一公开版的实例，再替换为同一候选安装包；三条路径分别检查版本、数据和重启。缺少对应起始状态证据不能封存候选。公开后对真实更新源复验两个原始安装版的安装提示与完整安装路径；发布前的连续混合路径单独记录。
+
 6. `candidate.ts seal` 仅接受绑定候选与公开基线的完整通过证据；生成 `candidate.report.json`，绑定提交、run ID/attempt、策略、运行时锁、原生/配置摘要、产物摘要和验收文件。任一失败不上传可提升候选；重建必须重新验收。
 
 本地回归不能替代临时 runner 的真实 HTTPS/原生确认验证。`0.8.0 → 0.8.1` 的真实签名清单保留为失败回归，默认 code 策略必须拒绝。

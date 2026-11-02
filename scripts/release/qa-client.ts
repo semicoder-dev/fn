@@ -255,6 +255,10 @@ export async function confirmUpdate(pid: number) {
               click button "Update Now" of w
               return
             end if
+            if exists button "立即更新" of w then
+              click button "立即更新" of w
+              return
+            end if
           end repeat
         end tell
       end if

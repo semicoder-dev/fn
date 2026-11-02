@@ -249,6 +249,52 @@ function record(name: string, installedBuild: number) {
   console.log(`Verified ${name}: ${installedBuild} -> ${candidate.build}`);
 }
 
+async function replaceInstaller(
+  instance: QAApplication,
+  newApp: string,
+  name: string,
+  startingBuild: number,
+) {
+  const before = await dataSnapshot(instance);
+  const { session, state } = await prepared(instance);
+  assert(
+    state.phase === "requiresInstall",
+    "Native release must require its installer",
+  );
+  session.close();
+  record("requires-installer", startingBuild);
+  await instance.stop();
+  const replacement = new QAApplication(newApp, instance.data);
+  applications.push(replacement);
+  await replacement.launch();
+  await replacement.ready(candidate.build);
+  assert(
+    (await dataSnapshot(replacement)) === before,
+    "Installer upgrade changed user data",
+  );
+  const current = await replacement.session();
+  try {
+    const info = await current.call("application.info");
+    assert(
+      info.version === candidate.version && info.build === candidate.build,
+      "Installer upgrade retained a stale active version",
+    );
+  } finally {
+    current.close();
+  }
+  record(name, startingBuild);
+  record("data-preserved", startingBuild);
+  await replacement.stop();
+  await replacement.launch();
+  await replacement.ready(candidate.build);
+  assert(
+    (await dataSnapshot(replacement)) === before,
+    "Installer restart changed user data",
+  );
+  await replacement.stop();
+  record("restart", startingBuild);
+}
+
 const cleanupErrors: unknown[] = [];
 try {
   console.log(
@@ -334,31 +380,41 @@ try {
   await fresh.stop();
   record("new-install", candidate.build);
   if (input.policy.kind === "installer") {
-    const instance = await create(latestApp, "installer-upgrade", archive),
-      before = await dataSnapshot(instance);
-    const { session, state } = await prepared(instance);
-    assert(
-      state.phase === "requiresInstall",
-      "Native release must require its installer",
-    );
-    session.close();
-    record("requires-installer", previous.build);
-    await instance.stop();
-    const replacement = new QAApplication(newApp!, instance.data);
-    applications.push(replacement);
-    await replacement.launch();
-    await replacement.ready(candidate.build);
-    assert(
-      (await dataSnapshot(replacement)) === before,
-      "Installer upgrade changed user data",
-    );
-    record("installer-upgrade", previous.build);
-    record("data-preserved", previous.build);
-    await replacement.stop();
-    await replacement.launch();
-    await replacement.ready(candidate.build);
-    await replacement.stop();
-    record("restart", previous.build);
+    for (const [name, app, build] of [
+      ["baseline-installer-upgrade", baseApp, baseline.build],
+      ["installer-upgrade", latestApp, previous.build],
+    ] as const) {
+      const instance = await create(app, name, archive);
+      await replaceInstaller(instance, newApp, name, build);
+    }
+    if (!publicMode && previous.build > baseline.build) {
+      assert(
+        previous.runtimeId === baseline.runtimeId,
+        "The previous code release must belong to the locked runtime family",
+      );
+      await replay!.set("none", config.updatesURL + "?previous");
+      const instance = await create(
+        baseApp,
+        "updated-installer-upgrade",
+        archive,
+      );
+      const before = await dataSnapshot(instance);
+      await update(instance, previous.build);
+      assert(
+        (await dataSnapshot(instance)) === before,
+        "The preceding code update changed user data",
+      );
+      await instance.stop();
+      await instance.launch();
+      await instance.ready(previous.build);
+      await replay!.set("none", config.updatesURL);
+      await replaceInstaller(
+        instance,
+        newApp,
+        "updated-installer-upgrade",
+        baseline.build,
+      );
+    }
   } else {
     for (const [name, app, build] of [
       ["baseline-upgrade", baseApp, baseline.build],

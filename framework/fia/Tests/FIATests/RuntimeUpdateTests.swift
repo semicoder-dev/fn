@@ -105,6 +105,8 @@ struct RuntimeUpdateTests {
       try await runtime.start(automaticUpdates: false, background: true)
       #expect(runtime.windows.states.allSatisfy { !$0.orderedIn })
       let delegate = ApplicationDelegate(runtime: runtime, manifest: manifest, headless: true)
+      #expect(delegate.aboutPanelOptions[.applicationVersion] as? String == first.version)
+      #expect(delegate.aboutPanelOptions[.version] as? String == "1")
       delegate.installStatusItem()
       let tray = try #require(delegate.statusItem)
       defer { NSStatusBar.system.removeStatusItem(tray) }
@@ -113,6 +115,19 @@ struct RuntimeUpdateTests {
       #expect(menu.items.last?.action == #selector(NSApplication.terminate(_:)))
       menu.performActionForItem(at: 0)
       #expect(runtime.windows.states.contains { $0.id == "main" && $0.orderedIn })
+      let aboutItem = try #require(NSApp.mainMenu?.items.first?.submenu?.items.first)
+      func texts(_ view: NSView) -> [String] {
+        (view as? NSTextField).map { [$0.stringValue] } ?? view.subviews.flatMap(texts)
+      }
+      func visibleAboutText() throws -> String {
+        #expect(NSApp.sendAction(try #require(aboutItem.action), to: aboutItem.target, from: aboutItem))
+        let panel = try #require(NSApp.windows.first { window in
+          window.isVisible && window.contentView.map { texts($0).contains("Update Test") } == true
+        })
+        defer { panel.orderOut(nil) }
+        return texts(try #require(panel.contentView)).joined(separator: " ")
+      }
+      #expect(try visibleAboutText().contains(first.version))
       _ = try runtime.windows.operate("hide", id: "main")
       #expect(runtime.windows.states.allSatisfy { !$0.orderedIn })
       let installedSkill = f.root.appending(path: "data/\(first.identifier)/Agent/current/update-test/SKILL.md")
@@ -148,12 +163,18 @@ struct RuntimeUpdateTests {
       #expect(runtime.updater.state.phase == "current")
       #expect(runtime.windows.registeredIDs == windows)
       #expect(try await currentBuild(runtime) == 2)
+      #expect(delegate.aboutPanelOptions[.applicationVersion] as? String == "1.2.0")
+      #expect(delegate.aboutPanelOptions[.version] as? String == "2")
+      #expect(try visibleAboutText().contains("1.2.0 (2)"))
 
       // A candidate can start successfully and then crash within its observation window.
       try offer(3, code: backend + "\nsetTimeout(() => process.exit(1), 1000);", page: frontend)
       try await applyAndWait()
       #expect(runtime.updater.state.phase == "failed")
       #expect(try await currentBuild(runtime) == 2)
+      #expect(delegate.aboutPanelOptions[.applicationVersion] as? String == "1.2.0")
+      #expect(delegate.aboutPanelOptions[.version] as? String == "2")
+      #expect(try visibleAboutText().contains("1.2.0 (2)"))
       #expect(try String(contentsOf: installedSkill, encoding: .utf8) == "skill-2")
 
       // Closed windows must not allow a broken frontend to bypass hidden validation.
@@ -175,6 +196,17 @@ struct RuntimeUpdateTests {
     }
     #expect(await runtime.stop().completed)
     for id in runtime.windows.openIDs { _ = try? runtime.windows.operate("close", id: id) }
+    let restartData = f.root.appending(path: "restart-data")
+    try FileManager.default.createDirectory(at: restartData.appending(path: first.identifier), withIntermediateDirectories: true)
+    try FileManager.default.copyItem(at: f.root.appending(path: "data/\(first.identifier)/Updates"),
+      to: restartData.appending(path: "\(first.identifier)/Updates"))
+    let restarted = try FIARuntime(manifest: manifest, bundle: bundle,
+      supportDirectory: restartData, updateNetwork: network)
+    let restartedDelegate = ApplicationDelegate(runtime: restarted, manifest: manifest, headless: true)
+    #expect(restartedDelegate.aboutPanelOptions[.applicationVersion] as? String == "1.2.0")
+    #expect(restartedDelegate.aboutPanelOptions[.version] as? String == "2")
+    #expect(try await currentBuild(restarted) == 2)
+    #expect(await restarted.stop().completed)
   }
   private func codesign(_ arguments: [String]) async throws {
     try await withCheckedThrowingContinuation {

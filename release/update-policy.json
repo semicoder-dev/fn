@@ -1,3 +1,6 @@
 {
-  "kind": "code"
+  "kind": "installer",
+  "version": "0.8.3",
+  "build": 19,
+  "reason": "FIA 原生 Host 新增检查更新进度、无更新与失败重试窗口，并将系统 About 改为显示当前活动代码版本；旧 0.8.1 运行时无法通过代码更新获得这些 Swift/AppKit 变化。"
 }

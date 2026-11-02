@@ -108,6 +108,25 @@ export function validateEvidence(
     evidence.cases.every((item) => item.passed === true),
     "A candidate test failed",
   );
+  if (input.policy.kind === "installer") {
+    const starts: [string, number][] = [
+      ["baseline-installer-upgrade", input.runtimeBaselineBuild],
+      ["installer-upgrade", input.previousBuild],
+    ];
+    if (input.previousBuild > input.runtimeBaselineBuild)
+      starts.push(["updated-installer-upgrade", input.runtimeBaselineBuild]);
+    for (const [name, build] of starts)
+      assert(
+        evidence.cases.some(
+          (item) =>
+            item.name === name &&
+            item.passed &&
+            item.installedBuild === build &&
+            item.targetBuild === input.build,
+        ),
+        "Missing actual installer starting-state evidence: " + name,
+      );
+  }
   assert(
     input.previousBuild >= input.runtimeBaselineBuild &&
       input.previousBuild < input.build,
