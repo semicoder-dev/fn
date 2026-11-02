@@ -8,6 +8,13 @@ import {
   validateResponseRequest,
 } from "../src/models.ts";
 import { readResponses, encodeSSE } from "@semicoder/fn-sdk/sse";
+import {
+  request,
+  resource,
+  delta,
+  completed,
+  responseFrom,
+} from "../../sdk/tests/fixtures/responses.ts";
 const issuer = "https://auth.openai.com";
 const keys = await crypto.subtle.generateKey(
   {
@@ -59,12 +66,6 @@ const identityFetch = (async (url: any) =>
         }
       : { keys: [jwk] },
   )) as typeof fetch;
-const request = {
-  model: "test",
-  input: [{ role: "user", content: "hello" }],
-  store: false,
-  stream: true,
-};
 test("identity signature, audience, nonce and expiry are verified", async () => {
   expect(
     (
@@ -204,7 +205,19 @@ test("model slots remain bounded, cancellation releases waiters, and upstream qu
       return new Response(
         new ReadableStream<Uint8Array>({
           start(c) {
-            c.enqueue(encodeSSE({ type: "response.created" }));
+            c.enqueue(
+              encodeSSE(
+                {
+                  type: "response.created",
+                  sequence_number: 0,
+                  response: resource({
+                    status: "in_progress",
+                    completed_at: null,
+                  }),
+                },
+                "response.created",
+              ),
+            );
           },
         }),
       );
@@ -247,41 +260,62 @@ test("model slots remain bounded, cancellation releases waiters, and upstream qu
   ).toThrow("Unsupported");
 });
 test("completed, incomplete, quota and truncated model streams are distinct", async () => {
-  const read = async (events: unknown[]) => {
-    const values = [];
-    for await (const event of readResponses(
-      new Response(Buffer.concat(events.map((e) => Buffer.from(encodeSSE(e))))),
-    ))
-      values.push(event);
-    return values;
-  };
-  expect(
-    (
-      await read([
-        { type: "response.output_text.delta", delta: "hello" },
-        { type: "response.completed" },
-      ])
-    ).length,
-  ).toBe(2);
+  const read = (events: unknown[]) =>
+    Array.fromAsync(readResponses(responseFrom(events)));
+  expect((await read([delta, completed])).length).toBe(2);
+  await expect(read([delta])).rejects.toMatchObject({ code: "interrupted" });
   await expect(
-    read([{ type: "response.output_text.delta", delta: "partial" }]),
-  ).rejects.toMatchObject({ code: "interrupted" });
-  await expect(read([{ type: "response.incomplete" }])).rejects.toMatchObject({
-    code: "response.incomplete",
-  });
+    read([
+      {
+        type: "response.incomplete",
+        sequence_number: 1,
+        response: resource({
+          status: "incomplete",
+          completed_at: null,
+          incomplete_details: { reason: "max_output_tokens" },
+        }),
+      },
+    ]),
+  ).rejects.toMatchObject({ code: "response.incomplete" });
   await expect(
     read([
       {
         type: "response.failed",
-        response: {
+        sequence_number: 1,
+        response: resource({
+          status: "failed",
+          completed_at: null,
           error: {
             code: "subscription_sharing_usage_limit_exceeded",
             message: "limit",
           },
-        },
+        }),
       },
     ]),
   ).rejects.toMatchObject({
     code: "subscription_sharing_usage_limit_exceeded",
   });
+});
+
+test("host validates before credentials or fetch and does not spend a model slot on invalid requests", async () => {
+  let fetched = false;
+  const models = new Models("unused", (async (_url: unknown) => {
+    fetched = true;
+    return Response.error();
+  }) as typeof fetch);
+  for (const fields of [
+    { input: [42] },
+    { tools: [{ type: "function" }] },
+    { reasoning: { effort: 42 } },
+    { input: [{ role: "system", content: "x" }] },
+  ]) {
+    await expect(
+      models.responses(
+        "unused",
+        { ...request, ...fields },
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+  }
+  expect(fetched).toBe(false);
 });

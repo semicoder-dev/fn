@@ -1,12 +1,8 @@
 import { chmod } from "node:fs/promises";
 import { resolve } from "node:path";
 import { atomicJSON } from "./store.ts";
-import {
-  FnError,
-  type Model,
-  type Connection,
-  type ResponseRequest,
-} from "@semicoder/fn-sdk/types";
+import { chatGPTStream } from "./chatgpt-stream.ts";
+import { FnError, type Model, type Connection } from "@semicoder/fn-sdk/types";
 interface Credential {
   id: string;
   email: string;
@@ -35,83 +31,8 @@ const issuer = "https://auth.openai.com";
 const resource = "https://api.openai.com/v1";
 const secret = () =>
   Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64url");
-export function validateResponseRequest(value: unknown): ResponseRequest {
-  const input = value as ResponseRequest;
-  if (
-    !input ||
-    typeof input.model !== "string" ||
-    !Array.isArray(input.input) ||
-    input.store !== false ||
-    input.stream !== true
-  )
-    throw new FnError(
-      "invalid_request",
-      "Responses requires model, input array, store:false and stream:true",
-    );
-  for (const key of [
-    "background",
-    "conversation",
-    "max_output_tokens",
-    "max_tool_calls",
-    "metadata",
-    "moderation",
-    "multi_agent",
-    "prompt",
-    "prompt_cache_retention",
-    "safety_identifier",
-    "temperature",
-    "top_logprobs",
-    "top_p",
-    "truncation",
-    "user",
-    "previous_response_id",
-  ]) {
-    if (key in input)
-      throw new FnError(
-        "unsupported_parameter",
-        key + " is not supported by this connection",
-      );
-  }
-  if (
-    input.input.some(
-      (item) => item?.type === "message" && item?.role === "system",
-    )
-  )
-    throw new FnError(
-      "unsupported_parameter",
-      "Use instructions or developer messages",
-    );
-  if (input.tools !== undefined) {
-    if (!Array.isArray(input.tools))
-      throw new FnError("invalid_request", "tools must be an array");
-    const unsupported = new Set([
-      "image_generation",
-      "file_search",
-      "code_interpreter",
-      "computer",
-      "computer_use_preview",
-      "mcp",
-      "tool_search",
-      "programmatic_tool_calling",
-    ]);
-    const inspect = (tools: unknown[]) => {
-      for (const tool of tools) {
-        if (!tool || typeof tool !== "object")
-          throw new FnError("invalid_request", "Invalid tool");
-        const value = tool as Record<string, unknown>;
-        if (unsupported.has(String(value.type)))
-          throw new FnError(
-            "unsupported_parameter",
-            "Unsupported tool: " + value.type,
-          );
-        if (value.type === "namespace" && Array.isArray(value.tools))
-          inspect(value.tools);
-      }
-    };
-    inspect(input.tools);
-  }
-  return input;
-}
+import { validateResponseRequest } from "@semicoder/fn-sdk/responses";
+export { validateResponseRequest };
 export async function verifyIdentity(
   token: string,
   clientId: string,
@@ -532,7 +453,7 @@ export class Models {
       }
       if (!response.body)
         throw new FnError("interrupted", "Missing model stream");
-      const reader = response.body.getReader();
+      const reader = chatGPTStream(response, signal).getReader();
       let ended = false;
       const finish = () => {
         if (!ended) {

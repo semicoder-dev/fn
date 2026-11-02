@@ -1,3 +1,4 @@
+import { validateResponseRequest } from "./responses.ts";
 import { pathToFileURL } from "node:url";
 import { readResponses } from "./sse.ts";
 import { FnError } from "./types.ts";
@@ -51,6 +52,7 @@ const host: Host = {
     list: async () => (await request("/models")).json(),
     default: async () => (await request("/models/default")).json(),
     async *responses(body, options) {
+      validateResponseRequest(body);
       const signal = AbortSignal.any([
         lifetime.signal,
         ...(options.signal ? [options.signal] : []),

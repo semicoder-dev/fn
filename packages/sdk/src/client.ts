@@ -1,3 +1,4 @@
+import { validateResponseRequest } from "./responses.ts";
 import type { Contract, Input, Output } from "./contract.ts";
 import type {
   ViewBootstrap,
@@ -183,6 +184,7 @@ export class ViewClient<C extends Contract> extends EventTarget {
     body: ResponseRequest,
     options: { connectionId: string; signal?: AbortSignal },
   ): AsyncGenerator<ResponseEvent> {
+    validateResponseRequest(body);
     await this.ready;
     const controller = new AbortController();
     const signal = AbortSignal.any([

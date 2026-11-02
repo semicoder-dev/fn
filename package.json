@@ -1,6 +1,6 @@
 {
   "name": "fn",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "private": true,
   "homepage": "https://semicoder.dev/fn",
   "workspaces": [
@@ -17,13 +17,13 @@
     "version:app": "bun scripts/release/version.ts",
     "version:sdk": "bun scripts/npm/version.ts",
     "npm:check": "bun scripts/npm/check.ts",
-    "npm:pack": "bun scripts/sdk-archive.ts && bun scripts/npm/pack.ts",
+    "npm:pack": "bun run protocol:check && bun scripts/sdk-archive.ts && bun scripts/npm/pack.ts",
     "release:check": "bun scripts/release/check.ts",
     "release:check-update": "bun scripts/release/update-path.ts",
     "release:candidate": "bun scripts/release/candidate.ts build",
     "release:promote": "bun scripts/release/promote.ts",
     "release:runtime": "bun scripts/release/runtime.ts",
-    "check": "bun run typecheck && bun run lint && bun run format:check && bun run dependencies:check",
+    "check": "bun run protocol:check && bun run typecheck && bun run lint && bun run format:check && bun run dependencies:check",
     "test": "bun scripts/build-runner.ts && bun test packages/host/tests packages/sdk/tests packages/ui/tests",
     "framework:prepare": "bun framework/fia/tools/prepare.ts",
     "framework:check": "bun framework/fia/tools/task.ts check",
@@ -34,7 +34,9 @@
     "format": "bun fmt --no-script host frontend packages commands scripts fia.config.ts package.json tsconfig.json",
     "format:check": "bun fmt --no-script --check host frontend packages commands scripts fia.config.ts package.json tsconfig.json",
     "dependencies:check": "bun scripts/check-dependencies.ts",
-    "lint": "oxlint --max-warnings=0 host frontend packages commands scripts"
+    "lint": "oxlint --max-warnings=0 host frontend packages commands scripts",
+    "protocol:generate": "bun scripts/protocol/generate.ts",
+    "protocol:check": "bun scripts/protocol/generate.ts --check"
   },
   "dependencies": {
     "@semicoder/fia": "workspace:*",

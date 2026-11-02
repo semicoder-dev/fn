@@ -1,6 +1,6 @@
 # SDK/UI 归档与发布
 
-SDK 0.7.1 与 UI 0.2.1 为 hostApi 2 同批契约。应用安装这两个精确 npm 版本，UI 通过 peer 复用应用安装的 SDK。Bun 1.4.4 是统一工具链。
+本次准备 SDK 0.8.0 与 UI 0.2.2，保持 hostApi 2。SDK 模型类型及校验采用固定 OpenResponses 契约；UI 精确配套 SDK，并纳入 Modal 标题焦点与 headerActions。应用安装这两个精确 npm 版本，UI 通过 peer 复用应用安装的 SDK。Bun 1.4.4 是统一工具链。
 
 本地运行 `bun run npm:check && bun run npm:pack`。`artifacts/sdk/manifest.json` 记录摘要归档，`artifacts/npm/` 保存可发布文件。临时目录独立安装 SDK/UI、React，检查类型、禁用依赖、前后台构建，不使用 overrides。
 

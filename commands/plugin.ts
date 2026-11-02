@@ -29,9 +29,9 @@ export default async function plugin(context: { args: string[]; cwd: string }) {
         private: true,
         type: "module",
         scripts: { check: "tsc --noEmit", build: "fn plugin build ." },
-        dependencies: { "@semicoder/fn-sdk": "0.7.1" },
+        dependencies: { "@semicoder/fn-sdk": "0.8.0" },
         devDependencies: {
-          "@semicoder/fn-ui": "0.2.1",
+          "@semicoder/fn-ui": "0.2.2",
           react: "19.2.7",
           "react-dom": "19.2.7",
           "@types/bun": "1.4.0",

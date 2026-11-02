@@ -17,18 +17,7 @@ export interface Model {
   id: string;
   name: string;
 }
-export interface ResponseRequest {
-  model: string;
-  input: Record<string, unknown>[];
-  instructions?: string;
-  store: false;
-  stream: true;
-  [key: string]: unknown;
-}
-export interface ResponseEvent {
-  type: string;
-  [key: string]: unknown;
-}
+export type * from "./responses.ts";
 export interface InstalledApplication {
   instanceId: string;
   manifest: AppManifest;

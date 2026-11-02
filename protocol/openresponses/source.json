@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/openresponses/openresponses",
+  "commit": "dce9ddb91921427c2ba06901c7dfaf0cc7056799",
+  "path": "public/openapi/openapi.json",
+  "version": "2026-04-24",
+  "sha256": "1f469fc044bc3c0ee9bb8210b76435ce2386ed792c16863f8dc9bd6070b87f6a",
+  "license": "Apache-2.0 (upstream LICENSE)",
+  "generator": "scripts/protocol/generate.ts (Fn generator version 1)"
+}

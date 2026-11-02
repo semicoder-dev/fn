@@ -1,6 +1,6 @@
 {
   "name": "@semicoder/fn-sdk",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "TypeScript application SDK and tools for Fn",
   "homepage": "https://semicoder.dev/fn",
   "bugs": {
@@ -14,7 +14,8 @@
   "files": [
     "src",
     "build.ts",
-    "README.md"
+    "README.md",
+    "third-party"
   ],
   "type": "module",
   "exports": {
@@ -28,7 +29,8 @@
     "./sse": "./src/sse.ts",
     "./build": "./build.ts",
     "./summary": "./src/summary.ts",
-    "./text": "./src/text.ts"
+    "./text": "./src/text.ts",
+    "./responses": "./src/responses.ts"
   },
   "publishConfig": {
     "access": "public",

@@ -59,6 +59,25 @@ try {
   )
     throw new Error("Independent consumer resolved a forbidden dependency");
   await run([process.execPath, "smoke.ts"]);
+  await cp(
+    "packages/sdk/tests/responses.types.ts",
+    join(temporary, "app/src/protocol-types.ts"),
+  );
+  const fixtures = (
+    await Bun.file("packages/sdk/tests/fixtures/responses.ts").text()
+  )
+    .replaceAll("../../src/responses.ts", "@semicoder/fn-sdk/responses")
+    .replaceAll("../../src/sse.ts", "@semicoder/fn-sdk/sse");
+  await Bun.write(join(temporary, "app/src/model-fixtures.ts"), fixtures);
+  const modelSmoke = (
+    await Bun.file("scripts/npm/model-smoke.fixture.ts").text()
+  ).replace(
+    "../../packages/sdk/tests/fixtures/responses.ts",
+    "./app/src/model-fixtures.ts",
+  );
+  await Bun.write(join(temporary, "model-smoke.ts"), modelSmoke);
+  await run([process.execPath, "model-smoke.ts"]);
+
   await Bun.write(
     join(temporary, "tsconfig.json"),
     JSON.stringify({

@@ -7,6 +7,7 @@
 - 公共通信使用 FIA 单一本机网关的 HTTP JSON、SSE、WebSocket。浏览器调试使用相同真实 API；标签关闭仅断开视图，视图所属调用取消。
 - FIA 通用窗口、菜单、进程组、通信、CloudKit 和开发构建能力放在 framework/fia；Fn 的应用平台、SDK、模型与消息路由归 Fn。框架不反向依赖业务。
 - 模型采用 OpenResponses，首期仅官方 ChatGPT 订阅授权。凭证由宿主持有；应用负责上下文和工具执行。宿主不提供 Agent loop、通用 Session 或业务 KV。
+- 模型协议以 OpenResponses 上游为依据；workspace 中的 openresponses 仓库严格只读。SDK 请求、响应、事件类型和校验同步在 Fn 内维护，记录上游提交、规范版本和 schema 摘要，不让独立构建依赖相邻目录。完整协议与当前连接限制分层，不能以宽泛 unknown 宣称类型已同步；当前审计见 docs/model-protocol.md。
 - 首页每个已安装应用一行，固定区域显示结构化动态摘要；宿主 renderer 不加载应用代码或 iframe。hostApi 2，关闭保留摘要和停止标记；业务视图通知与摘要独立。
 - 配色统一定义在 packages/ui/src/theme.css，参考 dsh 原版明暗色值并映射为 --fn-*；宿主/应用消费变量，不在页面中重定义全局主题，不引入 dsh 包。
 - UI 采用语义 CSS 变量；中英词条、明暗/系统主题和公共交互统一管理。技术标识小写，产品显示 Fn。
