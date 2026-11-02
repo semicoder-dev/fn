@@ -110,8 +110,38 @@ struct RuntimeUpdateTests {
       delegate.installStatusItem()
       let tray = try #require(delegate.statusItem)
       defer { NSStatusBar.system.removeStatusItem(tray) }
+      let entries = [
+        StatusMenuItem(id: "translate", label: "翻译", enabled: true, checked: true),
+        StatusMenuItem(id: "notes", label: "笔记", enabled: false, checked: false),
+        StatusMenuItem(id: "kanban", label: "看板", enabled: nil, checked: nil),
+        StatusMenuItem(id: "models", label: "模型目录", enabled: nil, checked: nil),
+      ]
+      for locale in ["zh-CN", "en"] {
+        runtime.statusMenu = StatusMenuOptions(items: entries, locale: locale)
+        delegate.installStatusItem()
+        let populated = try #require(tray.menu)
+        let showTitle = locale == "zh-CN" ? "显示桌面" : "Show Desktop"
+        let installTitle = locale == "zh-CN" ? "安装命令行工具…" : "Install Command Line Tool…"
+        let disconnectTitle = locale == "zh-CN" ? "断开浏览器连接" : "Disconnect Browser Connections"
+        let quitTitle = locale == "zh-CN" ? "退出" : "Quit"
+        #expect(populated.items.map(\.title) == [showTitle, "", "翻译", "笔记", "看板", "模型目录", "", installTitle, disconnectTitle, "", quitTitle])
+        #expect(populated.items.enumerated().filter { $0.element.isSeparatorItem }.map(\.offset) == [1, 6, 9])
+        for (index, entry) in entries.enumerated() {
+          let row = populated.items[index + 2]
+          #expect(row.representedObject as? String == entry.id)
+          #expect(row.action.map(NSStringFromSelector) == "applicationMenuAction:")
+          #expect(row.target === delegate)
+          #expect(row.isEnabled == (entry.enabled != false))
+          #expect(row.state == (entry.checked == true ? .on : .off))
+        }
+        runtime.statusMenu = StatusMenuOptions(items: [], locale: locale)
+        delegate.installStatusItem()
+        let empty = try #require(tray.menu)
+        #expect(empty.items.map(\.title) == [showTitle, "", installTitle, disconnectTitle, "", quitTitle])
+        #expect(empty.items.enumerated().filter { $0.element.isSeparatorItem }.map(\.offset) == [1, 4])
+      }
       let menu = try #require(tray.menu)
-      #expect(menu.items.map(\.title) == ["Show Desktop", "Install Command Line Tool…", "Disconnect Browser Connections", "", "Quit"])
+      #expect(menu.items.map(\.title) == ["Show Desktop", "", "Install Command Line Tool…", "Disconnect Browser Connections", "", "Quit"])
       #expect(menu.items.last?.action == #selector(NSApplication.terminate(_:)))
       menu.performActionForItem(at: 0)
       #expect(runtime.windows.states.contains { $0.id == "main" && $0.orderedIn })

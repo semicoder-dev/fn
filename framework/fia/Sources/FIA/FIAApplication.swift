@@ -186,16 +186,17 @@ final class ApplicationDelegate: NSObject, NSApplicationDelegate {
             item.button?.toolTip = manifest.app.name + " — " + (configuration.tooltip ?? manifest.app.name)
         }
         let menu = NSMenu()
+        let show = NSMenuItem(title: chinese ? "显示桌面" : "Show Desktop", action: #selector(showMainWindow), keyEquivalent: "")
+        if manifest.localProfile != nil { show.title = "Show " + manifest.app.name }
+        show.target = self
+        menu.addItem(show)
+        menu.addItem(.separator())
         for entry in runtime.statusMenu.items {
             let row = NSMenuItem(title: entry.label, action: #selector(applicationMenuAction(_:)), keyEquivalent: "")
             row.target = self; row.representedObject = entry.id; row.isEnabled = entry.enabled != false
             row.state = entry.checked == true ? .on : .off; menu.addItem(row)
         }
         if !runtime.statusMenu.items.isEmpty { menu.addItem(.separator()) }
-        let show = NSMenuItem(title: chinese ? "显示桌面" : "Show Desktop", action: #selector(showMainWindow), keyEquivalent: "")
-        if manifest.localProfile != nil { show.title = "Show " + manifest.app.name }
-        show.target = self
-        menu.addItem(show)
         let install = NSMenuItem(title: chinese ? "安装命令行工具…" : "Install Command Line Tool…", action: #selector(installCLI), keyEquivalent: "")
         install.target = self
         menu.addItem(install)

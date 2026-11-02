@@ -1,5 +1,14 @@
 # Fn 本地验收
 
+## 2026-11-02 状态栏菜单显示桌面置顶
+
+`codex/status-menu-desktop-first` 仅移动 FIA `ApplicationDelegate.installStatusItem` 的显示桌面项，并在其后插入分割线。插件/应用行、系统操作和退出的原有绑定不变；本轮不修改此前已合入本地主干的桌面宽度。
+
+- `RuntimeUpdateTests` 在旧实现先复现顺序/分割线失败，修复后整个 52 Swift 测试及 3 XCTest 通过。真实 NSMenu 覆盖中英、四项应用及空列表、重复重建、分割线位置、ID/action/target、启用/勾选状态；原有第一项实际动作验证桌面显示继续通过。
+- Fn check、49 测试/354 断言、FIA 原生构建和框架归档通过。使用 `.fia/platform-qa/status-menu/build.ts` 构建独立 `com.semicoder.fn.statusmenuqa.preview`，CLI 验证 ready、platform.command state 和正常退出通过；不读取或替换日常应用。未另做人工菜单截图/浏览器验证（本轮无网页变更）。
+- framework:check 的 99 项 CLI 测试中 98 项通过，已有 `development readiness bypasses proxy environment and checks HTTP status` 失败；外层清除代理仍失败，因为测试重新注入代理。无 application.ts/Swift 的最小诊断确认 Bun 1.4.4 的 node:http.get 会读取 HTTP_PROXY；非本机网络禁止，与菜单修改无关。本轮不改该实现，framework:verify 未完成。默认 npm 用户缓存不可写，使用 QA 目录缓存后 pack 通过。
+- 官网 Fn `getting-started.md` 与 FIA `shared-api.md` 未承诺具体菜单排序，现有内容准确。2026-11-03 按用户追加要求提交并快进合入本地 `main`，保留原特性分支；沿用上述最终源码验收，整合补做格式与 diff 检查。未改版本、SDK、固定 runtime 锁或更新策略；未推送、发布、部署或替换日常应用。
+
 ## 2026-11-02 桌面列表最大宽度
 
 `codex/desktop-list-width` 只调整 `frontend/desktop.module.css`：工具栏和 main 外壳共用 1200px 最大宽度、100% 自适应宽度及自动水平外边距。列表保留原 16px/12px 内边距，应用行布局和 Dock 不变。
