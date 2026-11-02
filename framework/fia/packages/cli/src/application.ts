@@ -3,7 +3,6 @@ import { agentFetch, connectAgent } from "./agent-cli.ts";
 import { readResult } from "./api-client.ts";
 import { generateAgentArtifacts } from "./agent-artifacts.ts";
 import { watch } from "node:fs";
-import { get } from "node:http";
 import {
   chmod,
   cp,
@@ -818,25 +817,21 @@ export function hasProcessExited(
   // Bun leaves exitCode null when a process exits because of a signal.
   return child.exitCode !== null || child.signalCode !== null;
 }
-export function isDevelopmentServerReady(port: number): Promise<boolean> {
-  // This probe is always local. Unlike Bun 1.4.2 fetch, node:http ignores proxy env.
-  return new Promise((resolve) => {
-    const request = get(
-      { hostname: "127.0.0.1", port, path: "/", timeout: 1000 },
-      (response) => {
-        response.resume();
-        resolve(
-          response.statusCode !== undefined &&
-            response.statusCode >= 200 &&
-            response.statusCode < 300,
-        );
-      },
-    );
-    request.on("error", () => resolve(false));
-    request.on("timeout", () =>
-      request.destroy(new Error("Local readiness probe timed out")),
-    );
-  });
+export async function isDevelopmentServerReady(port: number): Promise<boolean> {
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/`, {
+      // The probe is always local; never use or mutate the user's proxy environment.
+      // @ts-expect-error Bun 1.4.4 supports false; pinned bun-types 1.4.0 does not yet declare it.
+      proxy: false,
+      redirect: "manual",
+      signal: AbortSignal.timeout(1000),
+    });
+    // Readiness depends on headers, not completion of a potentially streaming body.
+    void response.body?.cancel().catch(() => undefined);
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 export async function runDevelopment(
   initial: ResolvedFIAConfig,

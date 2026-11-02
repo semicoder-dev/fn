@@ -72,6 +72,12 @@ DMG SHA-256 `27bbe2d6e8efe0eaf33ba640d94b34d10b6cbd1eec5add8bd73d61a864864b7e`�
 
 新锁 SHA-256 `0eb8569e522030bee0d0fa0fcb0e91c790df7acc442674b14434d397d63eb0b9`；本地原生输入检查、两份独立空缓存及不同工作目录的普通代码构建通过，均保持上述 runtimeId。后续候选仍须执行独立 runner 的同等验证，不能以本次本地记录替代。
 
+## 0.8.5 原生菜单与桌面布局发行准备（尚未公开）
+
+2026-11-03 用户明确要求发布 0.8.5/build 21，包含 1200px 桌面列表/工具栏上限及原生状态栏菜单显示桌面置顶分组。菜单顺序实际位于 Swift/AppKit Host，精确 installer 策略只限定此版本；不因打包重编漂移切换策略。FIA 本机 readiness 使用显式 `proxy:false` 修复当前 Bun 的 node:http 代理假设失效，原失败回归保留并补充 HTTP/timeout/流式响应覆盖。Fn check/49 测试、FIA 102 CLI/52 Swift/3 XCTest、check/pack/独立源码归档消费 verify 与 SDK/UI 归档消费已通过。当前公开仍为 0.8.4，发布前不覆盖旧锁或签名产物。
+
+本次授权包括 Fn 发布、精确 Pages `v0.8.5` 许可，以及公开产物与升级验收通过后的 Semicoder 同步部署/现有生产审批；不修改其他保护，不发布 SDK/UI、独立应用、手机或 FIA npm，不替换日常应用。签名候选、三条真实安装路径、匿名产物与公网验收、新锁登记和官网证据完成后补充下方最终记录。
+
 ## 0.8.4 模型协议联合发行证据
 
 `v0.8.4` / build 20 固定 `1b1acd41594bfecb14500e086ed587c4b589cfa8`。代码更新沿用0.8.3运行时，runtimeId及锁摘要不变；[候选 41391634518](https://github.com/semicoder-dev/fn/actions/runs/41391634518) artifact `13118281191` 的签名公证、15项HTTPS真实升级/故障恢复通过，再由 [正式流程 41397270151](https://github.com/semicoder-dev/fn/actions/runs/41397270151) 发布同一产物，没有重建或重签。

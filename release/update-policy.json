@@ -1,3 +1,6 @@
 {
-  "kind": "code"
+  "kind": "installer",
+  "version": "0.8.5",
+  "build": 21,
+  "reason": "FIA Swift/AppKit 状态栏菜单将显示桌面固定为第一项，并在其与应用列表间增加分割线；该菜单由原生 Host 构建，已有 0.8.3/0.8.4 固定运行时不能通过代码更新替换。"
 }
