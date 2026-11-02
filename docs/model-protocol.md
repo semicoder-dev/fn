@@ -1,6 +1,6 @@
 # 模型协议与 SDK
 
-2026-11-02，按用户确认方案在 `codex/openresponses-contract` 实施。类型、运行时校验和回归已完成，准备 Fn 0.8.4/build 20、SDK 0.8.0、UI 0.2.2 与翻译 0.3.1 联合发行。OpenResponses 上游严格只读。
+2026-11-02，按用户确认方案在 `codex/openresponses-contract` 实施。类型、运行时校验和回归已完成并合入 main，随 Fn 0.8.4/build 20、SDK 0.8.0、UI 0.2.2 与翻译 0.3.1 联合发行；不提供旧输入兼容。发行产物和验证证据见 [桌面发行](github-release.md) 与 [npm 发行](npm-release.md)。OpenResponses 上游严格只读。
 
 ## 固定来源与生成
 
