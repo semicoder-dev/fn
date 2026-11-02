@@ -4,7 +4,7 @@
 
 ## 更新类型与固定运行时
 
-默认 `release/update-policy.json` 为 `{"kind":"code"}`。页面、样式、宿主 TypeScript 和可更新资源复用 `release/runtime.lock.json` 指定的公开运行时。当前锁来自公开 **0.8.1/build 17**，包括 DMG 与签名清单地址/摘要、源码提交、Developer ID Team、runtimeId、固定文件清单、配置及原生输入摘要。
+默认 `release/update-policy.json` 为 `{"kind":"code"}`。页面、样式、宿主 TypeScript 和可更新资源复用 `release/runtime.lock.json` 指定的公开运行时。当前锁来自公开 **0.8.3/build 19**，包括 DMG 与签名清单地址/摘要、源码提交、Developer ID Team、runtimeId、固定文件清单、配置及原生输入摘要。
 
 原生输入由 `framework/fia/tools/runtime-inputs.ts` 列出：Swift/C 源码及依赖清单、`native-recipe.ts` 的编译参数、Bun、协议与目标平台。`runtimeConfiguration` 覆盖固定 JS、权限/entitlements/profile、更新配置、图标、启动配置及固定资源。版本/build 与业务代码不属于运行时身份；脚本、文档与测试由候选源码提交追溯。构建路径不进入兼容摘要。
 
@@ -50,7 +50,7 @@ bun run release:promote --run-id <候选运行ID>
 
 ## 用户边界与交付状态
 
-0.8.1 是沿用的运行时基线；未来普通更新可应用内更新。0.8.0 需一次完整安装，可直接安装新流程的最新版。每版仍提供 DMG 给新用户。热更新是下载代码、用户确认、重启后台和刷新界面，保留业务数据，不保证未保存界面状态。
+0.8.3 是当前运行时基线；后续没有原生变化的普通更新可应用内完成。0.8.2 及更早版本（含从 0.8.1 在线更新的实例）需要一次完整安装，可直接安装最新版。本次原生变化是检查更新反馈与 About 活动版本显示，不是重复编译造成的身份漂移。每版仍提供 DMG 给新用户。热更新是下载代码、用户确认、重启后台和刷新界面，保留业务数据，不保证未保存界面状态。
 
 此前 0.8.1 验收包含完整 DMG 替换及数据保留，不是 0.8.0 在线更新成功；不能沿用错误表述。分别报告：①固定复用及真实升级/回退通过；②线上流水线已验收同产物发布；③新版本正式更新源与官网上线。三者均完成才关闭问题。普通开发不改版本；公开基线和既有发行产物不可覆盖，发布验收使用隔离应用与数据目录。
 
@@ -61,3 +61,13 @@ bun run release:promote --run-id <候选运行ID>
 `v0.8.2` / build 18 固定 `be4cc687fe0af96fcdbbcc095d77e5c460049e10`；[候选 41317927910](https://github.com/semicoder-dev/fn/actions/runs/41317927910) 的 artifact `13088581248` 经提升进入 [正式流程 41321697415](https://github.com/semicoder-dev/fn/actions/runs/41321697415)，发布过程未重建或重新签名。运行时沿用 0.8.1，发布前 HTTPS 回放中的真实升级与故障恢复通过；正式更新源的未修改 0.8.1 在线升级、数据保留和重启再次通过。完整 DMG 支持 0.8.0 一次升级至 0.8.2，隔离数据和重启已另行验证。
 
 公开附件、12 个更新文件及 latest 经工作流外匿名校验，与原候选摘要一致。完整报告随 [Release](https://github.com/semicoder-dev/fn/releases/tag/v0.8.2) 提供；公网升级证据为正式运行的 `fn-public-upgrade-evidence`。首个失败候选因 QA 子进程退出状态判断错误被门禁阻止；修复后新提交完整重建/重验，未复用失败产物。后续每个候选仍须执行全部检查。
+
+## 0.8.3 原生发行证据
+
+`v0.8.3` / build 19 固定 `39e59b4f754743557fe0aeac8f66145b685935bb`，精确 installer 策略限定原生更新反馈和 About 修复。[候选 41369784701](https://github.com/semicoder-dev/fn/actions/runs/41369784701) artifact `13108592980` 经过签名公证和 13 项 HTTPS 回放验收，再由 [正式流程 41371487966](https://github.com/semicoder-dev/fn/actions/runs/41371487966) 发布同一产物。
+
+发布前覆盖新装、0.8.1 与 0.8.2 完整安装升级，以及 0.8.1 先真实在线更新到 0.8.2 后再安装 0.8.3；业务数据/摘要/偏好与重启通过。正式更新源的两个原始安装版明确提示完整安装，安装与数据保留复验 9 项通过。工作流外 0.8.0 一次安装至 0.8.3、最终签名包实际原生菜单/About 窗口及全部匿名附件和更新文件校验也通过。完整安装与在线更新证据分别记录。
+
+DMG SHA-256 `27bbe2d6e8efe0eaf33ba640d94b34d10b6cbd1eec5add8bd73d61a864864b7e`，新 runtimeId `318835e940e0d3a21a1a83b68a8b795cdb4ab69bcdc63e0a3760c57d08c1d74c`。公开后通过 capture 核对来源提交、候选报告、签名、公证、固定 JS 与权限配置，再登记新的 runtime.lock，恢复默认 code 策略。旧 0.8.1 基线保留在历史版本与候选报告中，不改公开产物。
+
+新锁 SHA-256 `0eb8569e522030bee0d0fa0fcb0e91c790df7acc442674b14434d397d63eb0b9`；本地原生输入检查、两份独立空缓存及不同工作目录的普通代码构建通过，均保持上述 runtimeId。后续候选仍须执行独立 runner 的同等验证，不能以本次本地记录替代。
