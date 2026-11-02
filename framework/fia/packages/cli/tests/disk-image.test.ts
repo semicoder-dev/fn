@@ -23,11 +23,16 @@ for (const failure of [
   "invalid",
   "stapler",
   "smoke",
+  "detach-busy",
+  "detach-force",
+  "detach-stuck",
+  "detach-error",
 ] as const) {
   test(`DMG release preserves previous artifacts and cleans up on ${failure}`, async () => {
     const root = await mkdtemp(resolve(tmpdir(), "fia-dmg-test-"));
     const commands: string[][] = [];
     let smokeCalled = false;
+    let detachAttempts = 0;
     const config = validateConfig(
       {
         app: {
@@ -48,6 +53,22 @@ for (const failure of [
     const dmg = resolve(root, "dist/Test App-1.0.0-1-mac-arm64.dmg");
     const runner: ApplicationProcessRunner = async (command) => {
       commands.push([...command]);
+      if (command[1] === "detach" && failure.startsWith("detach-")) {
+        if (command.includes("-force"))
+          return failure === "detach-stuck"
+            ? { exitCode: 1, stdout: "", stderr: "rejected forced detach" }
+            : { exitCode: 0, stdout: "", stderr: "" };
+        detachAttempts++;
+        if (failure !== "detach-busy" || detachAttempts === 1)
+          return {
+            exitCode: 1,
+            stdout: "",
+            stderr:
+              failure === "detach-error"
+                ? "rejected detach"
+                : "hdiutil: Resource busy",
+          };
+      }
       if (command.includes(failure))
         return { exitCode: 1, stdout: "", stderr: "rejected" };
       if (command.includes("notarytool"))
@@ -95,7 +116,7 @@ for (const failure of [
           };
         },
       });
-      if (failure === "none") {
+      if (["none", "detach-busy", "detach-force"].includes(failure)) {
         expect((await result).dmg).toBe(dmg);
         expect(await readFile(dmg + ".sha256", "utf8")).toStartWith(
           await sha256(dmg),
@@ -111,7 +132,19 @@ for (const failure of [
         expect(await Bun.file(dmg + ".sha256").exists()).toBe(false);
         expect(await Bun.file(dmg + ".report.json").exists()).toBe(false);
       }
-      expect(smokeCalled).toBe(failure === "none" || failure === "smoke");
+      expect(smokeCalled).toBe(
+        failure === "none" ||
+          failure === "smoke" ||
+          failure.startsWith("detach-"),
+      );
+      if (failure === "detach-busy") {
+        expect(detachAttempts).toBe(2);
+        expect(commands.some((c) => c.includes("-force"))).toBe(false);
+      }
+      if (failure === "detach-force") {
+        expect(detachAttempts).toBe(3);
+        expect(commands.some((c) => c.includes("-force"))).toBe(true);
+      }
       if (failure === "invalid") {
         expect(commands.some((c) => c.includes("log"))).toBe(true);
         expect(commands.some((c) => c.includes("stapler"))).toBe(false);
@@ -122,7 +155,7 @@ for (const failure of [
         (await readdir(resolve(root, "dist"))).some((name) =>
           name.startsWith(".dmg-"),
         ),
-      ).toBe(false);
+      ).toBe(failure === "detach-stuck");
     } finally {
       await rm(root, { recursive: true, force: true });
     }

@@ -1,11 +1,11 @@
 # Fn 应用开发
 
-需要 Bun 1.4.4、Fn 0.8 的 hostApi 2、精确 SDK 0.7.1 / UI 0.2.1。应用可在 workspace 外开发；开发期也可消费经过哈希校验的本地 SDK/UI 归档，但正式发布必须切换到已公开 npm 版本。Fn 0.8.1 内置 init 模板使用这两个精确版本；已有项目也可通过以下命令显式安装。
+需要 Bun 1.4.4、Fn 0.8 的 hostApi 2、精确 SDK 0.8.0 / UI 0.2.2。应用可在 workspace 外开发；开发期也可消费经过哈希校验的本地 SDK/UI 归档，但正式发布必须切换到已公开 npm 版本。Fn 0.8.4 内置 init 模板使用这两个精确版本；已有项目也可通过以下命令显式安装。
 
 ```sh
 fn plugin init my-app
 cd my-app
-bun add --exact @semicoder/fn-sdk@0.7.1 @semicoder/fn-ui@0.2.1
+bun add --exact @semicoder/fn-sdk@0.8.0 @semicoder/fn-ui@0.2.2
 fn plugin check .
 fn plugin dev . --browser
 fn plugin build .
@@ -62,11 +62,11 @@ export default defineBackend({
           for await (const event of host.models.responses({
             model: model.id,
             instructions: "Translate the user's text into English.",
-            input: [{ role: "user", content: [{ type: "input_text", text }] }],
+            input: [{ type: "message", role: "user", content: [{ type: "input_text", text }] }],
             stream: true,
             store: false,
           }, { connectionId: model.connectionId, signal })) {
-            if (event.type === "response.output_text.delta") yield String(event.delta);
+            if (event.type === "response.output_text.delta") yield event.delta;
           }
         },
       },

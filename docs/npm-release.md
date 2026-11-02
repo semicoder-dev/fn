@@ -1,6 +1,6 @@
 # SDK/UI 归档与发布
 
-本次准备 SDK 0.8.0 与 UI 0.2.2，保持 hostApi 2。SDK 模型类型及校验采用固定 OpenResponses 契约；UI 精确配套 SDK，并纳入 Modal 标题焦点与 headerActions。应用安装这两个精确 npm 版本，UI 通过 peer 复用应用安装的 SDK。Bun 1.4.4 是统一工具链。
+SDK 0.8.0 与 UI 0.2.2 已公开，保持 hostApi 2。SDK 模型类型及校验采用固定 OpenResponses 契约；UI 精确配套 SDK，并纳入 Modal 标题焦点与 headerActions。应用安装这两个精确 npm 版本，UI 通过 peer 复用应用安装的 SDK。Bun 1.4.4 是统一工具链。
 
 本地运行 `bun run npm:check && bun run npm:pack`。`artifacts/sdk/manifest.json` 记录摘要归档，`artifacts/npm/` 保存可发布文件。临时目录独立安装 SDK/UI、React，检查类型、禁用依赖、前后台构建，不使用 overrides。
 
@@ -9,6 +9,12 @@
 首次创建 UI 包需维护者完成 npm 登录及双重验证，发布同一 CI 归档后配置受信任发布者：GitHub `semicoder-dev/fn`、`publish-npm.yml`、环境 `npm`。已存在版本必须与归档的 registry integrity 一致；失败重试不得覆盖公共版本。发布后独立下载摘要核对，并从公开 registry 创建新应用消费。
 
 插件发行归档冻结运行依赖，宿主安装不执行依赖脚本。
+
+## 0.8.0 / 0.2.2 发行证据
+
+`sdk-v0.8.0` 固定 `f28bd954d94e138fc54f414f68928a3df8394578`。[工作流 41390014742](https://github.com/semicoder-dev/fn/actions/runs/41390014742) attempt 2 成功。两包真实 OIDC 发布，匿名公开归档与精确 CI 文件逐字节相同，公开 npm 新目录安装、类型/页面/后台构建通过。SDK 29,491 字节，SHA-256 `29bab7f15f3a2176ed3ab789c1531772d4144cb65fce69778ebefefcf8116cdf`；UI 11,364 字节，SHA-256 `78a7003fd66040b3c2f2d0267ffd1db8549c497107448da844c01304619fd7fe`。
+
+首次发布后的版本端点/安装索引传播超过一分钟，末尾校验失败；版本出现后重试原失败 job，核对已有 integrity 并跳过发布，再完成公开验证。未移动标签、覆盖公共版本或重新打包。
 
 ## 0.7.1 / 0.2.1 补丁发行
 

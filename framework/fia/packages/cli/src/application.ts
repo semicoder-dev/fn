@@ -522,6 +522,24 @@ export async function packageDiskImage(
   const image = resolve(temporary, "installer.dmg");
   const mount = resolve(temporary, "mounted");
   let mounted = false;
+  const detach = async () => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const result = await runner(["/usr/bin/hdiutil", "detach", mount], {
+        cwd: root,
+      });
+      if (result.exitCode === 0) return;
+      if (!/resource busy/i.test(result.stderr))
+        throw new Error("Disk image detach failed: " + result.stderr);
+      if (attempt < 2) await Bun.sleep(250 * (attempt + 1));
+      else {
+        // This is our private, read-only mount. The smoke check has already
+        // waited for the application and its managed process groups to exit.
+        // macOS services can still hold the volume briefly; force only this
+        // mount, never promote an image unless detach itself succeeds.
+        await run(["/usr/bin/hdiutil", "detach", "-force", mount]);
+      }
+    }
+  };
   try {
     await mkdir(payload);
     await run([
@@ -646,7 +664,7 @@ export async function packageDiskImage(
     );
     if (!report.ok)
       throw new Error("Disk image application smoke check failed");
-    await run(["/usr/bin/hdiutil", "detach", mount]);
+    await detach();
     mounted = false;
     const dmg = resolve(
       parent,
