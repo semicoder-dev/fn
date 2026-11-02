@@ -73,6 +73,12 @@
 .shell {
   min-height: 100dvh;
 }
+.topbar,
+.main {
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+}
 .topbar {
   min-height: 56px;
   padding: 10px 16px;
