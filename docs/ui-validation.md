@@ -1,5 +1,15 @@
 # Fn 本地验收
 
+## 2026-11-03 Fn 0.8.5 最终签名候选
+
+`7736dce` / 0.8.5/build 21，候选 run `41488180080` attempt 3、artifact `13192008893`。FIA 本机 readiness 改为显式直连 fetch，保留代理回归并补充 HTTP/重定向/流式取消/有界超时；Fn check/49 测试、FIA check/102 CLI/52 Swift/3 XCTest、pack/仓库外源码与归档消费 verify、SDK/UI 独立消费、主干 CI 与完整测试 DMG 冒烟通过。下方 11-02 的框架门禁未完成是当时状态，本轮已完整补齐。
+
+最终公证签名 DMG 45,846,716 bytes，SHA256 `8f568cee79f078918c24c2bb20e621888a9240239e8806ce3f98daa5901fda85`。候选真实 13 项安装验收通过：原始 0.8.3/19、原始 0.8.4/20，以及 0.8.3 先真实在线更新到 0.8.4 再完整替换 0.8.5，均验证偏好/应用/摘要/业务数据和重启；不以直接安装替代第三路径。attempt 1 未获 GitHub ARM runner，attempt 2 第三路径检查超时，均未封存/发布；原提交完整重试通过，不跳过门禁。
+
+挂载最终 DMG 的隔离副本，活动 version/build 正确，安装四个经匿名公开摘要核对的正式应用。真实 Chromium 中文浅色/英文深色在 320/375/640/820/1024/1200/1280/1440/1920/2560px 共 20 组合通过：头部/主列表 min(窗口宽度,1200px)、居中对齐、无横向溢出；搜索、排序移动及恢复通过，两张 1440px 截图已查看。原生窗口打开通过，真实 AppKit NSMenu 中英、四应用/空列表、分割线、ID/action/target/状态及首项显示桌面动作由上述全套测试覆盖。本机辅助功能查询未返回已停止，未另完成原生菜单截图或全屏视觉，不将其记为通过。
+
+证据在 `.fia/release-085/` 的 `candidate/`、`browser-layout.json`、`browser-interaction.json`、`native-ui.report.json` 与中英截图。隔离实例已退出、镜像已卸载，最终签名包前后指纹不变；不访问日常数据或替换日常应用。公网发行与官网结果见发行手册及 workspace 会话记录，不以候选验证冒充线上完成。
+
 ## 2026-11-02 状态栏菜单显示桌面置顶
 
 `codex/status-menu-desktop-first` 仅移动 FIA `ApplicationDelegate.installStatusItem` 的显示桌面项，并在其后插入分割线。插件/应用行、系统操作和退出的原有绑定不变；本轮不修改此前已合入本地主干的桌面宽度。

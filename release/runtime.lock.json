@@ -1,32 +1,32 @@
 {
   "schema": 1,
   "origin": {
-    "url": "https://github.com/semicoder-dev/fn/releases/download/v0.8.3/Fn-0.8.3-19-mac-arm64.dmg",
-    "sha256": "27bbe2d6e8efe0eaf33ba640d94b34d10b6cbd1eec5add8bd73d61a864864b7e",
-    "manifestURL": "https://github.com/semicoder-dev/fn/releases/download/v0.8.3/latest.json",
-    "manifestSHA256": "fc9665837ca7e2c11df4422dfd4a1c7067c5d01c7e7042d58d1a7c6d597f465e",
-    "sourceCommit": "39e59b4f754743557fe0aeac8f66145b685935bb"
+    "url": "https://github.com/semicoder-dev/fn/releases/download/v0.8.5/Fn-0.8.5-21-mac-arm64.dmg",
+    "sha256": "8f568cee79f078918c24c2bb20e621888a9240239e8806ce3f98daa5901fda85",
+    "manifestURL": "https://github.com/semicoder-dev/fn/releases/download/v0.8.5/latest.json",
+    "manifestSHA256": "1e65275760013462fb7b9ed4056fdab1a69e8f5e0db4a54e1b0c6b59fd6319c8",
+    "sourceCommit": "7736dce5a45e5bd94e169fb63c6b3918e15d806a"
   },
-  "runtimeId": "318835e940e0d3a21a1a83b68a8b795cdb4ab69bcdc63e0a3760c57d08c1d74c",
+  "runtimeId": "8287e13203e92ef6f6aa6f2bdb3b41f1ddba0fa2357d7b5e20eeff88911afb1a",
   "teamIdentifier": "947ZA68N2J",
   "appName": "Fn",
   "configuration": "cba486ec96f3a2e5f9d0894ad7e9e465dc4586453ebb220a5b2b338f591ac208",
-  "nativeInputs": "131e0a370ecdb7977f041b593836c09cdcba98e11799b402051e5362c62c0a71",
+  "nativeInputs": "5ca45dfdce8621349ceb7ad1612f3d9228f75662d5721990be44ed819d44b4a6",
   "files": [
     {
       "path": "Contents/Helpers/bun",
       "size": 88660288,
-      "sha256": "c677ddb3c80fba0dc483c4614ff2f7e3f353334e30bba64de4800450211489b1"
+      "sha256": "84d63652682941e1905860362e311a0d2c40bd635ab0c01c7e8c21684c6d9d80"
     },
     {
       "path": "Contents/Info.plist",
       "size": 776,
-      "sha256": "b3924fa1da1987472b72b62d97a51df290ea0b33d28dfe45870a4b4a0fe784f5"
+      "sha256": "d7c189832f833a5c250e99fc4b49f1810fd5471930b2bd6848bdc13f34b1d285"
     },
     {
       "path": "Contents/MacOS/FIAHost",
       "size": 2992496,
-      "sha256": "0b57eec187f5818b6d68f032a0bc625b3a3866fe7c17ffe2410bc81994f347b2"
+      "sha256": "8fa857c26c22ed240a9812fdc6721f5793f92d377e5b016b061f91a99ae2cfe4"
     },
     {
       "path": "Contents/Resources/agent-cli.js",
@@ -41,7 +41,7 @@
     {
       "path": "Contents/Resources/fia.runtime.json",
       "size": 797,
-      "sha256": "ed216ab6f969c13d4c9fb4c98811cf62abe3d709ab9d83aadb4769bdb50dd8e0"
+      "sha256": "7ef171655cce89498705068d06852e48aa4f73cbe1447113cf8cd249d9709829"
     },
     {
       "path": "Contents/Resources/script-preload.js",
