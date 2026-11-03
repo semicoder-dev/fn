@@ -1,0 +1,1 @@
+{"description":"Manage Fn applications, models and messages.","commands":{"plugin":{"description":"Create, build and debug Fn applications","entry":"commands/plugin.js"}}}
